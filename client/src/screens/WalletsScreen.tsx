@@ -104,17 +104,7 @@ export default function WalletsScreen() {
           wallets.map((wallet) => (
             <View key={wallet.id} style={styles.card}>
               <View style={styles.cardHeaderWrap}>
-                <View style={StyleSheet.absoluteFill}>
-                  <Svg height="100%" width="100%">
-                    <Defs>
-                      <LinearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <Stop offset="0" stopColor="#34d399" />
-                        <Stop offset="1" stopColor="#047857" />
-                      </LinearGradient>
-                    </Defs>
-                    <Rect width="100%" height="100%" fill="url(#grad)" />
-                  </Svg>
-                </View>
+                <View style={styles.glowEffect} />
                 <View style={styles.cardType}>
                   <View style={{ flexShrink: 1 }}>
                     <View style={styles.purposeBadgeHeader}>
@@ -273,7 +263,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    backgroundColor: '#10b981',
     position: 'relative',
+    overflow: 'hidden',
+  },
+  glowEffect: {
+    position: 'absolute',
+    top: -50,
+    right: -20,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   cardBody: {
     paddingHorizontal: 16,

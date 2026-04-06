@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Dimensions, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Dimensions, Alert, Image } from 'react-native';
 import { theme } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Wallet, TrendingUp, ArrowDownRight, Bell, Target, Plus, X, ArrowUpRight, Trash2, ChevronLeft, ChevronRight } from 'lucide-react-native';
@@ -17,6 +17,21 @@ export default function HomeScreen() {
 
   const [amount, setAmount] = useState('');
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
+
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDate(new Date());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formattedDate = currentDate.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric'
+  });
 
   const handleTransaction = async (type: 'deposit' | 'withdrawal') => {
     const numericAmount = parseFloat(amount);
@@ -73,6 +88,7 @@ export default function HomeScreen() {
         {/* HEADER */}
         <View style={styles.header}>
           <View>
+            <Text style={styles.realtimeDate}>{formattedDate}</Text>
             <Text style={styles.greeting}>Hello, {username || 'Alex'}</Text>
             <Text style={styles.subtitle}>Welcome back</Text>
           </View>
@@ -166,7 +182,11 @@ export default function HomeScreen() {
                   <View style={styles.goalRow}>
                     <View style={styles.goalLeft}>
                       <View style={styles.goalIconWrapper}>
-                        <Target size={20} color={theme.colors.primary} />
+                        {goal.imageUrl ? (
+                          <Image source={{ uri: goal.imageUrl }} style={{ width: '100%', height: '100%', borderRadius: 14 }} />
+                        ) : (
+                          <Target size={20} color={theme.colors.primary} />
+                        )}
                       </View>
                       <View>
                         <Text style={styles.goalTitle}>{goal.title}</Text>
@@ -292,6 +312,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: theme.spacing.xl,
+  },
+  realtimeDate: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    marginBottom: 4,
   },
   greeting: {
     fontFamily: theme.fonts.bold,

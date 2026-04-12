@@ -42,11 +42,12 @@ type AppContextType = {
   deleteGoal: (id: string) => Promise<void>;
   totalBalance: number;
   clearData: () => Promise<void>;
-  feedback: { visible: boolean; type: 'success' | 'delete'; message: string };
-  showFeedback: (type: 'success' | 'delete', message: string) => void;
+  feedback: { visible: boolean; type: 'success' | 'delete' | 'error'; message: string };
+  showFeedback: (type: 'success' | 'delete' | 'error', message: string) => void;
   confirmState: { visible: boolean; title: string; message: string; isDestructive?: boolean; onConfirm?: () => void };
   showConfirm: (title: string, message: string, onConfirm: () => void, isDestructive?: boolean) => void;
   closeConfirm: () => void;
+  loading: boolean;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -57,7 +58,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [wallets, setWallets] = useState<WalletType[]>([]);
   const [transactions, setTransactions] = useState<TransactionType[]>([]);
   const [goals, setGoals] = useState<GoalType[]>([]);
-  const [feedback, setFeedback] = useState<{ visible: boolean; type: 'success' | 'delete'; message: string }>({
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState<{ visible: boolean; type: 'success' | 'delete' | 'error'; message: string }>({
     visible: false,
     type: 'success',
     message: ''
@@ -97,6 +99,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addWallet = async (walletData: Omit<WalletType, 'id' | 'balance'>) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
     const newWallet: WalletType = {
       ...walletData,
       id: Date.now().toString(),
@@ -105,9 +109,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = [...wallets, newWallet];
     setWallets(updated);
     await AsyncStorage.setItem('@wallets', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('success', 'Wallet Created');
   };
 
   const addTransaction = async (txData: Omit<TransactionType, 'id' | 'date'>) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
     const newTx: TransactionType = {
       ...txData,
       id: Date.now().toString(),
@@ -130,9 +138,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     setWallets(updatedWallets);
     await AsyncStorage.setItem('@wallets', JSON.stringify(updatedWallets));
+    setLoading(false);
+    showFeedback('success', txData.type === 'deposit' ? 'Successfully Deposited' : 'Successfully Withdrawn');
   };
 
   const addGoal = async (goalData: Omit<GoalType, 'id'>) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
     const newGoal: GoalType = {
       ...goalData,
       id: Date.now().toString(),
@@ -140,36 +152,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = [...goals, newGoal];
     setGoals(updated);
     await AsyncStorage.setItem('@goals', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('success', 'Goal Defined');
   };
 
   const editWallet = async (id: string, updates: Partial<WalletType>) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
     const updated = wallets.map(w => w.id === id ? { ...w, ...updates } : w);
     setWallets(updated);
     await AsyncStorage.setItem('@wallets', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('success', 'Wallet Updated');
   };
 
   const editGoal = async (id: string, updates: Partial<GoalType>) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
     const updated = goals.map(g => g.id === id ? { ...g, ...updates } : g);
     setGoals(updated);
     await AsyncStorage.setItem('@goals', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('success', 'Goal Updated');
   };
 
   const deleteWallet = async (id: string) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
     const updated = wallets.filter(w => w.id !== id);
     setWallets(updated);
     await AsyncStorage.setItem('@wallets', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('delete', 'Wallet Removed');
     // Optional: could delete associated transactions and goals here
   };
 
   const deleteGoal = async (id: string) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
     const updated = goals.filter(g => g.id !== id);
     setGoals(updated);
     await AsyncStorage.setItem('@goals', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('delete', 'Goal Removed');
   };
 
   const deleteTransaction = async (id: string) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
     const txToDelete = transactions.find(t => t.id === id);
-    if (!txToDelete) return;
+    if (!txToDelete) {
+      setLoading(false);
+      return;
+    }
 
     const updatedTx = transactions.filter(t => t.id !== id);
     setTransactions(updatedTx);
@@ -187,6 +222,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     setWallets(updatedWallets);
     await AsyncStorage.setItem('@wallets', JSON.stringify(updatedWallets));
+    setLoading(false);
   };
 
   const clearData = async () => {
@@ -197,7 +233,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setGoals([]);
   };
 
-  const showFeedback = (type: 'success' | 'delete', message: string) => {
+  const showFeedback = (type: 'success' | 'delete' | 'error', message: string) => {
     setFeedback({ visible: true, type, message });
     setTimeout(() => {
       setFeedback(prev => ({ ...prev, visible: false }));
@@ -237,7 +273,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         showFeedback,
         confirmState,
         showConfirm,
-        closeConfirm
+        closeConfirm,
+        loading
       }}
     >
       {children}

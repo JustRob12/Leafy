@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { theme } from '../theme';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plane, Plus, X, Wallet as WalletIcon, ShoppingBag, AlertTriangle, User, Trash2, Edit2, MoreHorizontal } from 'lucide-react-native';
-import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import { Plane, Plus, Wallet as WalletIcon, ShoppingBag, AlertTriangle, User, MoreHorizontal, Leaf } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 export default function WalletsScreen() {
   const { wallets, addWallet, editWallet, deleteWallet, showFeedback, showConfirm } = useAppContext();
@@ -14,6 +13,15 @@ export default function WalletsScreen() {
   const [walletName, setWalletName] = useState('');
   const [purpose, setPurpose] = useState('Personal');
 
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+
+  React.useEffect(() => {
+    if (route.params?.openAddModal) {
+      setModalVisible(true);
+      navigation.setParams({ openAddModal: undefined });
+    }
+  }, [route.params?.openAddModal, navigation]);
   const purposes = [
     { label: 'Personal', icon: User },
     { label: 'Emergency', icon: AlertTriangle },
@@ -23,24 +31,22 @@ export default function WalletsScreen() {
 
   const handleAddWallet = async () => {
     if (walletName.trim()) {
+      setModalVisible(false);
       if (editingWalletId) {
         await editWallet(editingWalletId, {
           name: walletName.trim(),
           purpose: purpose
         });
-        showFeedback('success', 'Wallet Updated');
       } else {
         await addWallet({
           name: walletName.trim(),
           purpose: purpose
         });
-        showFeedback('success', 'Wallet Created');
       }
       
       setWalletName('');
       setPurpose('Personal');
       setEditingWalletId(null);
-      setModalVisible(false);
     }
   };
 
@@ -58,39 +64,20 @@ export default function WalletsScreen() {
     setPurpose('Personal');
   };
 
-  const getPurposeIcon = (purposeType: string) => {
-    switch (purposeType) {
-      case 'Emergency': return <AlertTriangle size={20} color="#ffffff" />;
-      case 'Shopping': return <ShoppingBag size={20} color="#ffffff" />;
-      default: return <User size={20} color="#ffffff" />;
-    }
-  };
-
   const handleDeleteWallet = (id: string, name: string) => {
     showConfirm(
       "Delete Wallet",
       `Are you sure you want to delete "${name}"?`,
       () => {
-         deleteWallet(id);
-         showFeedback('delete', 'Wallet Removed');
+        deleteWallet(id);
       }
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.title}>My Wallets</Text>
-          <TouchableOpacity style={styles.addBtn} onPress={() => {
-            setEditingWalletId(null);
-            setWalletName('');
-            setPurpose('Personal');
-            setModalVisible(true);
-          }}>
-            <Plus size={24} color={theme.colors.text} />
-          </TouchableOpacity>
-        </View>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Header removed as it is now global */}
 
         {wallets.length === 0 ? (
           <View style={styles.emptyState}>
@@ -98,30 +85,44 @@ export default function WalletsScreen() {
               <WalletIcon size={32} color={theme.colors.textMuted} />
             </View>
             <Text style={styles.emptyTitle}>No wallets yet</Text>
-            <Text style={styles.emptySubtitle}>Add a wallet to start managing your savings.</Text>
+            <Text style={styles.emptySubtitle}>Create your first wallet to start tracking your finances.</Text>
+            <TouchableOpacity 
+              style={styles.emptyBtn}
+              onPress={() => setModalVisible(true)}
+            >
+              <Plus size={20} color="#ffffff" />
+              <Text style={styles.emptyBtnText}>Create Wallet</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           wallets.map((wallet) => (
-            <View key={wallet.id} style={styles.card}>
-              <View style={styles.cardHeaderWrap}>
-                <View style={styles.glowEffect} />
-                <View style={styles.cardType}>
-                  <View style={{ flexShrink: 1 }}>
-                    <View style={styles.purposeBadgeHeader}>
-                      <Text style={styles.purposeBadgeTextHeader}>{wallet.purpose}</Text>
+            <View key={wallet.id} style={styles.walletCardHeader}>
+              <View style={styles.cardGreenHeader}>
+                <View style={styles.cardHeaderTop}>
+                  <View style={styles.cardHeaderTitleRow}>
+                    <View style={styles.iconContainerHeader}>
+                      <WalletIcon size={18} color="#ffffff" />
                     </View>
-                    <Text style={styles.cardTypeTextHeader} numberOfLines={2}>{wallet.name}</Text>
+                    <View>
+                      <View style={styles.purposeBadgeHeader}>
+                        <Text style={styles.purposeBadgeTextHeader}>{wallet.purpose}</Text>
+                      </View>
+                      <Text style={styles.cardTypeTextHeader} numberOfLines={1}>{wallet.name}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.headerRight}>
+                    <Leaf size={24} color="rgba(255, 255, 255, 0.4)" style={styles.headerLeaf} />
+                    <TouchableOpacity onPress={() => openEditModal(wallet)} style={styles.moreBtnHeader}>
+                      <MoreHorizontal size={20} color="#ffffff" />
+                    </TouchableOpacity>
                   </View>
                 </View>
-
-                <TouchableOpacity onPress={() => openEditModal(wallet)} style={styles.moreBtnHeader}>
-                  <MoreHorizontal size={24} color="#ffffff" />
-                </TouchableOpacity>
               </View>
               
               <View style={styles.cardBody}>
                 <Text style={styles.cardBalanceLabel}>Available Balance</Text>
-                <Text style={styles.cardBalance}>₱{wallet.balance.toFixed(2)}</Text>
+                <Text style={styles.cardBalance}>₱{wallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
               </View>
             </View>
           ))
@@ -134,59 +135,59 @@ export default function WalletsScreen() {
         onClose={closeAndResetModal}
         title={editingWalletId ? "Edit Wallet" : "Add New Wallet"}
       >
+        <Text style={styles.inputLabel}>Wallet Name</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g., GCash, Maya..."
+          placeholderTextColor={theme.colors.textMuted}
+          value={walletName}
+          onChangeText={setWalletName}
+        />
 
-              <Text style={styles.inputLabel}>Wallet Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., GCash, Maya..."
-                placeholderTextColor={theme.colors.textMuted}
-                value={walletName}
-                onChangeText={setWalletName}
-              />
-
-              <Text style={styles.inputLabel}>Purpose</Text>
-              <View style={styles.purposeRow}>
-                {purposes.map((p) => {
-                  const Icon = p.icon;
-                  const isSelected = purpose === p.label;
-                  return (
-                    <TouchableOpacity
-                      key={p.label}
-                      style={[styles.purposeChip, isSelected && styles.purposeChipSelected]}
-                      onPress={() => setPurpose(p.label)}
-                    >
-                      <Icon size={16} color={isSelected ? theme.colors.card : theme.colors.textMuted} />
-                      <Text style={[styles.purposeChipText, isSelected && styles.purposeChipTextSelected]}>
-                        {p.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
+        <Text style={styles.inputLabel}>Purpose</Text>
+        <View style={styles.purposeRow}>
+          {purposes.map((p) => {
+            const Icon = p.icon;
+            const isSelected = purpose === p.label;
+            return (
               <TouchableOpacity
-                style={[styles.saveBtn, !walletName.trim() && styles.saveBtnDisabled]}
-                onPress={handleAddWallet}
-                disabled={!walletName.trim()}
+                key={p.label}
+                style={[styles.purposeChip, isSelected && styles.purposeChipSelected]}
+                onPress={() => setPurpose(p.label)}
               >
-                <Text style={styles.saveBtnText}>{editingWalletId ? "Update Wallet" : "Create Wallet"}</Text>
+                <Icon size={16} color={isSelected ? theme.colors.card : theme.colors.textMuted} />
+                <Text style={[styles.purposeChipText, isSelected && styles.purposeChipTextSelected]}>
+                  {p.label}
+                </Text>
               </TouchableOpacity>
-              
-              {editingWalletId && (
-                <TouchableOpacity
-                  style={[styles.saveBtn, { backgroundColor: '#fef2f2', borderColor: '#ef4444', borderWidth: 1, marginTop: 12 }]}
-                  onPress={() => {
-                    const idToDelete = editingWalletId;
-                    const nameToDelete = walletName;
-                    closeAndResetModal();
-                    handleDeleteWallet(idToDelete, nameToDelete);
-                  }}
-                >
-                  <Text style={[styles.saveBtnText, { color: '#ef4444' }]}>Delete Wallet</Text>
-                </TouchableOpacity>
-              )}
+            );
+          })}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.saveBtn, !walletName.trim() && styles.saveBtnDisabled]}
+          onPress={handleAddWallet}
+          disabled={!walletName.trim()}
+        >
+          <Text style={styles.saveBtnText}>{editingWalletId ? "Update Wallet" : "Create Wallet"}</Text>
+        </TouchableOpacity>
+        
+        {editingWalletId && (
+          <TouchableOpacity
+            style={[styles.saveBtn, { backgroundColor: '#fef2f2', borderColor: '#ef4444', borderWidth: 1, marginTop: 12 }]}
+            onPress={() => {
+              const idToDelete = editingWalletId;
+              const nameToDelete = walletName;
+              closeAndResetModal();
+              handleDeleteWallet(idToDelete, nameToDelete);
+            }}
+          >
+            <Text style={[styles.saveBtnText, { color: '#ef4444' }]}>Delete Wallet</Text>
+          </TouchableOpacity>
+        )}
       </ActionSheet>
-    </SafeAreaView>
+
+    </View>
   );
 }
 
@@ -196,28 +197,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   scrollContent: {
-    padding: theme.spacing.lg,
-    paddingBottom: 100,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-  },
-  title: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 28,
-    color: theme.colors.text,
-  },
-  addBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: theme.borderRadius.full,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: 140, // Uniform safe gap for absolute tab bar
   },
   emptyState: {
     alignItems: 'center',
@@ -228,102 +210,122 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.border,
+    backgroundColor: '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
   },
   emptyTitle: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 18,
+    fontSize: 20,
     color: theme.colors.text,
+    marginBottom: 8,
   },
   emptySubtitle: {
     fontFamily: theme.fonts.regular,
     fontSize: 14,
     color: theme.colors.textMuted,
-    marginTop: 4,
+    textAlign: 'center',
+    paddingHorizontal: 40,
+    marginBottom: theme.spacing.xl,
   },
-  card: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.xl,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: theme.spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    overflow: 'hidden',
-  },
-  cardHeaderWrap: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+  emptyBtn: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    backgroundColor: '#10b981',
-    position: 'relative',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: theme.borderRadius.full,
+    gap: 8,
+  },
+  emptyBtnText: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 16,
+    color: '#ffffff',
+  },
+  walletCardHeader: {
+    backgroundColor: theme.colors.card,
+    borderRadius: 24,
+    marginBottom: 16,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  glowEffect: {
-    position: 'absolute',
-    top: -50,
-    right: -20,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  cardGreenHeader: {
+    backgroundColor: '#10b981',
+    padding: 16,
   },
-  cardBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  cardHeader: {
+  cardHeaderTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.xl,
   },
-  cardType: {
+  cardHeaderTitleRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    flex: 1,
-    marginRight: 16,
+    alignItems: 'center',
+    gap: 12,
+  },
+  iconContainerHeader: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  purposeBadgeHeader: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginBottom: 2,
+  },
+  purposeBadgeTextHeader: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 9,
+    color: '#ffffff',
+    textTransform: 'uppercase',
   },
   cardTypeTextHeader: {
     fontFamily: theme.fonts.bold,
-    fontSize: 24, // Made the text larger
+    fontSize: 16,
     color: '#ffffff',
-    flexShrink: 1,
-    marginTop: 6,
   },
-  purposeBadgeHeader: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: theme.borderRadius.sm,
-    alignSelf: 'flex-start',
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  purposeBadgeTextHeader: {
-    fontFamily: theme.fonts.semiBold,
-    fontSize: 11,
-    color: '#ffffff',
+  headerLeaf: {
+    transform: [{ rotate: '-15deg' }],
+  },
+  moreBtnHeader: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  cardBody: {
+    padding: 16,
   },
   cardBalanceLabel: {
     fontFamily: theme.fonts.medium,
-    fontSize: 13,
+    fontSize: 12,
     color: theme.colors.textMuted,
+    marginBottom: 2,
   },
   cardBalance: {
     fontFamily: theme.fonts.bold,
-    fontSize: 32,
+    fontSize: 24,
     color: theme.colors.text,
-    marginTop: 4,
-  },
-  moreBtnHeader: {
-    padding: 6,
   },
   inputLabel: {
     fontFamily: theme.fonts.medium,
@@ -332,7 +334,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   input: {
-    backgroundColor: theme.colors.card,
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.borderRadius.md,
@@ -345,19 +347,19 @@ const styles = StyleSheet.create({
   purposeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
     marginBottom: theme.spacing.xl,
   },
   purposeChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: theme.borderRadius.full,
+    gap: 8,
   },
   purposeChipSelected: {
     backgroundColor: theme.colors.text,
@@ -365,7 +367,7 @@ const styles = StyleSheet.create({
   },
   purposeChipText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 13,
+    fontSize: 14,
     color: theme.colors.textMuted,
   },
   purposeChipTextSelected: {
@@ -376,6 +378,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     alignItems: 'center',
+    marginTop: theme.spacing.sm,
   },
   saveBtnDisabled: {
     backgroundColor: theme.colors.border,
@@ -384,5 +387,22 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.semiBold,
     fontSize: 16,
     color: theme.colors.card,
+  },
+  fabCircle: {
+    position: 'absolute',
+    bottom: 30,
+    right: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 100,
   },
 });

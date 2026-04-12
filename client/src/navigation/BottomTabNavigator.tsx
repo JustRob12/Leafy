@@ -1,29 +1,31 @@
 import React from 'react';
+import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, Wallet, Target, Settings } from 'lucide-react-native';
+import { Home, Wallet, Target, Clock } from 'lucide-react-native';
 import { theme } from '../theme';
 
 import HomeScreen from '../screens/HomeScreen';
 import WalletsScreen from '../screens/WalletsScreen';
 import GoalsScreen from '../screens/GoalsScreen';
-import SettingsScreen from '../screens/SettingsScreen';
+import HistoryScreen from '../screens/HistoryScreen';
 
 const Tab = createBottomTabNavigator();
 
 export default function BottomTabNavigator() {
   return (
     <Tab.Navigator
+      detachInactiveScreens={false}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textMuted,
+        tabBarHideOnKeyboard: true,
+        tabBarBackground: () => (
+          <View style={{ flex: 1, backgroundColor: theme.colors.card, borderRadius: 24 }} />
+        ),
         tabBarStyle: {
           position: 'absolute',
           bottom: 24,
-          /* 
-            To shrink the width, increase the marginHorizontal value!
-            E.g., marginHorizontal: 30 will shrink the bar more.
-          */
           marginHorizontal: 24,
           backgroundColor: theme.colors.card,
           borderRadius: 24,
@@ -31,11 +33,11 @@ export default function BottomTabNavigator() {
           borderTopWidth: 0,
           paddingBottom: 10,
           paddingTop: 8,
-          shadowColor: '#9c9c9cff',
+          shadowColor: '#000',
           shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: 0.001,
-          shadowRadius: 5,
-          elevation: 8,
+          shadowOpacity: 0.1,
+          shadowRadius: 10,
+          elevation: 12,
         },
         tabBarLabelStyle: {
           fontFamily: theme.fonts.medium,
@@ -66,10 +68,10 @@ export default function BottomTabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
+        name="History"
+        component={HistoryScreen}
         options={{
-          tabBarIcon: ({ color }) => <Settings size={24} color={color} />
+          tabBarIcon: ({ color }) => <Clock size={24} color={color} />
         }}
       />
     </Tab.Navigator>

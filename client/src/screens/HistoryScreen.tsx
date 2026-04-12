@@ -1,13 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
-import { useNavigation } from '@react-navigation/native';
 import { ArrowLeft, ArrowUpRight, ArrowDownRight, Calendar, Filter, Trash2 } from 'lucide-react-native';
 
 export default function HistoryScreen() {
   const { transactions, deleteTransaction, showConfirm, showFeedback } = useAppContext();
-  const navigation = useNavigation();
 
   const handleDeleteTx = (id: string, name: string) => {
     showConfirm(
@@ -20,13 +18,11 @@ export default function HistoryScreen() {
     );
   };
 
-  // Simple Month filtering logic
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  // Handle month selection
   const changeMonth = (diff: number) => {
     let newMonth = selectedMonth + diff;
     let newYear = selectedYear;
@@ -61,17 +57,7 @@ export default function HistoryScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* HEADER */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={24} color={theme.colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Transaction History</Text>
-        {/* Empty block for flex balance */}
-        <View style={{ width: 44 }} />
-      </View>
-
+    <View style={styles.container}>
       {/* FILTER CONTROL */}
       <View style={styles.filterContainer}>
         <TouchableOpacity style={styles.filterNavBtn} onPress={() => changeMonth(-1)}>
@@ -123,14 +109,7 @@ export default function HistoryScreen() {
           })
         )}
       </ScrollView>
-
-      {/* BOTTOM SAFE AREA BUFFER */}
-      {/* <View style={{ paddingBottom: Platform.OS === 'ios' ? 20 : 0 }}>
-        <TouchableOpacity style={styles.homeFallbackBtn} onPress={() => navigation.navigate('Home' as never)}>
-          <Text style={styles.homeFallbackText}>Back to Home Workspace</Text>
-        </TouchableOpacity>
-      </View> */}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -138,30 +117,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
-    backgroundColor: theme.colors.card,
-    borderBottomWidth: 0,
-    borderBottomColor: theme.colors.border,
-  },
-  backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: theme.borderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.background,
-  },
-  headerTitle: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 18,
-    color: theme.colors.text,
   },
   filterContainer: {
     flexDirection: 'row',
@@ -173,7 +128,7 @@ const styles = StyleSheet.create({
   filterNavBtn: {
     padding: 10,
     backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
@@ -184,7 +139,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ecfdf5',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: 25,
     borderWidth: 1,
     borderColor: '#a7f3d0',
   },
@@ -195,7 +150,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
+    paddingBottom: 140, // Uniform safe gap for absolute tab bar
   },
   emptyState: {
     alignItems: 'center',
@@ -207,6 +162,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.textMuted,
     marginTop: 16,
+    textAlign: 'center',
   },
   txItem: {
     flexDirection: 'row',
@@ -214,7 +170,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: theme.colors.card,
     padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: 16,
     marginBottom: theme.spacing.sm,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -227,7 +183,7 @@ const styles = StyleSheet.create({
   txIconWrapper: {
     width: 44,
     height: 44,
-    borderRadius: theme.borderRadius.md,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -253,16 +209,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ef4444',
   },
-  homeFallbackBtn: {
-    margin: theme.spacing.lg,
-    backgroundColor: theme.colors.border,
-    paddingVertical: 14,
-    borderRadius: theme.borderRadius.full,
-    alignItems: 'center',
-  },
-  homeFallbackText: {
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.text,
-    fontSize: 16,
-  }
 });

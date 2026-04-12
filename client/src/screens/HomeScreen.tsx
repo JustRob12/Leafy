@@ -1,64 +1,120 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Dimensions, Alert, Image } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Animated, Easing, FlatList, Dimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { theme } from '../theme';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Wallet, TrendingUp, ArrowDownRight, Bell, Target, Plus, X, ArrowUpRight, Trash2, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator as CalcIcon, ChevronRight } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 import WalletDropdown from '../components/WalletDropdown';
 
 export default function HomeScreen() {
-  const { username, totalBalance, wallets, transactions, addTransaction, deleteTransaction, showFeedback, showConfirm, goals } = useAppContext();
+  const { totalBalance, wallets, transactions, addTransaction, showFeedback, showConfirm, goals } = useAppContext();
   const navigation = useNavigation<any>();
+
+  const SCREEN_WIDTH = Dimensions.get('window').width;
+  
+  // Carousel logic
+  const carouselData = goals.length > 0 ? [...goals, ...goals, ...goals].slice(0, 15) : []; // Tripled for infinite
+  const [activeGoalIndex, setActiveGoalIndex] = useState(goals.length); // Start at middle set
+  const flatListRef = useRef<FlatList>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    // Initial jump to middle set
+    if (goals.length > 0) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToIndex({ index: goals.length, animated: false });
+      }, 100);
+    }
+  }, [goals.length === 0]);
+
+  // Auto-advance logic
+  useEffect(() => {
+    if (goals.length > 1) {
+      startTimer();
+    }
+    return () => stopTimer();
+  }, [goals.length, activeGoalIndex]);
+
+  const startTimer = () => {
+    stopTimer();
+    timerRef.current = setInterval(() => {
+      const nextIndex = activeGoalIndex + 1;
+      
+      flatListRef.current?.scrollToIndex({
+        index: nextIndex,
+        animated: true,
+      });
+      setActiveGoalIndex(nextIndex);
+    }, 3000);
+  };
+
+  const stopTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+  };
+
+  const handleMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const contentOffset = event.nativeEvent.contentOffset.x;
+    const index = Math.round(contentOffset / SCREEN_WIDTH);
+    
+    // Transparent loop logic
+    let newIndex = index;
+    if (index < goals.length) {
+      newIndex = index + goals.length;
+      flatListRef.current?.scrollToIndex({ index: newIndex, animated: false });
+    } else if (index >= goals.length * 2) {
+      newIndex = index - goals.length;
+      flatListRef.current?.scrollToIndex({ index: newIndex, animated: false });
+    }
+    setActiveGoalIndex(newIndex);
+  };
+
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    // Just update visual index for pagination (modulo the count)
+    const contentOffset = event.nativeEvent.contentOffset.x;
+    const index = Math.round(contentOffset / SCREEN_WIDTH);
+    // Don't update state here too often to avoid flicker with auto-advance
+  };
 
   const [savingsModalVisible, setSavingsModalVisible] = useState(false);
   const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
 
   const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
 
-  const [currentDate, setCurrentDate] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentDate(new Date());
-    }, 60000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const formattedDate = currentDate.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric'
-  });
 
   const handleTransaction = async (type: 'deposit' | 'withdrawal') => {
     const numericAmount = parseFloat(amount);
     if (!isNaN(numericAmount) && numericAmount > 0 && selectedWalletId) {
+      if (type === 'withdrawal') {
+        const wallet = wallets.find(w => w.id === selectedWalletId);
+        if (wallet && numericAmount > wallet.balance) {
+          showFeedback('delete', 'Insufficient balance in selected wallet!');
+          return;
+        }
+      }
+
+      let txTitle = type === 'deposit' ? 'Added Savings' : 'Withdrawal';
+      if (type === 'withdrawal' && reason.trim().length > 0) {
+        txTitle = reason.trim();
+      }
+
+      setSavingsModalVisible(false);
+      setWithdrawModalVisible(false);
+
       await addTransaction({
-        title: type === 'deposit' ? 'Added Savings' : 'Withdrawal',
+        title: txTitle,
         amount: numericAmount,
         type: type,
         walletId: selectedWalletId
       });
       setAmount('');
+      setReason('');
       setSelectedWalletId(null);
-      setSavingsModalVisible(false);
-      setWithdrawModalVisible(false);
-      showFeedback('success', type === 'deposit' ? 'Successfully Deposited' : 'Successfully Withdrawn');
     }
-  };
-
-  const handleDeleteTx = (id: string, title: string) => {
-    showConfirm(
-      "Delete Transaction",
-      `Delete "${title}"? This will reverse the wallet balance.`,
-      () => {
-        deleteTransaction(id);
-        showFeedback('delete', 'Transaction Removed');
-      }
-    );
   };
 
   const getTxIcon = (type: string) => {
@@ -82,31 +138,14 @@ export default function HomeScreen() {
     .reduce((acc, curr) => acc + curr.amount, 0);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
-        {/* HEADER */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.realtimeDate}>{formattedDate}</Text>
-            <Text style={styles.greeting}>Hello, {username || 'Alex'}</Text>
-            <Text style={styles.subtitle}>Welcome back</Text>
-          </View>
-          {/* <TouchableOpacity style={styles.notificationBtn}>
-            <Bell size={20} color={theme.colors.text} />
-            <View style={styles.notificationDot} />
-          </TouchableOpacity> */}
-        </View>
 
         {/* PREMIUM BALANCE CARD (Glass Green Palette) */}
         <View style={styles.premiumCard}>
           <View style={styles.glowEffect} />
           <View style={styles.premiumCardTop}>
             <Text style={styles.premiumLabel}>Total Balance</Text>
-            {/* <View style={styles.badgePremium}>
-              <TrendingUp size={14} color="#064e3b" />
-              <Text style={styles.badgePremiumText}>Active</Text>
-            </View> */}
           </View>
           <Text style={styles.premiumAmount}>₱{totalBalance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
 
@@ -147,6 +186,13 @@ export default function HomeScreen() {
             <Text style={styles.actionText}>Withdraw</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Calculator')}>
+            <View style={styles.actionIconBorder}>
+              <CalcIcon size={20} color={theme.colors.text} />
+            </View>
+            <Text style={styles.actionText}>Calculator</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Goals')}>
             <View style={styles.actionIconBorder}>
               <Target size={20} color={theme.colors.text} />
@@ -159,7 +205,7 @@ export default function HomeScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Active Goals</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Goals')}>
-            <Text style={styles.seeAllText}>VIEW ALL</Text>
+            <Text style={styles.seeAllText}>SEE ALL</Text>
           </TouchableOpacity>
         </View>
 
@@ -171,36 +217,77 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.goalsList}>
-            {goals.slice(0, 3).map(goal => {
-              const linkedWallet = wallets.find(w => w.id === goal.walletId);
-              const currentAmount = linkedWallet ? linkedWallet.balance : 0;
-              const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
+          <View style={styles.carouselContainer}>
+            <FlatList
+              ref={flatListRef}
+              data={carouselData}
+              keyExtractor={(item, index) => `${item.id}-${index}`}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onScroll={onScroll}
+              onMomentumScrollEnd={handleMomentumScrollEnd}
+              scrollEventThrottle={16}
+              onScrollBeginDrag={stopTimer}
+              onScrollEndDrag={startTimer}
+              getItemLayout={(_, index) => ({
+                length: SCREEN_WIDTH,
+                offset: SCREEN_WIDTH * index,
+                index,
+              })}
+              renderItem={({ item: goal }) => {
+                const linkedWallet = wallets.find(w => w.id === goal.walletId);
+                const currentAmount = linkedWallet ? linkedWallet.balance : 0;
+                const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
 
-              return (
-                <View key={goal.id} style={styles.goalCard}>
-                  <View style={styles.goalRow}>
-                    <View style={styles.goalLeft}>
-                      <View style={styles.goalIconWrapper}>
-                        {goal.imageUrl ? (
-                          <Image source={{ uri: goal.imageUrl }} style={{ width: '100%', height: '100%', borderRadius: 14 }} />
-                        ) : (
-                          <Target size={20} color={theme.colors.primary} />
-                        )}
+                return (
+                  <View style={[styles.goalSlide, { width: SCREEN_WIDTH }]}>
+                    <TouchableOpacity 
+                      style={styles.goalCard} 
+                      activeOpacity={0.9}
+                      onPress={() => navigation.navigate('Goals')}
+                    >
+                      <View style={styles.goalRow}>
+                        <View style={styles.goalLeft}>
+                          <View style={styles.goalIconWrapper}>
+                            {goal.imageUrl ? (
+                              <Image source={{ uri: goal.imageUrl }} style={{ width: '100%', height: '100%', borderRadius: 14 }} />
+                            ) : (
+                              <Target size={20} color={theme.colors.primary} />
+                            )}
+                          </View>
+                          <View>
+                            <Text style={styles.goalTitle}>{goal.title}</Text>
+                            <Text style={styles.goalAmountText}>₱{currentAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })} / ₱{goal.targetAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
+                          </View>
+                        </View>
                       </View>
-                      <View>
-                        <Text style={styles.goalTitle}>{goal.title}</Text>
-                        <Text style={styles.goalAmountText}>₱{currentAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })} / ₱{goal.targetAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
+                      
+                      <View style={styles.progressBarBg}>
+                        <View style={[styles.progressBarFill, { width: `${Math.max(0, Math.min(progress, 100))}%` }]} />
                       </View>
-                    </View>
-                    <Text style={styles.goalPercentage}>{Math.round(Math.min(progress, 100))}%</Text>
+                    </TouchableOpacity>
                   </View>
-                  <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { width: `${Math.max(0, Math.min(progress, 100))}%` }]} />
-                  </View>
-                </View>
-              );
-            })}
+                );
+              }}
+            />
+            
+            {goals.length > 1 && (
+              <View style={styles.pagination}>
+                {goals.slice(0, 5).map((_, i) => {
+                  const isActive = (activeGoalIndex % goals.length) === i;
+                  return (
+                    <View 
+                      key={i} 
+                      style={[
+                        styles.dot, 
+                        isActive ? styles.activeDot : styles.inactiveDot
+                      ]} 
+                    />
+                  );
+                })}
+              </View>
+            )}
           </View>
         )}
 
@@ -208,7 +295,7 @@ export default function HomeScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent</Text>
           <TouchableOpacity onPress={() => navigation.navigate('History')}>
-            <Text style={styles.seeAllText}>VIEW ALL</Text>
+            <Text style={styles.seeAllText}>SEE ALL</Text>
           </TouchableOpacity>
         </View>
 
@@ -253,46 +340,78 @@ export default function HomeScreen() {
         onClose={() => { setSavingsModalVisible(false); setWithdrawModalVisible(false); }}
         title={savingsModalVisible ? 'Add Savings' : 'Withdraw Funds'}
       >
-        {wallets.length === 0 ? (
-          <View style={{ alignItems: 'center', marginVertical: 20 }}>
-            <Text style={{ fontFamily: theme.fonts.medium, color: theme.colors.textMuted }}>You need a wallet to {savingsModalVisible ? 'add savings' : 'withdraw funds'}.</Text>
-            <TouchableOpacity style={styles.saveBtn} onPress={() => { setSavingsModalVisible(false); setWithdrawModalVisible(false); navigation.navigate('Wallets'); }}>
-              <Text style={styles.saveBtnText}>Go Create Wallet</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            <Text style={styles.inputLabel}>Select Wallet</Text>
-            <WalletDropdown
-              selectedWalletId={selectedWalletId}
-              onSelectWallet={setSelectedWalletId}
-            />
+        {(() => {
+          const selectedWallet = wallets.find(w => w.id === selectedWalletId);
+          const isInsufficient = withdrawModalVisible && selectedWallet && parseFloat(amount) > selectedWallet.balance;
+          const isInvalidAmount = isNaN(parseFloat(amount)) || parseFloat(amount) <= 0;
 
-            <Text style={styles.inputLabel}>Amount (₱)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., 500"
-              placeholderTextColor={theme.colors.textMuted}
-              keyboardType="numeric"
-              value={amount}
-              onChangeText={setAmount}
-            />
+          return wallets.length === 0 ? (
+            <View style={{ alignItems: 'center', marginVertical: 20 }}>
+              <Text style={{ fontFamily: theme.fonts.medium, color: theme.colors.textMuted }}>You need a wallet to {savingsModalVisible ? 'add savings' : 'withdraw funds'}.</Text>
+              <TouchableOpacity style={styles.saveBtn} onPress={() => { setSavingsModalVisible(false); setWithdrawModalVisible(false); navigation.navigate('Wallets'); }}>
+                <Text style={styles.saveBtnText}>Go Create Wallet</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm }}>
+                <Text style={styles.inputLabel}>Select Wallet</Text>
+                {selectedWallet && (
+                  <Text style={{ fontFamily: theme.fonts.medium, fontSize: 13, color: theme.colors.textMuted }}>
+                    Available: ₱{selectedWallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 0 })}
+                  </Text>
+                )}
+              </View>
+              <WalletDropdown
+                selectedWalletId={selectedWalletId}
+                onSelectWallet={setSelectedWalletId}
+              />
 
-            <TouchableOpacity
-              style={[
-                styles.saveBtn,
-                (!selectedWalletId || isNaN(parseFloat(amount))) && styles.saveBtnDisabled,
-                withdrawModalVisible && !(!selectedWalletId || isNaN(parseFloat(amount))) && { backgroundColor: '#ef4444' } // Red for withdraw
-              ]}
-              onPress={() => handleTransaction(savingsModalVisible ? 'deposit' : 'withdrawal')}
-              disabled={!selectedWalletId || isNaN(parseFloat(amount))}
-            >
-              <Text style={styles.saveBtnText}>{savingsModalVisible ? 'Deposit to Wallet' : 'Withdraw from Wallet'}</Text>
-            </TouchableOpacity>
-          </>
-        )}
+              <Text style={styles.inputLabel}>Amount (₱)</Text>
+              <TextInput
+                style={[styles.input, isInsufficient && { borderColor: '#ef4444', color: '#ef4444' }]}
+                placeholder="e.g., 500"
+                placeholderTextColor={theme.colors.textMuted}
+                keyboardType="numeric"
+                value={amount}
+                onChangeText={setAmount}
+              />
+              {isInsufficient && (
+                <Text style={{ color: '#ef4444', fontSize: 12, fontFamily: theme.fonts.medium, marginTop: -12, marginBottom: 12 }}>
+                  * Amount exceeds wallet balance
+                </Text>
+              )}
+
+              {withdrawModalVisible && (
+                <>
+                  <Text style={styles.inputLabel}>Reason</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g., Groceries, Rent, Bills..."
+                    placeholderTextColor={theme.colors.textMuted}
+                    value={reason}
+                    onChangeText={setReason}
+                  />
+                </>
+              )}
+
+              <TouchableOpacity
+                style={[
+                  styles.saveBtn,
+                  (!selectedWalletId || isInvalidAmount || isInsufficient) && styles.saveBtnDisabled,
+                  withdrawModalVisible && !(!selectedWalletId || isInvalidAmount || isInsufficient) && { backgroundColor: '#ef4444' } // Red for withdraw
+                ]}
+                onPress={() => handleTransaction(savingsModalVisible ? 'deposit' : 'withdrawal')}
+                disabled={!selectedWalletId || isInvalidAmount || isInsufficient}
+              >
+                <Text style={styles.saveBtnText}>{savingsModalVisible ? 'Deposit to Wallet' : 'Withdraw from Wallet'}</Text>
+              </TouchableOpacity>
+            </>
+          );
+        })()}
       </ActionSheet>
-    </SafeAreaView>
+
+    </View>
   );
 }
 
@@ -302,52 +421,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   scrollContent: {
-    padding: theme.spacing.lg,
-    paddingBottom: 100, // Safe padding for absolute floating tab bar
-  },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.xl,
-  },
-  realtimeDate: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 12,
-    color: theme.colors.textMuted,
-    marginBottom: 4,
-  },
-  greeting: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 22,
-    color: theme.colors.text,
-  },
-  subtitle: {
-    fontFamily: theme.fonts.regular,
-    fontSize: 14,
-    color: theme.colors.textMuted,
-    marginTop: 2,
-  },
-  notificationBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: theme.borderRadius.full,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  notificationDot: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#ef4444',
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: 140, // Uniform safe gap for absolute tab bar
   },
 
   // Premium Balance Card - Now "Glass Green" palette
@@ -386,22 +462,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#ecfdf5',
   },
-  badgePremium: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#34d399',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: theme.borderRadius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  badgePremiumText: {
-    fontFamily: theme.fonts.semiBold,
-    fontSize: 12,
-    color: '#064e3b',
-    marginLeft: 4,
-  },
   premiumAmount: {
     fontFamily: theme.fonts.bold,
     fontSize: 34,
@@ -436,12 +496,15 @@ const styles = StyleSheet.create({
   // Quick Actions
   actionRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: theme.spacing.xl,
+    gap: 12,
   },
   actionItem: {
     alignItems: 'center',
-    width: '24%',
+    width: '18%', // Fits 5 on most screens with gap
+    minWidth: 64,
   },
   actionIconBorder: {
     width: 52,
@@ -456,7 +519,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 12,
+    fontSize: 10,
     color: theme.colors.text,
   },
 
@@ -474,7 +537,7 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 14,
+    fontSize: 12,
     color: theme.colors.primary,
   },
 
@@ -509,12 +572,47 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
     marginBottom: theme.spacing.xl,
   },
+  carouselContainer: {
+    marginBottom: theme.spacing.xl,
+    marginHorizontal: -theme.spacing.lg, // Bleed to edges
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  goalSlide: {
+    paddingHorizontal: theme.spacing.lg,
+    justifyContent: 'center',
+  },
   goalCard: {
     backgroundColor: theme.colors.card,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  pagination: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 6,
+  },
+  dot: {
+    height: 6,
+    borderRadius: 3,
+  },
+  activeDot: {
+    width: 20,
+    backgroundColor: theme.colors.primary,
+  },
+  inactiveDot: {
+    width: 6,
+    backgroundColor: theme.colors.border,
   },
   goalRow: {
     flexDirection: 'row',
@@ -648,4 +746,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.card,
   },
+
 });

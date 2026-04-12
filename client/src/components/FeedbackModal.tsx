@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Modal, Animated } from 'react-native';
-import { CheckCircle, Trash2 } from 'lucide-react-native';
+import { CheckCircle, Trash2, AlertCircle } from 'lucide-react-native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 
@@ -34,12 +34,13 @@ export default function FeedbackModal() {
     <Modal transparent animationType="fade" visible={feedback.visible}>
       <View style={styles.overlay}>
         <Animated.View style={[styles.content, { transform: [{ scale: scaleValue }], opacity: opacityValue }]}>
-          <View style={[styles.iconWrapper, feedback.type === 'success' ? styles.successBg : styles.deleteBg]}>
-            {feedback.type === 'success' ? (
-              <CheckCircle size={48} color={theme.colors.primary} />
-            ) : (
-              <Trash2 size={48} color="#ef4444" />
-            )}
+          <View style={[
+            styles.iconWrapper, 
+            feedback.type === 'success' ? styles.successBg : (feedback.type === 'error' ? styles.errorBg : styles.deleteBg)
+          ]}>
+            {feedback.type === 'success' && <CheckCircle size={48} color={theme.colors.primary} />}
+            {feedback.type === 'error' && <AlertCircle size={48} color="#ef4444" />}
+            {feedback.type === 'delete' && <Trash2 size={48} color="#ef4444" />}
           </View>
           <Text style={styles.message}>{feedback.message}</Text>
         </Animated.View>
@@ -79,6 +80,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#ecfdf5',
   },
   deleteBg: {
+    backgroundColor: '#fef2f2',
+  },
+  errorBg: {
     backgroundColor: '#fef2f2',
   },
   message: {

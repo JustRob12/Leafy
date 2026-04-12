@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Animated, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Animated, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Dimensions, ScrollView } from 'react-native';
 import { theme } from '../theme';
 
 interface ActionSheetProps {
@@ -38,7 +38,15 @@ export default function ActionSheet({ visible, onClose, title, children }: Actio
                   <Text style={styles.cancelBtnText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
-              {children}
+              <ScrollView 
+                showsVerticalScrollIndicator={true}
+                style={styles.scrollArea}
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled={true}
+              >
+                {children}
+              </ScrollView>
             </Animated.View>
           </KeyboardAvoidingView>
         </View>
@@ -60,9 +68,15 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
     borderTopLeftRadius: theme.borderRadius.xl,
     borderTopRightRadius: theme.borderRadius.xl,
-    padding: theme.spacing.xl,
-    paddingBottom: Platform.OS === 'ios' ? 40 : theme.spacing.xl, // Safe area pad
+    paddingTop: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.xl,
     maxHeight: height * 0.9,
+  },
+  scrollArea: {
+    width: '100%',
+  },
+  scrollContent: {
+    paddingBottom: Platform.OS === 'ios' ? 40 : theme.spacing.xl, // Safe area pad
   },
   header: {
     flexDirection: 'row',

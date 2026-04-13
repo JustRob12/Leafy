@@ -14,6 +14,8 @@ import WalletsScreen from './src/screens/WalletsScreen';
 import GoalsScreen from './src/screens/GoalsScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import CalculatorScreen from './src/screens/CalculatorScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import DataTransferScreen from './src/screens/DataTransferScreen';
 import MainHeader from './src/components/MainHeader';
 import FeedbackModal from './src/components/FeedbackModal';
 import ConfirmModal from './src/components/ConfirmModal';
@@ -50,6 +52,8 @@ function MainNavigation() {
           <Stack.Group>
             <Stack.Screen name="Main" component={BottomTabNavigator} />
             <Stack.Screen name="Calculator" component={CalculatorScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="DataTransfer" component={DataTransferScreen} />
           </Stack.Group>
         )}
       </Stack.Navigator>

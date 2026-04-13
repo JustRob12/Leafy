@@ -1,18 +1,42 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { theme } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight } from 'lucide-react-native';
+import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
+import { useNavigation } from '@react-navigation/native';
 
 export default function SettingsScreen() {
-  const { username, clearData, showConfirm } = useAppContext();
+  const { username, userImage, setUserImage, clearData, showConfirm } = useAppContext();
+  const navigation = useNavigation<any>();
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (status !== 'granted') {
+      Alert.alert('Permission Needed', 'We need camera roll permissions to change your profile picture.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      await setUserImage(result.assets[0].uri);
+    }
+  };
 
   const settingsOptions = [
-    { id: '1', title: 'Account Settings', icon: User },
-    { id: '2', title: 'Notifications', icon: Bell },
-    { id: '3', title: 'Privacy & Security', icon: Shield },
-    { id: '4', title: 'Help & Support', icon: CircleHelp },
+    { id: '1', title: 'Account Settings', icon: User, action: () => {} },
+    { id: '2', title: 'Backup & Restore', icon: Database, action: () => navigation.navigate('DataTransfer') },
+    { id: '3', title: 'Notifications', icon: Bell, action: () => {} },
+    { id: '4', title: 'Privacy & Security', icon: Shield, action: () => {} },
+    { id: '5', title: 'Help & Support', icon: CircleHelp, action: () => {} },
   ];
 
   const handleClearData = () => {
@@ -28,12 +52,21 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Settings</Text>
+
 
         <View style={styles.profileSection}>
-          <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarText}>{username ? username.charAt(0).toUpperCase() : 'A'}</Text>
-          </View>
+          <TouchableOpacity style={styles.avatarContainer} onPress={pickImage} activeOpacity={0.8}>
+            {userImage ? (
+              <Image source={{ uri: userImage }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarText}>{username ? username.charAt(0).toUpperCase() : 'A'}</Text>
+              </View>
+            )}
+            <View style={styles.cameraBadge}>
+              <Camera size={14} color="#ffffff" />
+            </View>
+          </TouchableOpacity>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{username || 'User'}</Text>
             <Text style={styles.profileEmail}>Local Storage Active</Text>
@@ -45,7 +78,7 @@ export default function SettingsScreen() {
             const Icon = option.icon;
             return (
               <React.Fragment key={option.id}>
-                <TouchableOpacity style={styles.settingItem}>
+                <TouchableOpacity style={styles.settingItem} onPress={option.action as any}>
                   <View style={styles.settingItemLeft}>
                     <Icon size={20} color={theme.colors.textMuted} />
                     <Text style={styles.settingTitle}>{option.title}</Text>
@@ -87,18 +120,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: theme.spacing.xl,
   },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: theme.spacing.md,
+  },
+  avatarImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+  },
   avatarPlaceholder: {
-    width: 64,
-    height: 64,
-    borderRadius: theme.borderRadius.full,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: theme.spacing.md,
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: theme.colors.primary,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#ffffff',
   },
   avatarText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 24,
+    fontSize: 26,
     color: theme.colors.card,
   },
   profileInfo: {

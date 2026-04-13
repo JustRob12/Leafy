@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Modal, Image, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { navigationRef } from '../navigation/navigationUtils';
@@ -11,7 +12,8 @@ export interface MainHeaderProps {
 }
 
 export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderProps) {
-  const { username } = useAppContext();
+  const { username, userImage, showConfirm, clearData } = useAppContext();
+  const navigation = useNavigation<any>();
   const [internalActiveRoute, setInternalActiveRoute] = useState('Home');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dropdownVisible, setDropdownVisible] = useState(false);
@@ -51,6 +53,22 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
     }
   };
 
+  const handleLogout = () => {
+    setDropdownVisible(false);
+    showConfirm(
+      'Log Out',
+      'Are you sure you want to log out? This will clear all your data including wallets, goals, and profile image.',
+      async () => {
+        await clearData();
+      }
+    );
+  };
+
+  const handleSettings = () => {
+    setDropdownVisible(false);
+    navigation.navigate('Settings');
+  };
+
   const isHome = activeRoute === 'Home' || activeRoute === 'Main';
   const showPlus = activeRoute === 'Wallets' || activeRoute === 'Goals';
   const displayTitle = (activeRoute === 'Main' || activeRoute === 'Home') ? 'Dashboard' : activeRoute;
@@ -71,7 +89,11 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
               onPress={() => setDropdownVisible(true)}
               activeOpacity={0.8}
             >
-              <User size={22} color={theme.colors.primary} />
+              {userImage ? (
+                <Image source={{ uri: userImage }} style={styles.headerProfileImage} />
+              ) : (
+                <User size={22} color={theme.colors.primary} />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -100,7 +122,11 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
               <View style={styles.dropdownMenu}>
                 <View style={styles.dropdownHeader}>
                   <View style={styles.dropdownProfileCircle}>
-                    <User size={24} color={theme.colors.primary} />
+                    {userImage ? (
+                      <Image source={{ uri: userImage }} style={styles.dropdownProfileImage} />
+                    ) : (
+                      <User size={24} color={theme.colors.primary} />
+                    )}
                   </View>
                   <View>
                     <Text style={styles.dropdownUsername}>{username || 'User'}</Text>
@@ -110,7 +136,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
 
                 <View style={styles.dropdownDivider} />
 
-                <TouchableOpacity style={styles.dropdownItem} onPress={() => setDropdownVisible(false)}>
+                <TouchableOpacity style={styles.dropdownItem} onPress={handleSettings}>
                   <View style={styles.dropdownItemLeft}>
                     <Settings size={18} color={theme.colors.textMuted} />
                     <Text style={styles.dropdownItemText}>Settings</Text>
@@ -118,7 +144,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                   <ChevronRight size={16} color={theme.colors.border} />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.dropdownItem} onPress={() => setDropdownVisible(false)}>
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => { setDropdownVisible(false); Alert.alert('App Information', 'Leafy v1.0.0\nSecure Local Finance Manager\nCreated with ❤️'); }}>
                   <View style={styles.dropdownItemLeft}>
                     <Info size={18} color={theme.colors.textMuted} />
                     <Text style={styles.dropdownItemText}>App Information</Text>
@@ -130,7 +156,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
 
                 <TouchableOpacity
                   style={[styles.dropdownItem, { borderBottomWidth: 0 }]}
-                  onPress={() => setDropdownVisible(false)}
+                  onPress={handleLogout}
                 >
                   <View style={styles.dropdownItemLeft}>
                     <LogOut size={18} color="#ef4444" />
@@ -204,6 +230,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#a7f3d0',
+    overflow: 'hidden',
+  },
+  headerProfileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 22,
   },
   realtimeDate: {
     fontFamily: theme.fonts.medium,
@@ -256,6 +288,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#ecfdf5',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  dropdownProfileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
   },
   dropdownUsername: {
     fontFamily: theme.fonts.bold,

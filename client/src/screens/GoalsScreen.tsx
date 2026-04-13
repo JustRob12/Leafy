@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
 import { theme } from '../theme';
-import { Target, Plus, Flag, ImagePlus, Camera, Image as ImageIcon } from 'lucide-react-native';
+import { Target, Plus, Flag, ImagePlus, Camera, Image as ImageIcon, Wallet } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
@@ -19,6 +19,7 @@ export default function GoalsScreen() {
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
   const [imageSourceVisible, setImageSourceVisible] = useState(false);
+  const [filterWalletId, setFilterWalletId] = useState<string | 'all'>('all');
   
   const [selectedGoal, setSelectedGoal] = useState<any>(null);
 
@@ -103,10 +104,36 @@ export default function GoalsScreen() {
     setImageUrl(undefined);
   };
 
+  const filteredGoals = filterWalletId === 'all' 
+    ? goals 
+    : goals.filter(g => g.walletId === filterWalletId);
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Header removed as it is now global */}
+        {/* Wallet Filter Bar */}
+        {wallets.length > 0 && goals.length > 0 && (
+          <View style={styles.filterSection}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterBar}>
+              <TouchableOpacity 
+                style={[styles.filterChip, filterWalletId === 'all' && styles.filterChipActive]}
+                onPress={() => setFilterWalletId('all')}
+              >
+                <Text style={[styles.filterChipText, filterWalletId === 'all' && styles.filterChipTextActive]}>All Goals</Text>
+              </TouchableOpacity>
+              {wallets.map(wallet => (
+                <TouchableOpacity 
+                  key={wallet.id}
+                  style={[styles.filterChip, filterWalletId === wallet.id && styles.filterChipActive]}
+                  onPress={() => setFilterWalletId(wallet.id)}
+                >
+                  <Wallet size={14} color={filterWalletId === wallet.id ? '#ffffff' : theme.colors.textMuted} style={{ marginRight: 6 }} />
+                  <Text style={[styles.filterChipText, filterWalletId === wallet.id && styles.filterChipTextActive]}>{wallet.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {goals.length === 0 ? (
           <View style={styles.emptyState}>
@@ -123,8 +150,19 @@ export default function GoalsScreen() {
               <Text style={styles.emptyBtnText}>Create Goal</Text>
             </TouchableOpacity>
           </View>
+        ) : filteredGoals.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No goals found</Text>
+            <Text style={styles.emptySubtitle}>There are no goals linked to this specific wallet.</Text>
+            <TouchableOpacity 
+              style={styles.emptyBtn}
+              onPress={() => setFilterWalletId('all')}
+            >
+              <Text style={styles.emptyBtnText}>Show All Goals</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
-          goals.map((goal) => {
+          filteredGoals.map((goal) => {
             const linkedWallet = wallets.find(w => w.id === goal.walletId);
             const currentAmount = linkedWallet ? linkedWallet.balance : 0;
             const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
@@ -152,6 +190,11 @@ export default function GoalsScreen() {
                   <View style={styles.goalStatsRow}>
                     <Text style={styles.goalStatLabel}>Total Saved</Text>
                     <Text style={styles.goalStatValue}>₱{currentAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
+                  </View>
+
+                  <View style={styles.walletBadge}>
+                    <Wallet size={12} color={theme.colors.textMuted} />
+                    <Text style={styles.walletBadgeText}>{linkedWallet?.name || 'Unknown Wallet'}</Text>
                   </View>
 
                   <View style={styles.progressBarBg}>
@@ -244,16 +287,18 @@ export default function GoalsScreen() {
               
               <Text style={{ fontFamily: theme.fonts.bold, fontSize: 24, color: theme.colors.text, marginBottom: 8, textAlign: 'center' }}>{selectedGoal.title}</Text>
               
-              <Text style={{ fontFamily: theme.fonts.medium, fontSize: 16, color: theme.colors.textMuted, marginBottom: 20 }}>
+              <Text style={{ fontFamily: theme.fonts.medium, fontSize: 16, color: theme.colors.textMuted, marginBottom: 4 }}>
                 ₱{currentAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })} / ₱{selectedGoal.targetAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}
               </Text>
 
-              <View style={[styles.progressBarBg, { height: 12, borderRadius: 6, marginBottom: 8 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginBottom: 20, gap: 6 }}>
+                <Wallet size={14} color={theme.colors.primary} />
+                <Text style={{ fontFamily: theme.fonts.semiBold, fontSize: 13, color: theme.colors.text }}>{linkedWallet?.name}</Text>
+              </View>
+
+              <View style={[styles.progressBarBg, { height: 12, borderRadius: 6, marginBottom: 24 }]}>
                 <View style={[styles.progressBarFill, { width: `${Math.max(0, Math.min(progress, 100))}%` }]} />
               </View>
-              <Text style={{ fontFamily: theme.fonts.bold, fontSize: 20, color: theme.colors.primary, alignSelf: 'flex-end', marginBottom: 24 }}>
-                {Math.round(Math.min(progress, 100))}%
-              </Text>
               
               <TouchableOpacity
                 style={{ backgroundColor: '#f1f5f9', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, width: '100%', alignItems: 'center' }}
@@ -314,6 +359,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.lg,
     paddingBottom: 140, // Uniform safe gap for absolute tab bar
+  },
+  filterSection: {
+    marginBottom: 20,
+    marginHorizontal: -theme.spacing.lg, // Bleed to edges
+  },
+  filterBar: {
+    paddingHorizontal: theme.spacing.lg,
+    gap: 10,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.card,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  filterChipActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  filterChipText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 13,
+    color: theme.colors.textMuted,
+  },
+  filterChipTextActive: {
+    color: '#ffffff',
+    fontFamily: theme.fonts.semiBold,
   },
   emptyState: {
     alignItems: 'center',
@@ -428,6 +504,17 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: theme.colors.primary,
   },
+  walletBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  walletBadgeText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+    color: theme.colors.textMuted,
+  },
   goalFooter: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
@@ -454,10 +541,10 @@ const styles = StyleSheet.create({
   },
   modalImageContainer: {
     width: '100%',
-    height: 180,
-    borderRadius: 20,
+    height: 260,
+    borderRadius: 24,
     backgroundColor: '#f8fafc',
-    marginBottom: 20,
+    marginBottom: 24,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: theme.colors.border,

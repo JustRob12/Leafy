@@ -48,6 +48,9 @@ type AppContextType = {
   showConfirm: (title: string, message: string, onConfirm: () => void, isDestructive?: boolean) => void;
   closeConfirm: () => void;
   loading: boolean;
+  userImage: string | null;
+  setUserImage: (image: string | null) => Promise<void>;
+  importData: (jsonString: string) => Promise<void>;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -58,6 +61,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [wallets, setWallets] = useState<WalletType[]>([]);
   const [transactions, setTransactions] = useState<TransactionType[]>([]);
   const [goals, setGoals] = useState<GoalType[]>([]);
+  const [userImage, setUserImageState] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ visible: boolean; type: 'success' | 'delete' | 'error'; message: string }>({
     visible: false,
@@ -81,11 +85,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const storedWallets = await AsyncStorage.getItem('@wallets');
       const storedTransactions = await AsyncStorage.getItem('@transactions');
       const storedGoals = await AsyncStorage.getItem('@goals');
+      const storedImage = await AsyncStorage.getItem('@userImage');
 
       if (storedName) setUserNameState(storedName);
       if (storedWallets) setWallets(JSON.parse(storedWallets));
       if (storedTransactions) setTransactions(JSON.parse(storedTransactions));
       if (storedGoals) setGoals(JSON.parse(storedGoals));
+      if (storedImage) setUserImageState(storedImage);
     } catch (e) {
       console.error('Failed to load data', e);
     } finally {
@@ -154,6 +160,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await AsyncStorage.setItem('@goals', JSON.stringify(updated));
     setLoading(false);
     showFeedback('success', 'Goal Defined');
+  };
+  
+  const setUserImage = async (image: string | null) => {
+    if (image) {
+      await AsyncStorage.setItem('@userImage', image);
+    } else {
+      await AsyncStorage.removeItem('@userImage');
+    }
+    setUserImageState(image);
   };
 
   const editWallet = async (id: string, updates: Partial<WalletType>) => {
@@ -231,6 +246,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setWallets([]);
     setTransactions([]);
     setGoals([]);
+    setUserImageState(null);
+    showFeedback('delete', 'All Data Cleared');
+  };
+
+  const importData = async (jsonString: string) => {
+    try {
+      const data = JSON.parse(jsonString);
+      
+      if (typeof data !== 'object') throw new Error('Invalid data format');
+      
+      const keysToSave: [string, string | null][] = [
+        ['@username', data.username || null],
+        ['@wallets', data.wallets ? JSON.stringify(data.wallets) : '[]'],
+        ['@transactions', data.transactions ? JSON.stringify(data.transactions) : '[]'],
+        ['@goals', data.goals ? JSON.stringify(data.goals) : '[]'],
+        ['@userImage', data.userImage || null],
+      ];
+      
+      for (const [key, value] of keysToSave) {
+        if (value !== null) {
+          await AsyncStorage.setItem(key, value);
+        } else {
+          await AsyncStorage.removeItem(key);
+        }
+      }
+      
+      // Update local state
+      setUserNameState(data.username || null);
+      setWallets(data.wallets || []);
+      setTransactions(data.transactions || []);
+      setGoals(data.goals || []);
+      setUserImageState(data.userImage || null);
+      
+      showFeedback('success', 'Data Imported Successfully');
+    } catch (e) {
+      console.error('Failed to import data', e);
+      showFeedback('error', 'Failed to import data');
+      throw e;
+    }
   };
 
   const showFeedback = (type: 'success' | 'delete' | 'error', message: string) => {
@@ -274,7 +328,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         confirmState,
         showConfirm,
         closeConfirm,
-        loading
+        loading,
+        userImage,
+        setUserImage,
+        importData
       }}
     >
       {children}

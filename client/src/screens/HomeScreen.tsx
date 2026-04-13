@@ -14,68 +14,108 @@ export default function HomeScreen() {
   const SCREEN_WIDTH = Dimensions.get('window').width;
   
   // Carousel logic
-  const carouselData = goals.length > 0 ? [...goals, ...goals, ...goals].slice(0, 15) : []; // Tripled for infinite
-  const [activeGoalIndex, setActiveGoalIndex] = useState(goals.length); // Start at middle set
+  const carouselData = goals.length > 0 ? [...goals, ...goals, ...goals] : []; // Tripled for infinite
+  const [activeGoalIndex, setActiveGoalIndex] = useState(goals.length);
   const flatListRef = useRef<FlatList>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const scrollXAnim = useRef(new Animated.Value(0)).current;
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
+  const isDragging = useRef(false);
 
-  useEffect(() => {
-    // Initial jump to middle set
-    if (goals.length > 0) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({ index: goals.length, animated: false });
-      }, 100);
-    }
-  }, [goals.length === 0]);
+  // Function to run continuous animation
+  const runAnimation = (startValue: number) => {
+    if (goals.length <= 1) return;
+    
+    const setWidth = goals.length * SCREEN_WIDTH;
+    const endValue = setWidth * 2;
+    
+    // Speed: 15000ms per base SCREEN_WIDTH (fairly slow)
+    // Calculate duration based on remaining distance to end of second set
+    const remainingDistance = endValue - startValue;
+    const duration = remainingDistance * (15000 / SCREEN_WIDTH);
 
-  // Auto-advance logic
+    animationRef.current = Animated.timing(scrollXAnim, {
+      toValue: endValue,
+      duration: Math.max(0, duration),
+      easing: Easing.linear,
+      useNativeDriver: false, // Must be false to drive scrollToOffset in listener
+    });
+
+    animationRef.current.start(({ finished }) => {
+      if (finished) {
+        const resetValue = setWidth;
+        scrollXAnim.setValue(resetValue);
+        runAnimation(resetValue);
+      }
+    });
+  };
+
   useEffect(() => {
     if (goals.length > 1) {
-      startTimer();
-    }
-    return () => stopTimer();
-  }, [goals.length, activeGoalIndex]);
-
-  const startTimer = () => {
-    stopTimer();
-    timerRef.current = setInterval(() => {
-      const nextIndex = activeGoalIndex + 1;
+      const setWidth = goals.length * SCREEN_WIDTH;
+      // Initial state
+      scrollXAnim.setValue(setWidth);
       
-      flatListRef.current?.scrollToIndex({
-        index: nextIndex,
-        animated: true,
+      // Local timer to ensure FlatList is ready before initial jump
+      const initialJump = setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ offset: setWidth, animated: false });
+      }, 100);
+
+      // Listener to drive the FlatList scroll position
+      const listenerId = scrollXAnim.addListener(({ value }) => {
+        if (!isDragging.current) {
+          flatListRef.current?.scrollToOffset({ offset: value, animated: false });
+          // Update active index for pagination dots occasionally
+          const index = Math.round(value / SCREEN_WIDTH);
+          if (index !== activeGoalIndex) {
+            setActiveGoalIndex(index);
+          }
+        }
       });
-      setActiveGoalIndex(nextIndex);
-    }, 3000);
-  };
 
-  const stopTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
+      runAnimation(setWidth);
+
+      return () => {
+        clearTimeout(initialJump);
+        scrollXAnim.removeListener(listenerId);
+        animationRef.current?.stop();
+      };
     }
+  }, [goals.length]);
+
+  const handleScrollBegin = () => {
+    isDragging.current = true;
+    animationRef.current?.stop();
   };
 
-  const handleMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const contentOffset = event.nativeEvent.contentOffset.x;
-    const index = Math.round(contentOffset / SCREEN_WIDTH);
+  const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    isDragging.current = false;
+    const currentOffset = event.nativeEvent.contentOffset.x;
+    const setWidth = goals.length * SCREEN_WIDTH;
     
-    // Transparent loop logic
-    let newIndex = index;
-    if (index < goals.length) {
-      newIndex = index + goals.length;
-      flatListRef.current?.scrollToIndex({ index: newIndex, animated: false });
-    } else if (index >= goals.length * 2) {
-      newIndex = index - goals.length;
-      flatListRef.current?.scrollToIndex({ index: newIndex, animated: false });
+    // seamless infinite loop logic
+    let nextOffset = currentOffset;
+    if (currentOffset < setWidth) {
+      nextOffset = currentOffset + setWidth;
+    } else if (currentOffset >= setWidth * 2) {
+      nextOffset = currentOffset - setWidth;
     }
-    setActiveGoalIndex(newIndex);
+    
+    scrollXAnim.setValue(nextOffset);
+    flatListRef.current?.scrollToOffset({ offset: nextOffset, animated: false });
+    
+    const index = Math.round(nextOffset / SCREEN_WIDTH);
+    setActiveGoalIndex(index);
+    
+    // Resume slow slide from new position
+    runAnimation(nextOffset);
   };
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    // Just update visual index for pagination (modulo the count)
-    const contentOffset = event.nativeEvent.contentOffset.x;
-    const index = Math.round(contentOffset / SCREEN_WIDTH);
-    // Don't update state here too often to avoid flicker with auto-advance
+    if (isDragging.current) {
+      const contentOffset = event.nativeEvent.contentOffset.x;
+      const index = Math.round(contentOffset / SCREEN_WIDTH);
+      setActiveGoalIndex(index);
+    }
   };
 
   const [savingsModalVisible, setSavingsModalVisible] = useState(false);
@@ -223,13 +263,13 @@ export default function HomeScreen() {
               data={carouselData}
               keyExtractor={(item, index) => `${item.id}-${index}`}
               horizontal
-              pagingEnabled
+              pagingEnabled={false}
               showsHorizontalScrollIndicator={false}
               onScroll={onScroll}
-              onMomentumScrollEnd={handleMomentumScrollEnd}
+              onMomentumScrollEnd={handleScrollEnd}
               scrollEventThrottle={16}
-              onScrollBeginDrag={stopTimer}
-              onScrollEndDrag={startTimer}
+              onScrollBeginDrag={handleScrollBegin}
+              onScrollEndDrag={handleScrollEnd}
               getItemLayout={(_, index) => ({
                 length: SCREEN_WIDTH,
                 offset: SCREEN_WIDTH * index,

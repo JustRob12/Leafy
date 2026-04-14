@@ -12,8 +12,10 @@ export interface MainHeaderProps {
 }
 
 export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderProps) {
-  const { username, userImage, showConfirm, clearData } = useAppContext();
+  const { username, userImage, showConfirm, clearData, colors, isDarkMode } = useAppContext();
   const navigation = useNavigation<any>();
+
+  const styles = getStyles(colors, isDarkMode);
   const [internalActiveRoute, setInternalActiveRoute] = useState('Home');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dropdownVisible, setDropdownVisible] = useState(false);
@@ -80,7 +82,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
           <View>
             <Text style={styles.realtimeDate}>{formattedDate}</Text>
             <Text style={styles.greeting}>Hello, {username || 'User'}</Text>
-            <View style={styles.greetingDivider} />
+            <Text style={styles.appMessage}>Welcome to Leafy the Personal Finance Tracker</Text>
           </View>
 
           <View style={styles.rightActions}>
@@ -92,22 +94,13 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
               {userImage ? (
                 <Image source={{ uri: userImage }} style={styles.headerProfileImage} />
               ) : (
-                <User size={22} color={theme.colors.primary} />
+                <User size={22} color={colors.primary} />
               )}
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Dynamic Screen Title + Actions at the bottom of the header */}
-        <View style={styles.bottomTitleRow}>
-          <Text style={styles.screenTitle}>{displayTitle}</Text>
-          {showPlus && (
-            <TouchableOpacity style={styles.addBtn} onPress={handlePlusPress} activeOpacity={0.7}>
-              <Plus size={18} color="#ffffff" />
-              <Text style={styles.addBtnText}>Add</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        {/* Title row removed to save space */}
       </View>
 
       <Modal
@@ -125,7 +118,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                     {userImage ? (
                       <Image source={{ uri: userImage }} style={styles.dropdownProfileImage} />
                     ) : (
-                      <User size={24} color={theme.colors.primary} />
+                      <User size={24} color={colors.primary} />
                     )}
                   </View>
                   <View>
@@ -138,18 +131,18 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
 
                 <TouchableOpacity style={styles.dropdownItem} onPress={handleSettings}>
                   <View style={styles.dropdownItemLeft}>
-                    <Settings size={18} color={theme.colors.textMuted} />
+                    <Settings size={18} color={colors.textMuted} />
                     <Text style={styles.dropdownItemText}>Settings</Text>
                   </View>
-                  <ChevronRight size={16} color={theme.colors.border} />
+                  <ChevronRight size={16} color={colors.border} />
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.dropdownItem} onPress={() => { setDropdownVisible(false); Alert.alert('App Information', 'Leafy v1.0.0\nSecure Local Finance Manager\nCreated with ❤️'); }}>
                   <View style={styles.dropdownItemLeft}>
-                    <Info size={18} color={theme.colors.textMuted} />
+                    <Info size={18} color={colors.textMuted} />
                     <Text style={styles.dropdownItemText}>App Information</Text>
                   </View>
-                  <ChevronRight size={16} color={theme.colors.border} />
+                  <ChevronRight size={16} color={colors.border} />
                 </TouchableOpacity>
 
                 <View style={styles.dropdownDivider} />
@@ -172,19 +165,19 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   safeArea: {
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: colors.border,
     zIndex: 1000,
   },
   container: {
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.md,
-    height: 130, // 100% Fixed height to prevent vertical "jumping" during navigation
-    justifyContent: 'space-between',
+    paddingBottom: theme.spacing.sm,
+    height: 100,
+    justifyContent: 'center',
   },
   headerTop: {
     flexDirection: 'row',
@@ -205,12 +198,12 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontFamily: theme.fonts.bold,
     fontSize: 30,
-    color: theme.colors.primary, // Changed from theme.colors.text to brand green
+    color: colors.primary,
   },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 14,
@@ -225,11 +218,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#ecfdf5',
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#a7f3d0',
+    borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.2)' : '#a7f3d0',
     overflow: 'hidden',
   },
   headerProfileImage: {
@@ -239,31 +232,31 @@ const styles = StyleSheet.create({
   },
   realtimeDate: {
     fontFamily: theme.fonts.medium,
-    fontSize: 12,
-    color: theme.colors.textMuted,
-    marginBottom: 4,
+    fontSize: 11,
+    color: colors.textMuted,
+    marginBottom: 2,
   },
   greeting: {
     fontFamily: theme.fonts.bold,
-    fontSize: 22,
-    color: theme.colors.text,
+    fontSize: 20,
+    color: colors.text,
   },
-  greetingDivider: {
-    height: 1,
-    backgroundColor: theme.colors.border,
-    width: 60,
-    marginTop: 8,
+  appMessage: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
     paddingTop: 100,
     paddingRight: 20,
   },
   dropdownMenu: {
-    backgroundColor: theme.colors.card,
+    backgroundColor: colors.card,
     width: 220,
     borderRadius: 20,
     padding: 16,
@@ -273,7 +266,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 20,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
   },
   dropdownHeader: {
     flexDirection: 'row',
@@ -285,7 +278,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#ecfdf5',
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -298,16 +291,16 @@ const styles = StyleSheet.create({
   dropdownUsername: {
     fontFamily: theme.fonts.bold,
     fontSize: 16,
-    color: theme.colors.text,
+    color: colors.text,
   },
   dropdownUserRole: {
     fontFamily: theme.fonts.medium,
     fontSize: 11,
-    color: theme.colors.primary,
+    color: colors.primary,
   },
   dropdownDivider: {
     height: 1,
-    backgroundColor: theme.colors.border,
+    backgroundColor: colors.border,
     marginVertical: 8,
   },
   dropdownItem: {
@@ -324,6 +317,6 @@ const styles = StyleSheet.create({
   dropdownItemText: {
     fontFamily: theme.fonts.medium,
     fontSize: 14,
-    color: theme.colors.text,
+    color: colors.text,
   }
 });

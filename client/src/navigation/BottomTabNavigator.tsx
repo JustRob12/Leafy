@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Home, Wallet, Target, Clock } from 'lucide-react-native';
 import { theme } from '../theme';
+import { useAppContext } from '../context/AppContext';
 
 import HomeScreen from '../screens/HomeScreen';
 import WalletsScreen from '../screens/WalletsScreen';
@@ -12,22 +13,24 @@ import HistoryScreen from '../screens/HistoryScreen';
 const Tab = createBottomTabNavigator();
 
 export default function BottomTabNavigator() {
+  const { colors, isDarkMode } = useAppContext();
+  
   return (
     <Tab.Navigator
       detachInactiveScreens={false}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.textMuted,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarHideOnKeyboard: true,
         tabBarBackground: () => (
-          <View style={{ flex: 1, backgroundColor: theme.colors.card, borderRadius: 24 }} />
+          <View style={{ flex: 1, backgroundColor: colors.card, borderRadius: 24 }} />
         ),
         tabBarStyle: {
           position: 'absolute',
           bottom: 24,
           marginHorizontal: 24,
-          backgroundColor: theme.colors.card,
+          backgroundColor: colors.card,
           borderRadius: 24,
           height: 64,
           borderTopWidth: 0,
@@ -35,7 +38,7 @@ export default function BottomTabNavigator() {
           paddingTop: 8,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: 0.1,
+          shadowOpacity: isDarkMode ? 0.3 : 0.1,
           shadowRadius: 10,
           elevation: 12,
         },

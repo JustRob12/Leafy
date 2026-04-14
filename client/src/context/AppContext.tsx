@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { lightPalette, darkPalette } from '../theme';
 
 export type WalletType = {
   id: string;
@@ -51,6 +52,9 @@ type AppContextType = {
   userImage: string | null;
   setUserImage: (image: string | null) => Promise<void>;
   importData: (jsonString: string) => Promise<void>;
+  isDarkMode: boolean;
+  toggleTheme: () => Promise<void>;
+  colors: typeof lightPalette;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -63,6 +67,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [goals, setGoals] = useState<GoalType[]>([]);
   const [userImage, setUserImageState] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode as requested
   const [feedback, setFeedback] = useState<{ visible: boolean; type: 'success' | 'delete' | 'error'; message: string }>({
     visible: false,
     type: 'success',
@@ -92,6 +97,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (storedTransactions) setTransactions(JSON.parse(storedTransactions));
       if (storedGoals) setGoals(JSON.parse(storedGoals));
       if (storedImage) setUserImageState(storedImage);
+      
+      const storedTheme = await AsyncStorage.getItem('@isDarkMode');
+      if (storedTheme !== null) {
+        setIsDarkMode(storedTheme === 'true');
+      }
     } catch (e) {
       console.error('Failed to load data', e);
     } finally {
@@ -247,8 +257,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTransactions([]);
     setGoals([]);
     setUserImageState(null);
+    setIsDarkMode(true);
     showFeedback('delete', 'All Data Cleared');
   };
+
+  const toggleTheme = async () => {
+    const newVal = !isDarkMode;
+    setIsDarkMode(newVal);
+    await AsyncStorage.setItem('@isDarkMode', newVal.toString());
+  };
+
+  const colors = isDarkMode ? darkPalette : lightPalette;
 
   const importData = async (jsonString: string) => {
     try {
@@ -331,7 +350,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         loading,
         userImage,
         setUserImage,
-        importData
+        importData,
+        isDarkMode,
+        toggleTheme,
+        colors
       }}
     >
       {children}

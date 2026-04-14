@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, Animated, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Dimensions, ScrollView } from 'react-native';
 import { theme } from '../theme';
+import { useAppContext } from '../context/AppContext';
 
 interface ActionSheetProps {
   visible: boolean;
@@ -12,6 +13,8 @@ interface ActionSheetProps {
 const { height } = Dimensions.get('window');
 
 export default function ActionSheet({ visible, onClose, title, children }: ActionSheetProps) {
+  const { colors } = useAppContext();
+  const styles = getStyles(colors);
   const slideAnim = useRef(new Animated.Value(height)).current;
 
   useEffect(() => {
@@ -55,17 +58,18 @@ export default function ActionSheet({ visible, onClose, title, children }: Actio
   );
 }
 
-const styles = StyleSheet.create({
+
+const getStyles = (colors: any) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     justifyContent: 'flex-end',
   },
   keyboardView: {
     justifyContent: 'flex-end',
   },
   content: {
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.background,
     borderTopLeftRadius: theme.borderRadius.xl,
     borderTopRightRadius: theme.borderRadius.xl,
     paddingTop: theme.spacing.xl,
@@ -76,7 +80,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   scrollContent: {
-    paddingBottom: Platform.OS === 'ios' ? 40 : theme.spacing.xl, // Safe area pad
+    paddingBottom: Platform.OS === 'ios' ? 40 : theme.spacing.xl,
   },
   header: {
     flexDirection: 'row',
@@ -87,7 +91,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: theme.fonts.bold,
     fontSize: 20,
-    color: theme.colors.text,
+    color: colors.text,
   },
   cancelBtn: {
     padding: 4,
@@ -95,6 +99,6 @@ const styles = StyleSheet.create({
   cancelBtnText: {
     fontFamily: theme.fonts.medium,
     fontSize: 16,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
   }
 });

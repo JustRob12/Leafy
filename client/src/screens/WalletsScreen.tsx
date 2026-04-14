@@ -7,7 +7,8 @@ import ActionSheet from '../components/ActionSheet';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 export default function WalletsScreen() {
-  const { wallets, addWallet, editWallet, deleteWallet, showFeedback, showConfirm } = useAppContext();
+  const { wallets, addWallet, editWallet, deleteWallet, showFeedback, showConfirm, colors, isDarkMode } = useAppContext();
+  const styles = getStyles(colors, isDarkMode);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingWalletId, setEditingWalletId] = useState<string | null>(null);
   const [walletName, setWalletName] = useState('');
@@ -139,7 +140,7 @@ export default function WalletsScreen() {
         <TextInput
           style={styles.input}
           placeholder="e.g., GCash, Maya..."
-          placeholderTextColor={theme.colors.textMuted}
+          placeholderTextColor={colors.textMuted}
           value={walletName}
           onChangeText={setWalletName}
         />
@@ -155,7 +156,7 @@ export default function WalletsScreen() {
                 style={[styles.purposeChip, isSelected && styles.purposeChipSelected]}
                 onPress={() => setPurpose(p.label)}
               >
-                <Icon size={16} color={isSelected ? theme.colors.card : theme.colors.textMuted} />
+                <Icon size={16} color={isSelected ? '#ffffff' : colors.textMuted} />
                 <Text style={[styles.purposeChipText, isSelected && styles.purposeChipTextSelected]}>
                   {p.label}
                 </Text>
@@ -191,15 +192,16 @@ export default function WalletsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.lg,
-    paddingBottom: 140, // Uniform safe gap for absolute tab bar
+    paddingBottom: 140,
   },
   emptyState: {
     alignItems: 'center',
@@ -210,7 +212,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: theme.spacing.lg,
@@ -218,13 +220,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 20,
-    color: theme.colors.text,
+    color: colors.text,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontFamily: theme.fonts.regular,
     fontSize: 14,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     textAlign: 'center',
     paddingHorizontal: 40,
     marginBottom: theme.spacing.xl,
@@ -232,7 +234,7 @@ const styles = StyleSheet.create({
   emptyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: theme.borderRadius.full,
@@ -244,20 +246,20 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   walletCardHeader: {
-    backgroundColor: theme.colors.card,
+    backgroundColor: colors.card,
     borderRadius: 24,
     marginBottom: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderColor: colors.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
+    shadowOpacity: isDarkMode ? 0.3 : 0.05,
     shadowRadius: 10,
     elevation: 3,
   },
   cardGreenHeader: {
-    backgroundColor: '#10b981',
+    backgroundColor: colors.primary,
     padding: 16,
   },
   cardHeaderTop: {
@@ -319,29 +321,29 @@ const styles = StyleSheet.create({
   cardBalanceLabel: {
     fontFamily: theme.fonts.medium,
     fontSize: 12,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     marginBottom: 2,
   },
   cardBalance: {
     fontFamily: theme.fonts.bold,
     fontSize: 24,
-    color: theme.colors.text,
+    color: colors.text,
   },
   inputLabel: {
     fontFamily: theme.fonts.medium,
     fontSize: 14,
-    color: theme.colors.text,
+    color: colors.text,
     marginBottom: theme.spacing.sm,
   },
   input: {
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     fontFamily: theme.fonts.regular,
     fontSize: 16,
-    color: theme.colors.text,
+    color: colors.text,
     marginBottom: theme.spacing.lg,
   },
   purposeRow: {
@@ -353,56 +355,39 @@ const styles = StyleSheet.create({
   purposeChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: theme.borderRadius.full,
     gap: 8,
   },
   purposeChipSelected: {
-    backgroundColor: theme.colors.text,
-    borderColor: theme.colors.text,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   purposeChipText: {
     fontFamily: theme.fonts.medium,
     fontSize: 14,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
   },
   purposeChipTextSelected: {
-    color: theme.colors.card,
+    color: '#ffffff',
   },
   saveBtn: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     alignItems: 'center',
     marginTop: theme.spacing.sm,
   },
   saveBtnDisabled: {
-    backgroundColor: theme.colors.border,
+    backgroundColor: colors.border,
   },
   saveBtnText: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 16,
-    color: theme.colors.card,
-  },
-  fabCircle: {
-    position: 'absolute',
-    bottom: 30,
-    right: 24,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: theme.colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-    zIndex: 100,
+    color: '#ffffff',
   },
 });

@@ -7,7 +7,8 @@ import { useAppContext } from '../context/AppContext';
 
 export default function OnboardingScreen() {
   const [name, setName] = useState('');
-  const { setUsername } = useAppContext();
+  const { setUsername, colors, isDarkMode } = useAppContext();
+  const styles = getStyles(colors, isDarkMode);
 
   const handleContinue = async () => {
     if (name.trim().length > 0) {
@@ -22,9 +23,9 @@ export default function OnboardingScreen() {
           style={styles.keyboardView}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={styles.topSection}>
+            <View style={styles.topSection}>
             <View style={styles.iconContainer}>
-              <Leaf size={32} color={theme.colors.card} />
+              <Leaf size={32} color="#ffffff" />
             </View>
             <Text style={styles.title}>Welcome to Leafy</Text>
             <Text style={styles.subtitle}>Your Invisible Architect for personal finance.</Text>
@@ -35,7 +36,7 @@ export default function OnboardingScreen() {
             <TextInput
               style={styles.input}
               placeholder="e.g., Alex Johnson"
-              placeholderTextColor={theme.colors.textMuted}
+              placeholderTextColor={colors.textMuted}
               value={name}
               onChangeText={setName}
               autoFocus
@@ -52,7 +53,7 @@ export default function OnboardingScreen() {
               disabled={name.trim().length === 0}
             >
               <Text style={styles.buttonText}>Continue</Text>
-              <ArrowRight size={20} color={theme.colors.card} />
+              <ArrowRight size={20} color="#ffffff" />
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -61,10 +62,11 @@ export default function OnboardingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -78,7 +80,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: theme.borderRadius.xl,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: theme.spacing.xl,
@@ -86,14 +88,14 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: theme.fonts.bold,
     fontSize: 32,
-    color: theme.colors.text,
+    color: colors.text,
     marginBottom: theme.spacing.sm,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontFamily: theme.fonts.regular,
     fontSize: 16,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     lineHeight: 24,
   },
   inputSection: {
@@ -102,22 +104,22 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontFamily: theme.fonts.medium,
     fontSize: 14,
-    color: theme.colors.text,
+    color: colors.text,
     marginBottom: theme.spacing.sm,
   },
   input: {
-    backgroundColor: theme.colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.lg,
     fontFamily: theme.fonts.semiBold,
     fontSize: 18,
-    color: theme.colors.text,
+    color: colors.text,
     marginBottom: theme.spacing.xl,
   },
   button: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.lg,
     flexDirection: 'row',
@@ -126,11 +128,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   buttonDisabled: {
-    backgroundColor: theme.colors.border,
+    backgroundColor: colors.border,
   },
   buttonText: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 16,
-    color: theme.colors.card,
+    color: '#ffffff',
   },
 });

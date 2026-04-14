@@ -12,7 +12,8 @@ const BUTTON_WIDTH = (width - 64) / 4;
 
 export default function CalculatorScreen() {
   const navigation = useNavigation<any>();
-  const { wallets } = useAppContext();
+  const { wallets, colors, isDarkMode } = useAppContext();
+  const styles = getStyles(colors, isDarkMode);
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
   const [currentValue, setCurrentValue] = useState('0');
   const [expression, setExpression] = useState('');
@@ -75,18 +76,18 @@ export default function CalculatorScreen() {
   };
 
   const CalcButton = ({ label, onPress, type = 'number', icon: Icon }: any) => {
-    let bgColor = theme.colors.card;
-    let textColor = theme.colors.text;
+    let bgColor = colors.card;
+    let textColor = colors.text;
 
     if (type === 'operator') {
-      bgColor = '#f1f5f9';
-      textColor = theme.colors.primary;
+      bgColor = isDarkMode ? '#1e293b' : '#f1f5f9';
+      textColor = colors.primary;
     } else if (type === 'equal') {
-      bgColor = theme.colors.primary;
+      bgColor = colors.primary;
       textColor = '#ffffff';
     } else if (type === 'clear') {
-      bgColor = '#fee2e2';
-      textColor = '#ef4444';
+      bgColor = isDarkMode ? 'rgba(239, 68, 68, 0.15)' : '#fee2e2';
+      textColor = colors.danger;
     }
 
     return (
@@ -108,7 +109,7 @@ export default function CalculatorScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <ArrowLeft size={24} color={theme.colors.text} />
+          <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Calculator</Text>
         <View style={{ width: 40 }} />
@@ -182,10 +183,11 @@ export default function CalculatorScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.background,
   },
   header: {
     paddingHorizontal: 24,
@@ -200,12 +202,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 20,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9',
   },
   headerTitle: {
     fontFamily: theme.fonts.bold,
     fontSize: 18,
-    color: theme.colors.text,
+    color: colors.text,
   },
   walletSection: {
     paddingHorizontal: 24,
@@ -214,32 +216,32 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: theme.fonts.medium,
     fontSize: 14,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     marginBottom: 8,
   },
   balanceShortcut: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ecfdf5',
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
     padding: 12,
     borderRadius: 12,
-    marginTop: -8, // overlap with dropdown container spacing
+    marginTop: -8,
     gap: 8,
   },
   balanceLabel: {
     fontFamily: theme.fonts.medium,
     fontSize: 13,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
   },
   balanceValue: {
     fontFamily: theme.fonts.bold,
     fontSize: 14,
-    color: theme.colors.primary,
+    color: colors.primary,
   },
   balanceHint: {
     fontFamily: theme.fonts.medium,
     fontSize: 11,
-    color: theme.colors.primary,
+    color: colors.primary,
     opacity: 0.7,
   },
   displayArea: {
@@ -252,7 +254,7 @@ const styles = StyleSheet.create({
   expressionText: {
     fontFamily: theme.fonts.medium,
     fontSize: 20,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     marginBottom: 8,
     textAlign: 'right',
     width: '100%',
@@ -260,19 +262,19 @@ const styles = StyleSheet.create({
   currentValueText: {
     fontFamily: theme.fonts.bold,
     fontSize: 64,
-    color: theme.colors.text,
+    color: colors.text,
     textAlign: 'right',
     width: '100%',
   },
   keypad: {
     padding: 24,
-    backgroundColor: theme.colors.card,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     gap: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.05,
+    shadowOpacity: isDarkMode ? 0.3 : 0.05,
     shadowRadius: 20,
     elevation: 20,
   },
@@ -290,7 +292,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   btnText: {
-    fontFamily: theme.fonts.semiBold,
+    fontFamily: theme.fonts.bold,
     fontSize: 24,
   },
 });

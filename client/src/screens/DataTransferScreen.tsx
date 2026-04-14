@@ -11,7 +11,8 @@ import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 
 export default function DataTransferScreen() {
-  const { username, wallets, transactions, goals, userImage, importData, clearData, showConfirm } = useAppContext();
+  const { username, wallets, transactions, goals, userImage, importData, clearData, showConfirm, colors, isDarkMode } = useAppContext();
+  const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation<any>();
 
   const handleExport = async () => {
@@ -97,7 +98,7 @@ export default function DataTransferScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <ChevronLeft size={24} color={theme.colors.text} />
+          <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Backup & Restore</Text>
       </View>
@@ -105,7 +106,7 @@ export default function DataTransferScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.infoCard}>
           <View style={styles.infoIconWrapper}>
-            <ShieldCheck size={24} color={theme.colors.primary} />
+            <ShieldCheck size={24} color={colors.primary} />
           </View>
           <Text style={styles.infoText}>
             Transfer your data to another phone easily. Your data stays private and is only stored locally on your device.
@@ -118,8 +119,8 @@ export default function DataTransferScreen() {
             Save your wallets, goals, and transactions to a file. You can share this file to your new phone via Email, Drive, or Messaging.
           </Text>
           <TouchableOpacity style={styles.actionCard} onPress={handleExport}>
-            <View style={[styles.iconWrapper, { backgroundColor: '#ecfdf5' }]}>
-              <Download size={24} color={theme.colors.primary} />
+            <View style={[styles.iconWrapper, { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5' }]}>
+              <Download size={24} color={colors.primary} />
             </View>
             <View style={styles.cardContent}>
               <Text style={styles.cardTitle}>Export Data File</Text>
@@ -134,7 +135,7 @@ export default function DataTransferScreen() {
             Import a previously saved backup file. This will replace all current data in your app.
           </Text>
           <TouchableOpacity style={styles.actionCard} onPress={handleImport}>
-            <View style={[styles.iconWrapper, { backgroundColor: '#eff6ff' }]}>
+            <View style={[styles.iconWrapper, { backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.1)' : '#eff6ff' }]}>
               <Upload size={24} color="#3b82f6" />
             </View>
             <View style={styles.cardContent}>
@@ -149,19 +150,19 @@ export default function DataTransferScreen() {
           <Text style={styles.sectionDesc}>
             Completely wipe all data from this device. Use this if you want to start fresh or have successfully transferred your data.
           </Text>
-          <TouchableOpacity style={[styles.actionCard, { borderColor: '#fecaca', backgroundColor: '#fff5f5' }]} onPress={handleReset}>
-            <View style={[styles.iconWrapper, { backgroundColor: '#fee2e2' }]}>
-              <ShieldCheck size={24} color="#ef4444" />
+          <TouchableOpacity style={[styles.actionCard, { borderColor: isDarkMode ? 'rgba(239, 68, 68, 0.3)' : '#fecaca', backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.05)' : '#fff5f5' }]} onPress={handleReset}>
+            <View style={[styles.iconWrapper, { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : '#fee2e2' }]}>
+              <ShieldCheck size={24} color={colors.danger} />
             </View>
             <View style={styles.cardContent}>
-              <Text style={[styles.cardTitle, { color: '#b91c1c' }]}>Reset All Data</Text>
+              <Text style={[styles.cardTitle, { color: isDarkMode ? '#fca5a5' : '#b91c1c' }]}>Reset All Data</Text>
               <Text style={styles.cardSubtitle}>Delete everything permanently</Text>
             </View>
           </TouchableOpacity>
         </View>
 
         <View style={styles.warningBox}>
-          <Info size={18} color={theme.colors.textMuted} />
+          <Info size={18} color={colors.textMuted} />
           <Text style={styles.warningText}>
             Note: For security reasons, sensitive image files (like receipts) might need to be re-added if they were stored in external paths.
           </Text>
@@ -171,10 +172,10 @@ export default function DataTransferScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -182,7 +183,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: colors.border,
   },
   backBtn: {
     padding: 8,
@@ -191,20 +192,20 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 18,
-    color: theme.colors.text,
+    color: colors.text,
   },
   scrollContent: {
     padding: 20,
   },
   infoCard: {
     flexDirection: 'row',
-    backgroundColor: '#ecfdf5',
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#a7f3d0',
+    borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.2)' : '#a7f3d0',
   },
   infoIconWrapper: {
     marginRight: 16,
@@ -213,7 +214,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: theme.fonts.medium,
     fontSize: 13,
-    color: '#065f46',
+    color: isDarkMode ? colors.primary : '#065f46',
     lineHeight: 18,
   },
   section: {
@@ -222,24 +223,24 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: theme.fonts.bold,
     fontSize: 18,
-    color: theme.colors.text,
+    color: colors.text,
     marginBottom: 6,
   },
   sectionDesc: {
     fontFamily: theme.fonts.regular,
     fontSize: 14,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     marginBottom: 16,
     lineHeight: 20,
   },
   actionCard: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
   },
   iconWrapper: {
     width: 52,
@@ -255,13 +256,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontFamily: theme.fonts.bold,
     fontSize: 16,
-    color: theme.colors.text,
+    color: colors.text,
     marginBottom: 2,
   },
   cardSubtitle: {
     fontFamily: theme.fonts.medium,
     fontSize: 13,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
   },
   warningBox: {
     flexDirection: 'row',
@@ -273,7 +274,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: theme.fonts.regular,
     fontSize: 12,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     lineHeight: 16,
   }
 });

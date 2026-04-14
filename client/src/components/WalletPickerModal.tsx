@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, TouchableWit
 import { theme } from '../theme';
 import { X, Wallet as WalletIcon } from 'lucide-react-native';
 
+import { useAppContext } from '../context/AppContext';
+
 const { height } = Dimensions.get('window');
 
 interface WalletPickerModalProps {
@@ -14,6 +16,8 @@ interface WalletPickerModalProps {
 }
 
 export default function WalletPickerModal({ visible, onClose, wallets, selectedWalletId, onSelectWallet }: WalletPickerModalProps) {
+  const { colors, isDarkMode } = useAppContext();
+  const styles = getStyles(colors, isDarkMode);
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.overlay}>
@@ -25,7 +29,7 @@ export default function WalletPickerModal({ visible, onClose, wallets, selectedW
           <View style={styles.header}>
             <Text style={styles.title}>Select Wallet</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <X size={24} color={theme.colors.textMuted} />
+              <X size={24} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -45,7 +49,7 @@ export default function WalletPickerModal({ visible, onClose, wallets, selectedW
                   }}
                 >
                   <View style={styles.walletIconWrapper}>
-                    <WalletIcon size={20} color={isSelected ? theme.colors.primary : theme.colors.textMuted} />
+                    <WalletIcon size={20} color={isSelected ? colors.primary : colors.textMuted} />
                   </View>
                   <View style={styles.walletDetails}>
                     <Text style={[styles.walletName, isSelected && styles.walletNameSelected]}>{item.name}</Text>
@@ -62,25 +66,25 @@ export default function WalletPickerModal({ visible, onClose, wallets, selectedW
   );
 }
 
-const styles = StyleSheet.create({
+
+const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   dismissArea: {
     flex: 1,
   },
   content: {
-    backgroundColor: theme.colors.card,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     maxHeight: height * 0.7,
     paddingTop: 24,
-    // Add shadow since we no longer have a dark overlay
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.1,
+    shadowOpacity: isDarkMode ? 0.3 : 0.1,
     shadowRadius: 20,
     elevation: 25,
   },
@@ -94,7 +98,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: theme.fonts.bold,
     fontSize: 22,
-    color: theme.colors.text,
+    color: colors.text,
   },
   closeBtn: {
     padding: 4,
@@ -109,19 +113,19 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     marginBottom: 8,
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
   },
   walletItemSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: '#ecfdf5',
+    borderColor: colors.primary,
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
   },
   walletIconWrapper: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#f8fafc',
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -132,21 +136,21 @@ const styles = StyleSheet.create({
   walletName: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 16,
-    color: theme.colors.text,
+    color: colors.text,
   },
   walletNameSelected: {
-    color: theme.colors.primary,
+    color: colors.primary,
   },
   walletBalanceText: {
     fontFamily: theme.fonts.medium,
     fontSize: 13,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
   checkIndicator: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
   },
 });

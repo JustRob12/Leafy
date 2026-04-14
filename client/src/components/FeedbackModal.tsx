@@ -5,7 +5,8 @@ import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 
 export default function FeedbackModal() {
-  const { feedback } = useAppContext();
+  const { feedback, colors, isDarkMode } = useAppContext();
+  const styles = getStyles(colors, isDarkMode);
   const scaleValue = useRef(new Animated.Value(0)).current;
   const opacityValue = useRef(new Animated.Value(0)).current;
 
@@ -38,9 +39,9 @@ export default function FeedbackModal() {
             styles.iconWrapper, 
             feedback.type === 'success' ? styles.successBg : (feedback.type === 'error' ? styles.errorBg : styles.deleteBg)
           ]}>
-            {feedback.type === 'success' && <CheckCircle size={48} color={theme.colors.primary} />}
-            {feedback.type === 'error' && <AlertCircle size={48} color="#ef4444" />}
-            {feedback.type === 'delete' && <Trash2 size={48} color="#ef4444" />}
+            {feedback.type === 'success' && <CheckCircle size={48} color={colors.primary} />}
+            {feedback.type === 'error' && <AlertCircle size={48} color={colors.danger} />}
+            {feedback.type === 'delete' && <Trash2 size={48} color={colors.danger} />}
           </View>
           <Text style={styles.message}>{feedback.message}</Text>
         </Animated.View>
@@ -49,24 +50,27 @@ export default function FeedbackModal() {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.7)' : 'rgba(15, 23, 42, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   content: {
-    backgroundColor: theme.colors.card,
+    backgroundColor: colors.card,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.xxl,
     alignItems: 'center',
     width: '65%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
+    shadowOpacity: isDarkMode ? 0.3 : 0.2,
     shadowRadius: 20,
     elevation: 10,
+    borderWidth: isDarkMode ? 1 : 0,
+    borderColor: colors.border,
   },
   iconWrapper: {
     width: 80,
@@ -77,18 +81,18 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
   },
   successBg: {
-    backgroundColor: '#ecfdf5',
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
   },
   deleteBg: {
-    backgroundColor: '#fef2f2',
+    backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2',
   },
   errorBg: {
-    backgroundColor: '#fef2f2',
+    backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2',
   },
   message: {
     fontFamily: theme.fonts.bold,
     fontSize: 18,
-    color: theme.colors.text,
+    color: colors.text,
     textAlign: 'center',
   }
 });

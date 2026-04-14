@@ -11,7 +11,8 @@ interface WalletDropdownProps {
 }
 
 export default function WalletDropdown({ selectedWalletId, onSelectWallet }: WalletDropdownProps) {
-  const { wallets } = useAppContext();
+  const { wallets, colors, isDarkMode } = useAppContext();
+  const styles = getStyles(colors, isDarkMode);
   const [modalVisible, setModalVisible] = useState(false);
 
   const selectedWallet = wallets.find(w => w.id === selectedWalletId);
@@ -23,10 +24,10 @@ export default function WalletDropdown({ selectedWalletId, onSelectWallet }: Wal
         onPress={() => setModalVisible(true)}
         activeOpacity={0.8}
       >
-        <Text style={[styles.dropdownBtnText, !selectedWallet && { color: theme.colors.textMuted }]}>
+        <Text style={[styles.dropdownBtnText, !selectedWallet && { color: colors.textMuted }]}>
           {selectedWallet ? `${selectedWallet.name} (₱${selectedWallet.balance.toFixed(0)})` : 'Select Wallet...'}
         </Text>
-        <ChevronDown size={20} color={theme.colors.textMuted} />
+        <ChevronDown size={20} color={colors.textMuted} />
       </TouchableOpacity>
 
       <WalletPickerModal
@@ -40,7 +41,8 @@ export default function WalletDropdown({ selectedWalletId, onSelectWallet }: Wal
   );
 }
 
-const styles = StyleSheet.create({
+
+const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     marginBottom: theme.spacing.lg,
     zIndex: 1, 
@@ -49,9 +51,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: theme.colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -59,6 +61,6 @@ const styles = StyleSheet.create({
   dropdownBtnText: {
     fontFamily: theme.fonts.medium,
     fontSize: 16,
-    color: theme.colors.text,
+    color: colors.text,
   },
 });

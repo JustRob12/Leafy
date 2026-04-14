@@ -9,7 +9,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import WalletDropdown from '../components/WalletDropdown';
 
 export default function GoalsScreen() {
-  const { goals, addGoal, editGoal, wallets, showFeedback } = useAppContext();
+  const { goals, addGoal, editGoal, wallets, showFeedback, colors, isDarkMode } = useAppContext();
+  const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation<any>();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
@@ -177,7 +178,7 @@ export default function GoalsScreen() {
                   {goal.imageUrl ? (
                     <Image source={{ uri: goal.imageUrl }} style={styles.goalImage} />
                   ) : (
-                    <Target size={24} color={theme.colors.primary} />
+                    <Target size={24} color={colors.primary} />
                   )}
                 </View>
                 
@@ -192,8 +193,8 @@ export default function GoalsScreen() {
                     <Text style={styles.goalStatValue}>₱{currentAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
                   </View>
 
-                  <View style={styles.walletBadge}>
-                    <Wallet size={12} color={theme.colors.textMuted} />
+                   <View style={styles.walletBadge}>
+                    <Wallet size={12} color={colors.textMuted} />
                     <Text style={styles.walletBadgeText}>{linkedWallet?.name || 'Unknown Wallet'}</Text>
                   </View>
 
@@ -222,7 +223,7 @@ export default function GoalsScreen() {
             <Image source={{ uri: imageUrl }} style={styles.previewImage} resizeMode="contain" />
           ) : (
             <View style={styles.imagePlaceholder}>
-              <ImagePlus size={32} color={theme.colors.textMuted} />
+              <ImagePlus size={32} color={colors.textMuted} />
               <Text style={styles.imagePlaceholderText}>Add Cover Image</Text>
             </View>
           )}
@@ -232,7 +233,7 @@ export default function GoalsScreen() {
         <TextInput
           style={styles.input}
           placeholder="e.g., New Laptop, Car, Wedding..."
-          placeholderTextColor={theme.colors.textMuted}
+          placeholderTextColor={colors.textMuted}
           value={title}
           onChangeText={setTitle}
         />
@@ -241,7 +242,7 @@ export default function GoalsScreen() {
         <TextInput
           style={styles.input}
           placeholder="e.g., 50000"
-          placeholderTextColor={theme.colors.textMuted}
+          placeholderTextColor={colors.textMuted}
           value={targetAmount}
           onChangeText={setTargetAmount}
           keyboardType="numeric"
@@ -280,20 +281,20 @@ export default function GoalsScreen() {
                   <Image source={{ uri: selectedGoal.imageUrl }} style={styles.modalImage} resizeMode="contain" />
                 </View>
               ) : (
-                <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-                  <Target size={40} color={theme.colors.primary} />
+                <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                  <Target size={40} color={colors.primary} />
                 </View>
               )}
               
-              <Text style={{ fontFamily: theme.fonts.bold, fontSize: 24, color: theme.colors.text, marginBottom: 8, textAlign: 'center' }}>{selectedGoal.title}</Text>
+              <Text style={{ fontFamily: theme.fonts.bold, fontSize: 24, color: colors.text, marginBottom: 8, textAlign: 'center' }}>{selectedGoal.title}</Text>
               
-              <Text style={{ fontFamily: theme.fonts.medium, fontSize: 16, color: theme.colors.textMuted, marginBottom: 4 }}>
+              <Text style={{ fontFamily: theme.fonts.medium, fontSize: 16, color: colors.textMuted, marginBottom: 4 }}>
                 ₱{currentAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })} / ₱{selectedGoal.targetAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}
               </Text>
 
-              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginBottom: 20, gap: 6 }}>
-                <Wallet size={14} color={theme.colors.primary} />
-                <Text style={{ fontFamily: theme.fonts.semiBold, fontSize: 13, color: theme.colors.text }}>{linkedWallet?.name}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#f8fafc', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginBottom: 20, gap: 6 }}>
+                <Wallet size={14} color={colors.primary} />
+                <Text style={{ fontFamily: theme.fonts.semiBold, fontSize: 13, color: colors.text }}>{linkedWallet?.name}</Text>
               </View>
 
               <View style={[styles.progressBarBg, { height: 12, borderRadius: 6, marginBottom: 24 }]}>
@@ -301,7 +302,7 @@ export default function GoalsScreen() {
               </View>
               
               <TouchableOpacity
-                style={{ backgroundColor: '#f1f5f9', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, width: '100%', alignItems: 'center' }}
+                style={{ backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, width: '100%', alignItems: 'center' }}
                 onPress={() => {
                   setEditingGoalId(selectedGoal.id);
                   setTitle(selectedGoal.title);
@@ -309,10 +310,10 @@ export default function GoalsScreen() {
                   setSelectedWalletId(selectedGoal.walletId);
                   setImageUrl(selectedGoal.imageUrl);
                   setSelectedGoal(null);
-                  setTimeout(() => setModalVisible(true), 300); // delay allows view modal to close cleanly
+                  setTimeout(() => setModalVisible(true), 300);
                 }}
               >
-                <Text style={{ fontFamily: theme.fonts.semiBold, color: theme.colors.text, fontSize: 16 }}>Edit Goal</Text>
+                <Text style={{ fontFamily: theme.fonts.semiBold, color: colors.text, fontSize: 16 }}>Edit Goal</Text>
               </TouchableOpacity>
             </View>
           );
@@ -326,8 +327,8 @@ export default function GoalsScreen() {
         title="Select Image Source"
       >
         <TouchableOpacity style={styles.sourceOption} onPress={handleTakePhoto}>
-          <View style={[styles.sourceIcon, { backgroundColor: '#ecfdf5' }]}>
-            <Camera size={24} color={theme.colors.primary} />
+          <View style={[styles.sourceIcon, { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5' }]}>
+            <Camera size={24} color={colors.primary} />
           </View>
           <View>
             <Text style={styles.sourceTitle}>Take Photo</Text>
@@ -350,19 +351,20 @@ export default function GoalsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.lg,
-    paddingBottom: 140, // Uniform safe gap for absolute tab bar
+    paddingBottom: 140,
   },
   filterSection: {
     marginBottom: 20,
-    marginHorizontal: -theme.spacing.lg, // Bleed to edges
+    marginHorizontal: -theme.spacing.lg,
   },
   filterBar: {
     paddingHorizontal: theme.spacing.lg,
@@ -371,21 +373,21 @@ const styles = StyleSheet.create({
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.card,
+    backgroundColor: colors.card,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
   },
   filterChipActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   filterChipText: {
     fontFamily: theme.fonts.medium,
     fontSize: 13,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
   },
   filterChipTextActive: {
     color: '#ffffff',
@@ -400,7 +402,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -408,13 +410,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 20,
-    color: theme.colors.text,
+    color: colors.text,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontFamily: theme.fonts.regular,
     fontSize: 14,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     textAlign: 'center',
     paddingHorizontal: 40,
     marginBottom: 32,
@@ -422,7 +424,7 @@ const styles = StyleSheet.create({
   emptyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 30,
@@ -435,20 +437,25 @@ const styles = StyleSheet.create({
   },
   goalCard: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.card,
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     alignItems: 'center',
     gap: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: isDarkMode ? 0.3 : 0.05,
+    shadowRadius: 10,
+    elevation: 3,
   },
   goalIconLayer: {
     width: 80,
     height: 80,
     borderRadius: 20,
-    backgroundColor: '#f8fafc',
+    backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -469,14 +476,14 @@ const styles = StyleSheet.create({
   goalTitle: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 16,
-    color: theme.colors.text,
+    color: colors.text,
     flex: 1,
     marginRight: 8,
   },
   goalProgressText: {
     fontFamily: theme.fonts.bold,
     fontSize: 16,
-    color: theme.colors.primary,
+    color: colors.primary,
   },
   goalStatsRow: {
     flexDirection: 'row',
@@ -486,23 +493,23 @@ const styles = StyleSheet.create({
   goalStatLabel: {
     fontFamily: theme.fonts.regular,
     fontSize: 12,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
   },
   goalStatValue: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 13,
-    color: theme.colors.text,
+    color: colors.text,
   },
   progressBarBg: {
     height: 6,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: isDarkMode ? '#334155' : '#f1f5f9',
     borderRadius: 3,
     marginBottom: 10,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
   },
   walletBadge: {
     flexDirection: 'row',
@@ -513,7 +520,7 @@ const styles = StyleSheet.create({
   walletBadgeText: {
     fontFamily: theme.fonts.medium,
     fontSize: 12,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
   },
   goalFooter: {
     flexDirection: 'row',
@@ -522,7 +529,7 @@ const styles = StyleSheet.create({
   goalTargetText: {
     fontFamily: theme.fonts.medium,
     fontSize: 12,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
   },
   imagePickerBtn: {
     width: '100%',
@@ -531,23 +538,23 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     borderStyle: 'dashed',
   },
   previewImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#f8fafc',
+    backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
   },
   modalImageContainer: {
     width: '100%',
     height: 260,
     borderRadius: 24,
-    backgroundColor: '#f8fafc',
+    backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
     marginBottom: 24,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
   },
   modalImage: {
     width: '100%',
@@ -555,42 +562,42 @@ const styles = StyleSheet.create({
   },
   imagePlaceholder: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
   },
   imagePlaceholderText: {
     fontFamily: theme.fonts.medium,
     fontSize: 14,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     marginTop: 8,
   },
   inputLabel: {
     fontFamily: theme.fonts.medium,
     fontSize: 14,
-    color: theme.colors.text,
+    color: colors.text,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 14,
     fontFamily: theme.fonts.regular,
     fontSize: 16,
-    color: theme.colors.text,
+    color: colors.text,
     marginBottom: 20,
   },
   saveBtn: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
   },
   saveBtnDisabled: {
-    backgroundColor: theme.colors.border,
+    backgroundColor: colors.border,
   },
   saveBtnText: {
     fontFamily: theme.fonts.semiBold,
@@ -601,11 +608,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     gap: 16,
   },
   sourceIcon: {
@@ -618,11 +625,11 @@ const styles = StyleSheet.create({
   sourceTitle: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 16,
-    color: theme.colors.text,
+    color: colors.text,
   },
   sourceSubtitle: {
     fontFamily: theme.fonts.regular,
     fontSize: 12,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
   },
 });

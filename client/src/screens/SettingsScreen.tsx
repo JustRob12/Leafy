@@ -1,15 +1,42 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Switch, Animated, Easing } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { theme } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database } from 'lucide-react-native';
+import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Moon, Sun, Leaf } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
+import ActionSheet from '../components/ActionSheet';
 
 export default function SettingsScreen() {
-  const { username, userImage, setUserImage, clearData, showConfirm } = useAppContext();
+  const { username, userImage, setUserImage, clearData, showConfirm, isDarkMode, toggleTheme, colors } = useAppContext();
   const navigation = useNavigation<any>();
+
+  const styles = getStyles(colors, isDarkMode);
+
+  const aboutOpacity = React.useRef(new Animated.Value(1)).current;
+
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(aboutOpacity, {
+          toValue: 0.4,
+          duration: 2500,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(aboutOpacity, {
+          toValue: 1,
+          duration: 2500,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  const [privacyModalVisible, setPrivacyModalVisible] = React.useState(false);
+  const [helpModalVisible, setHelpModalVisible] = React.useState(false);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -32,11 +59,11 @@ export default function SettingsScreen() {
   };
 
   const settingsOptions = [
-    { id: '1', title: 'Account Settings', icon: User, action: () => {} },
+    { id: '1', title: 'Account Settings', icon: User, action: () => { } },
     { id: '2', title: 'Backup & Restore', icon: Database, action: () => navigation.navigate('DataTransfer') },
-    { id: '3', title: 'Notifications', icon: Bell, action: () => {} },
-    { id: '4', title: 'Privacy & Security', icon: Shield, action: () => {} },
-    { id: '5', title: 'Help & Support', icon: CircleHelp, action: () => {} },
+    { id: '5', title: 'Dark Mode', icon: isDarkMode ? Moon : Sun, isToggle: true },
+    { id: '3', title: 'Privacy & Security', icon: Shield, action: () => { setPrivacyModalVisible(true); } },
+    { id: '4', title: 'Help & Support', icon: CircleHelp, action: () => { setHelpModalVisible(true); } },
   ];
 
   const handleClearData = () => {
@@ -78,13 +105,28 @@ export default function SettingsScreen() {
             const Icon = option.icon;
             return (
               <React.Fragment key={option.id}>
-                <TouchableOpacity style={styles.settingItem} onPress={option.action as any}>
-                  <View style={styles.settingItemLeft}>
-                    <Icon size={20} color={theme.colors.textMuted} />
-                    <Text style={styles.settingTitle}>{option.title}</Text>
-                  </View>
-                  <ChevronRight size={20} color={theme.colors.border} />
-                </TouchableOpacity>
+                <View style={styles.settingItemWrapper}>
+                  <TouchableOpacity 
+                    style={styles.settingItem} 
+                    onPress={option.isToggle ? undefined : (option.action as any)}
+                    disabled={option.isToggle}
+                  >
+                    <View style={styles.settingItemLeft}>
+                      <Icon size={20} color={colors.textMuted} />
+                      <Text style={styles.settingTitle}>{option.title}</Text>
+                    </View>
+                    {option.isToggle ? (
+                      <Switch 
+                        value={isDarkMode} 
+                        onValueChange={toggleTheme}
+                        trackColor={{ false: '#e2e8f0', true: colors.primary }}
+                        thumbColor={isDarkMode ? '#ffffff' : '#f4f3f4'}
+                      />
+                    ) : (
+                      <ChevronRight size={20} color={colors.border} />
+                    )}
+                  </TouchableOpacity>
+                </View>
                 {index < settingsOptions.length - 1 && <View style={styles.divider} />}
               </React.Fragment>
             );
@@ -95,16 +137,94 @@ export default function SettingsScreen() {
           <Trash2 size={20} color="#ef4444" />
           <Text style={styles.logoutText}>Clear App Data</Text>
         </TouchableOpacity>
+
+        {/* ABOUT THIS APP CARD */}
+        <Animated.View style={[styles.aboutCard, { opacity: aboutOpacity }]}>
+          <View style={styles.aboutHeader}>
+            <Leaf size={24} color={colors.primary} />
+            <Text style={styles.aboutTitle}>About Leafy</Text>
+          </View>
+          <Text style={styles.aboutDescription}>
+            Leafy is your premium financial companion designed to help you track wallets, set savings goals, and manage transactions with ease. Grow your wealth one leaf at a time.
+          </Text>
+          <View style={styles.aboutFooter}>
+            <Text style={styles.aboutVersion}>v1.0.0 • Crafted for Growth</Text>
+          </View>
+        </Animated.View>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Privacy & Security Modal */}
+      <ActionSheet
+        visible={privacyModalVisible}
+        onClose={() => setPrivacyModalVisible(false)}
+        title="Privacy & Security"
+      >
+        <View style={styles.modalContent}>
+          <View style={styles.infoSection}>
+            <Shield size={24} color={theme.colors.primary} style={styles.infoIcon} />
+            <Text style={styles.infoTitle}>Data Local Storage</Text>
+            <Text style={styles.infoDescription}>
+              Leafy stores all your financial data locally on your device. We do not transmit or store your personal information on any external servers.
+            </Text>
+          </View>
+
+          <View style={styles.dividerFull} />
+
+          <View style={styles.infoSection}>
+            <Text style={styles.infoTitle}>Secure Backups</Text>
+            <Text style={styles.infoDescription}>
+              When you use Backup & Restore, your data is exported into a text format that you control. Ensure you keep your backup files in a safe location.
+            </Text>
+          </View>
+
+          <TouchableOpacity style={styles.closeBtn} onPress={() => setPrivacyModalVisible(false)}>
+            <Text style={styles.closeBtnText}>I Understand</Text>
+          </TouchableOpacity>
+        </View>
+      </ActionSheet>
+
+      {/* Help & Support Modal */}
+      <ActionSheet
+        visible={helpModalVisible}
+        onClose={() => setHelpModalVisible(false)}
+        title="Help & Support"
+      >
+        <View style={styles.modalContent}>
+          <View style={styles.infoSection}>
+            <Text style={styles.infoTitle}>How to use Leafy?</Text>
+            <Text style={styles.infoDescription}>
+              1. Create Wallets to categorize your funds.{"\n"}
+              2. Add Goals to track your savings targets.{"\n"}
+              3. Log Transactions to keep your balances up to date.
+            </Text>
+          </View>
+
+          <View style={styles.dividerFull} />
+
+          <View style={styles.infoSection}>
+            <Text style={styles.infoTitle}>Need more help?</Text>
+            <Text style={styles.infoDescription}>
+              If you encounter any issues or have suggestions, feel free to reach out to our team at robertojrprisoris@gmail.com.
+            </Text>
+          </View>
+
+          <TouchableOpacity style={styles.closeBtn} onPress={() => setHelpModalVisible(false)}>
+            <Text style={styles.closeBtnText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </ActionSheet>
+
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-    paddingBottom: 90, // Safe padding for floating tab bar
+    backgroundColor: colors.background,
+    paddingBottom: 90, 
   },
   scrollContent: {
     padding: theme.spacing.lg,
@@ -112,7 +232,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: theme.fonts.bold,
     fontSize: 28,
-    color: theme.colors.text,
+    color: colors.text,
     marginBottom: theme.spacing.xl,
   },
   profileSection: {
@@ -129,13 +249,13 @@ const styles = StyleSheet.create({
     height: 70,
     borderRadius: 35,
     borderWidth: 2,
-    borderColor: theme.colors.primary,
+    borderColor: colors.primary,
   },
   avatarPlaceholder: {
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -143,19 +263,19 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     width: 24,
     height: 24,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#ffffff',
+    borderColor: colors.card,
   },
   avatarText: {
     fontFamily: theme.fonts.bold,
     fontSize: 26,
-    color: theme.colors.card,
+    color: '#ffffff',
   },
   profileInfo: {
     flex: 1,
@@ -163,21 +283,24 @@ const styles = StyleSheet.create({
   profileName: {
     fontFamily: theme.fonts.bold,
     fontSize: 18,
-    color: theme.colors.text,
+    color: colors.text,
   },
   profileEmail: {
     fontFamily: theme.fonts.regular,
     fontSize: 14,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
   settingsGroup: {
-    backgroundColor: theme.colors.card,
+    backgroundColor: colors.card,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     overflow: 'hidden',
     marginBottom: theme.spacing.xl,
+  },
+  settingItemWrapper: {
+    // Wrapper for consistent padding/alignment
   },
   settingItem: {
     flexDirection: 'row',
@@ -192,12 +315,12 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontFamily: theme.fonts.medium,
     fontSize: 16,
-    color: theme.colors.text,
+    color: colors.text,
     marginLeft: theme.spacing.md,
   },
   divider: {
     height: 1,
-    backgroundColor: theme.colors.border,
+    backgroundColor: colors.border,
     marginLeft: 52,
   },
   logoutButton: {
@@ -205,15 +328,96 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: theme.spacing.md,
-    backgroundColor: '#fef2f2',
+    backgroundColor: colors.isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2',
     borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: colors.isDarkMode ? 'rgba(239, 68, 68, 0.2)' : '#fecaca',
   },
   logoutText: {
     fontFamily: theme.fonts.medium,
     fontSize: 16,
     color: '#ef4444',
     marginLeft: 8,
+  },
+  modalContent: {
+    paddingVertical: theme.spacing.md,
+  },
+  infoSection: {
+    marginBottom: theme.spacing.xl,
+  },
+  infoIcon: {
+    marginBottom: theme.spacing.sm,
+  },
+  infoTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 18,
+    color: colors.text,
+    marginBottom: 8,
+  },
+  infoDescription: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 15,
+    color: colors.textMuted,
+    lineHeight: 22,
+  },
+  dividerFull: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginBottom: theme.spacing.xl,
+  },
+  closeBtn: {
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    marginTop: theme.spacing.md,
+  },
+  closeBtnText: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 16,
+    color: "#ef4444",
+  },
+  aboutCard: {
+    backgroundColor: colors.card,
+    borderRadius: 24,
+    padding: 24,
+    marginTop: 24,
+    borderWidth: 2,
+    borderColor: colors.border,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: isDarkMode ? 0.2 : 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  aboutHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  aboutTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 20,
+    color: colors.text,
+  },
+  aboutDescription: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 14,
+    color: colors.textMuted,
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  aboutFooter: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 16,
+    alignItems: 'center',
+  },
+  aboutVersion: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 12,
+    color: colors.primary,
+    opacity: 0.8,
   },
 });

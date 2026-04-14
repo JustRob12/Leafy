@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Animated, Easing, FlatList, Dimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { theme } from '../theme';
-import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator as CalcIcon, ChevronRight } from 'lucide-react-native';
+import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Leaf, Calendar as CalendarIcon } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 import WalletDropdown from '../components/WalletDropdown';
 
 export default function HomeScreen() {
-  const { totalBalance, wallets, transactions, addTransaction, showFeedback, showConfirm, goals } = useAppContext();
+  const { totalBalance, wallets, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode } = useAppContext();
   const navigation = useNavigation<any>();
 
+  const styles = getStyles(colors, isDarkMode);
+
   const SCREEN_WIDTH = Dimensions.get('window').width;
+  const WALLET_ITEM_WIDTH = 100; // Tighter ticker
   
   // Carousel logic
   const carouselData = goals.length > 0 ? [...goals, ...goals, ...goals] : []; // Tripled for infinite
@@ -20,6 +23,16 @@ export default function HomeScreen() {
   const scrollXAnim = useRef(new Animated.Value(0)).current;
   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
   const isDragging = useRef(false);
+
+  // Wallet Carousel logic (Opposite Direction)
+  const walletCarouselData = wallets.length > 0 ? [...wallets, ...wallets, ...wallets] : [];
+  const [activeWalletIndex, setActiveWalletIndex] = useState(wallets.length);
+  const walletFlatListRef = useRef<FlatList>(null);
+  const walletScrollXAnim = useRef(new Animated.Value(0)).current;
+  const walletAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
+  const isWalletDragging = useRef(false);
+
+
 
   // Function to run continuous animation
   const runAnimation = (startValue: number) => {
@@ -45,6 +58,33 @@ export default function HomeScreen() {
         const resetValue = setWidth;
         scrollXAnim.setValue(resetValue);
         runAnimation(resetValue);
+      }
+    });
+  };
+
+  // Function to run continuous animation for wallets (OPPOSITE: Right to Left -> Left to Right)
+  const runWalletAnimation = (startValue: number) => {
+    if (wallets.length <= 1) return;
+    
+    const setWidth = wallets.length * WALLET_ITEM_WIDTH;
+    const endValue = 0; // Animating backwards to 0
+    
+    // Duration based on distance to 0
+    const remainingDistance = startValue;
+    const duration = remainingDistance * (8000 / WALLET_ITEM_WIDTH); // Faster ticker
+
+    walletAnimationRef.current = Animated.timing(walletScrollXAnim, {
+      toValue: endValue,
+      duration: Math.max(0, duration),
+      easing: Easing.linear,
+      useNativeDriver: false,
+    });
+
+    walletAnimationRef.current.start(({ finished }) => {
+      if (finished) {
+        const resetValue = setWidth;
+        walletScrollXAnim.setValue(resetValue);
+        runWalletAnimation(resetValue);
       }
     });
   };
@@ -82,6 +122,37 @@ export default function HomeScreen() {
     }
   }, [goals.length]);
 
+
+
+  useEffect(() => {
+    if (wallets.length > 1) {
+      const setWidth = wallets.length * WALLET_ITEM_WIDTH;
+      walletScrollXAnim.setValue(setWidth);
+      
+      const initialJump = setTimeout(() => {
+        walletFlatListRef.current?.scrollToOffset({ offset: setWidth, animated: false });
+      }, 100);
+
+      const listenerId = walletScrollXAnim.addListener(({ value }) => {
+        if (!isWalletDragging.current) {
+          walletFlatListRef.current?.scrollToOffset({ offset: value, animated: false });
+          const index = Math.round(value / WALLET_ITEM_WIDTH);
+          if (index !== activeWalletIndex) {
+            setActiveWalletIndex(index);
+          }
+        }
+      });
+
+      runWalletAnimation(setWidth);
+
+      return () => {
+        clearTimeout(initialJump);
+        walletScrollXAnim.removeListener(listenerId);
+        walletAnimationRef.current?.stop();
+      };
+    }
+  }, [wallets.length]);
+
   const handleScrollBegin = () => {
     isDragging.current = true;
     animationRef.current?.stop();
@@ -115,6 +186,39 @@ export default function HomeScreen() {
       const contentOffset = event.nativeEvent.contentOffset.x;
       const index = Math.round(contentOffset / SCREEN_WIDTH);
       setActiveGoalIndex(index);
+    }
+  };
+
+  const handleWalletScrollBegin = () => {
+    isWalletDragging.current = true;
+    walletAnimationRef.current?.stop();
+  };
+
+  const handleWalletScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    isWalletDragging.current = false;
+    const currentOffset = event.nativeEvent.contentOffset.x;
+    const setWidth = wallets.length * WALLET_ITEM_WIDTH;
+    
+    let nextOffset = currentOffset;
+    if (currentOffset <= 0) {
+      nextOffset = setWidth;
+    } else if (currentOffset >= setWidth * 2) {
+      nextOffset = setWidth;
+    }
+    
+    walletScrollXAnim.setValue(nextOffset);
+    walletFlatListRef.current?.scrollToOffset({ offset: nextOffset, animated: false });
+    
+    const index = Math.round(nextOffset / WALLET_ITEM_WIDTH);
+    setActiveWalletIndex(index);
+    runWalletAnimation(nextOffset);
+  };
+
+  const onWalletScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (isWalletDragging.current) {
+      const contentOffset = event.nativeEvent.contentOffset.x;
+      const index = Math.round(contentOffset / WALLET_ITEM_WIDTH);
+      setActiveWalletIndex(index);
     }
   };
 
@@ -205,41 +309,76 @@ export default function HomeScreen() {
 
         {/* QUICK ACTIONS */}
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Wallets')}>
-            <View style={styles.actionIconBorder}>
-              <Wallet size={20} color={theme.colors.text} />
-            </View>
-            <Text style={styles.actionText}>Wallets</Text>
-          </TouchableOpacity>
-
           <TouchableOpacity style={styles.actionItem} onPress={() => setSavingsModalVisible(true)}>
             <View style={styles.actionIconBorder}>
-              <Plus size={20} color={theme.colors.text} />
+              <Plus size={20} color={colors.text} />
             </View>
             <Text style={styles.actionText}>Add Savings</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionItem} onPress={() => setWithdrawModalVisible(true)}>
             <View style={styles.actionIconBorder}>
-              <ArrowUpRight size={20} color={theme.colors.text} />
+              <ArrowUpRight size={20} color={colors.text} />
             </View>
             <Text style={styles.actionText}>Withdraw</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Calculator')}>
             <View style={styles.actionIconBorder}>
-              <CalcIcon size={20} color={theme.colors.text} />
+              <Calculator size={20} color={colors.text} />
             </View>
             <Text style={styles.actionText}>Calculator</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Goals')}>
+          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Calendar')}>
             <View style={styles.actionIconBorder}>
-              <Target size={20} color={theme.colors.text} />
+              <CalendarIcon size={20} color={colors.text} />
             </View>
-            <Text style={styles.actionText}>Add Goal</Text>
+            <Text style={styles.actionText}>Calendar</Text>
           </TouchableOpacity>
         </View>
+
+        {/* WALLETS SECTION */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Wallets</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Wallets')}>
+            <Text style={styles.seeAllText}>SEE ALL</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* WALLET TICKER (Opposite Direction, tightly packed) */}
+        {wallets.length > 0 && (
+          <View style={styles.walletTickerContainer}>
+            <FlatList
+              ref={walletFlatListRef}
+              data={walletCarouselData}
+              keyExtractor={(item, index) => `${item.id}-${index}`}
+              horizontal
+              pagingEnabled={false}
+              showsHorizontalScrollIndicator={false}
+              onScroll={onWalletScroll}
+              onMomentumScrollEnd={handleWalletScrollEnd}
+              scrollEventThrottle={16}
+              onScrollBeginDrag={handleWalletScrollBegin}
+              onScrollEndDrag={handleWalletScrollEnd}
+              getItemLayout={(_, index) => ({
+                length: WALLET_ITEM_WIDTH,
+                offset: WALLET_ITEM_WIDTH * index,
+                index,
+              })}
+              renderItem={({ item: wallet }) => (
+                <View style={[styles.walletSlide, { width: WALLET_ITEM_WIDTH }]}>
+                   <View style={styles.walletMinimalCard}>
+                     <View style={styles.walletPill}>
+                       <Wallet size={10} color={theme.colors.primary} />
+                       <Text style={styles.walletNameText} numberOfLines={1}>{wallet.name}</Text>
+                     </View>
+                   </View>
+                </View>
+              )}
+            />
+          </View>
+        )}
 
         {/* ACTIVE GOALS */}
         <View style={styles.sectionHeader}>
@@ -372,6 +511,8 @@ export default function HomeScreen() {
           )}
         </View>
 
+
+
         <View style={{ height: 20 }} />
       </ScrollView>
 
@@ -455,24 +596,22 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.lg,
-    paddingBottom: 140, // Uniform safe gap for absolute tab bar
+    paddingBottom: 140,
   },
-
-  // Premium Balance Card - Now "Glass Green" palette
   premiumCard: {
-    backgroundColor: '#10b981', // Vivid Green base
+    backgroundColor: colors.primary,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
     marginBottom: theme.spacing.xl,
-    shadowColor: '#10b981',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -532,27 +671,23 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     marginTop: 2,
   },
-
-  // Quick Actions
   actionRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: theme.spacing.xl,
-    gap: 12,
+    paddingHorizontal: theme.spacing.xs,
   },
   actionItem: {
     alignItems: 'center',
-    width: '18%', // Fits 5 on most screens with gap
-    minWidth: 64,
+    width: '23%',
   },
   actionIconBorder: {
     width: 52,
     height: 52,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
@@ -560,10 +695,8 @@ const styles = StyleSheet.create({
   actionText: {
     fontFamily: theme.fonts.medium,
     fontSize: 10,
-    color: theme.colors.text,
+    color: colors.text,
   },
-
-  // Section Headers
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -573,32 +706,30 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 18,
-    color: theme.colors.text,
+    color: colors.text,
   },
   seeAllText: {
     fontFamily: theme.fonts.medium,
     fontSize: 12,
-    color: theme.colors.primary,
+    color: colors.primary,
   },
-
-  // Active Goals
   emptyGoalCard: {
-    backgroundColor: theme.colors.card,
+    backgroundColor: colors.card,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.xl,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     marginBottom: theme.spacing.xl,
   },
   emptyGoalText: {
     fontFamily: theme.fonts.medium,
     fontSize: 16,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     marginBottom: theme.spacing.lg,
   },
   emptyGoalBtn: {
-    backgroundColor: '#ecfdf5',
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: theme.borderRadius.full,
@@ -606,7 +737,7 @@ const styles = StyleSheet.create({
   emptyGoalBtnText: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 14,
-    color: theme.colors.primary,
+    color: colors.primary,
   },
   goalsList: {
     gap: theme.spacing.md,
@@ -614,7 +745,7 @@ const styles = StyleSheet.create({
   },
   carouselContainer: {
     marginBottom: theme.spacing.xl,
-    marginHorizontal: -theme.spacing.lg, // Bleed to edges
+    marginHorizontal: -theme.spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -623,15 +754,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   goalCard: {
-    backgroundColor: theme.colors.card,
+    backgroundColor: colors.card,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     width: '100%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: isDarkMode ? 0.3 : 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
@@ -648,11 +779,11 @@ const styles = StyleSheet.create({
   },
   activeDot: {
     width: 20,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
   },
   inactiveDot: {
     width: 6,
-    backgroundColor: theme.colors.border,
+    backgroundColor: colors.border,
   },
   goalRow: {
     flexDirection: 'row',
@@ -669,45 +800,43 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 14,
-    backgroundColor: '#ecfdf5',
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
     alignItems: 'center',
     justifyContent: 'center',
   },
   goalTitle: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 16,
-    color: theme.colors.text,
+    color: colors.text,
   },
   goalAmountText: {
     fontFamily: theme.fonts.medium,
     fontSize: 13,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
   goalPercentage: {
     fontFamily: theme.fonts.bold,
     fontSize: 16,
-    color: theme.colors.primary,
+    color: colors.primary,
   },
   progressBarBg: {
     height: 8,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: isDarkMode ? '#334155' : '#f1f5f9',
     borderRadius: 4,
     width: '100%',
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 4,
   },
-
-  // Transactions list
   transactionsList: {
-    backgroundColor: theme.colors.card,
+    backgroundColor: colors.card,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     paddingHorizontal: theme.spacing.md,
   },
   txItem: {
@@ -716,7 +845,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: colors.border,
   },
   txLeft: {
     flexDirection: 'row',
@@ -727,8 +856,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: theme.borderRadius.full,
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: '#f8fafc',
+    borderColor: colors.border,
+    backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: theme.spacing.md,
@@ -736,55 +865,87 @@ const styles = StyleSheet.create({
   txTitle: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 15,
-    color: theme.colors.text,
+    color: colors.text,
   },
   txDate: {
     fontFamily: theme.fonts.regular,
     fontSize: 13,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
   txAmountNegative: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 15,
-    color: '#ef4444',
+    color: colors.danger,
   },
   txAmountPositive: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 15,
-    color: theme.colors.primary,
+    color: colors.primary,
   },
   inputLabel: {
     fontFamily: theme.fonts.medium,
     fontSize: 14,
-    color: theme.colors.text,
+    color: colors.text,
     marginBottom: theme.spacing.sm,
   },
   input: {
-    backgroundColor: theme.colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     fontFamily: theme.fonts.regular,
     fontSize: 16,
-    color: theme.colors.text,
+    color: colors.text,
     marginBottom: theme.spacing.lg,
   },
   saveBtn: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     alignItems: 'center',
     marginTop: theme.spacing.sm,
   },
   saveBtnDisabled: {
-    backgroundColor: theme.colors.border,
+    backgroundColor: colors.border,
   },
   saveBtnText: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 16,
-    color: theme.colors.card,
+    color: '#ffffff',
+  },
+  walletTickerContainer: {
+    marginBottom: theme.spacing.lg,
+    marginHorizontal: -theme.spacing.lg,
+  },
+  walletSlide: {
+    paddingHorizontal: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  walletMinimalCard: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  walletPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 16,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.1)',
+    width: '95%',
+    justifyContent: 'center',
+  },
+  walletNameText: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 10,
+    color: colors.primary,
+    textTransform: 'uppercase',
   },
 
 });

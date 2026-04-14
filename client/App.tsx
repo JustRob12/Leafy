@@ -16,6 +16,7 @@ import HistoryScreen from './src/screens/HistoryScreen';
 import CalculatorScreen from './src/screens/CalculatorScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import DataTransferScreen from './src/screens/DataTransferScreen';
+import CalendarScreen from './src/screens/CalendarScreen';
 import MainHeader from './src/components/MainHeader';
 import FeedbackModal from './src/components/FeedbackModal';
 import ConfirmModal from './src/components/ConfirmModal';
@@ -25,7 +26,7 @@ import BottomTabNavigator from './src/navigation/BottomTabNavigator';
 const Stack = createNativeStackNavigator();
 
 function MainNavigation() {
-  const { isLoaded, username } = useAppContext();
+  const { isLoaded, username, colors, isDarkMode } = useAppContext();
   const [showSplash, setShowSplash] = useState(true);
 
   if (showSplash || !isLoaded) {
@@ -40,8 +41,8 @@ function MainNavigation() {
 
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDarkMode ? "light" : "dark"} />
       {/* Global Header - Only shows when logged in */}
       {username && <MainHeader />}
       
@@ -54,6 +55,7 @@ function MainNavigation() {
             <Stack.Screen name="Calculator" component={CalculatorScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="DataTransfer" component={DataTransferScreen} />
+            <Stack.Screen name="Calendar" component={CalendarScreen} />
           </Stack.Group>
         )}
       </Stack.Navigator>

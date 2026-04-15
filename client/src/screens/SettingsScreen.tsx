@@ -1,9 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Switch, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Animated, Easing } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { theme } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Moon, Sun, Leaf } from 'lucide-react-native';
+import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
@@ -14,29 +14,11 @@ export default function SettingsScreen() {
 
   const styles = getStyles(colors, isDarkMode);
 
-  const aboutOpacity = React.useRef(new Animated.Value(1)).current;
 
-  React.useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(aboutOpacity, {
-          toValue: 0.4,
-          duration: 2500,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(aboutOpacity, {
-          toValue: 1,
-          duration: 2500,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, []);
 
   const [privacyModalVisible, setPrivacyModalVisible] = React.useState(false);
   const [helpModalVisible, setHelpModalVisible] = React.useState(false);
+  const [aboutModalVisible, setAboutModalVisible] = React.useState(false);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -61,9 +43,9 @@ export default function SettingsScreen() {
   const settingsOptions = [
     { id: '1', title: 'Account Settings', icon: User, action: () => { } },
     { id: '2', title: 'Backup & Restore', icon: Database, action: () => navigation.navigate('DataTransfer') },
-    { id: '5', title: 'Dark Mode', icon: isDarkMode ? Moon : Sun, isToggle: true },
     { id: '3', title: 'Privacy & Security', icon: Shield, action: () => { setPrivacyModalVisible(true); } },
     { id: '4', title: 'Help & Support', icon: CircleHelp, action: () => { setHelpModalVisible(true); } },
+    { id: '6', title: 'About Leafy', icon: Leaf, action: () => { setAboutModalVisible(true); } },
   ];
 
   const handleClearData = () => {
@@ -108,23 +90,13 @@ export default function SettingsScreen() {
                 <View style={styles.settingItemWrapper}>
                   <TouchableOpacity 
                     style={styles.settingItem} 
-                    onPress={option.isToggle ? undefined : (option.action as any)}
-                    disabled={option.isToggle}
+                    onPress={option.action as any}
                   >
                     <View style={styles.settingItemLeft}>
                       <Icon size={20} color={colors.textMuted} />
                       <Text style={styles.settingTitle}>{option.title}</Text>
                     </View>
-                    {option.isToggle ? (
-                      <Switch 
-                        value={isDarkMode} 
-                        onValueChange={toggleTheme}
-                        trackColor={{ false: '#e2e8f0', true: colors.primary }}
-                        thumbColor={isDarkMode ? '#ffffff' : '#f4f3f4'}
-                      />
-                    ) : (
-                      <ChevronRight size={20} color={colors.border} />
-                    )}
+                    <ChevronRight size={20} color={colors.border} />
                   </TouchableOpacity>
                 </View>
                 {index < settingsOptions.length - 1 && <View style={styles.divider} />}
@@ -137,20 +109,6 @@ export default function SettingsScreen() {
           <Trash2 size={20} color="#ef4444" />
           <Text style={styles.logoutText}>Clear App Data</Text>
         </TouchableOpacity>
-
-        {/* ABOUT THIS APP CARD */}
-        <Animated.View style={[styles.aboutCard, { opacity: aboutOpacity }]}>
-          <View style={styles.aboutHeader}>
-            <Leaf size={24} color={colors.primary} />
-            <Text style={styles.aboutTitle}>About Leafy</Text>
-          </View>
-          <Text style={styles.aboutDescription}>
-            Leafy is your premium financial companion designed to help you track wallets, set savings goals, and manage transactions with ease. Grow your wealth one leaf at a time.
-          </Text>
-          <View style={styles.aboutFooter}>
-            <Text style={styles.aboutVersion}>v1.0.0 • Crafted for Growth</Text>
-          </View>
-        </Animated.View>
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -212,6 +170,38 @@ export default function SettingsScreen() {
 
           <TouchableOpacity style={styles.closeBtn} onPress={() => setHelpModalVisible(false)}>
             <Text style={styles.closeBtnText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </ActionSheet>
+
+      {/* About Leafy Modal */}
+      <ActionSheet
+        visible={aboutModalVisible}
+        onClose={() => setAboutModalVisible(false)}
+        title="About Leafy"
+      >
+        <View style={styles.modalContent}>
+          <View style={styles.infoSection}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+               <Leaf size={24} color={colors.primary} />
+               <Text style={styles.infoTitle}>Leafy v1.0.0</Text>
+            </View>
+            <Text style={styles.infoDescription}>
+              Leafy is your premium financial companion designed to help you track wallets, set savings goals, and manage transactions with ease. Grow your wealth one leaf at a time.
+            </Text>
+          </View>
+
+          <View style={styles.dividerFull} />
+
+          <View style={styles.infoSection}>
+            <Text style={styles.infoTitle}>Our Mission</Text>
+            <Text style={styles.infoDescription}>
+              To provide simple yet powerful tools that empower individuals to take control of their financial future through local, secure, and intuitive asset management.
+            </Text>
+          </View>
+
+          <TouchableOpacity style={styles.closeBtn} onPress={() => setAboutModalVisible(false)}>
+            <Text style={styles.closeBtnText}>Crafted for Growth</Text>
           </TouchableOpacity>
         </View>
       </ActionSheet>

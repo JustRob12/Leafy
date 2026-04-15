@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Modal, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Modal, Image, Alert, Switch } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { navigationRef } from '../navigation/navigationUtils';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, User, Settings, LogOut, Info, ChevronRight } from 'lucide-react-native';
+import { Plus, User, Settings, LogOut, Info, ChevronRight, Moon, Sun } from 'lucide-react-native';
 
 export interface MainHeaderProps {
   activeRoute?: string;
 }
 
 export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderProps) {
-  const { username, userImage, showConfirm, clearData, colors, isDarkMode } = useAppContext();
+  const { username, userImage, showConfirm, clearData, colors, isDarkMode, toggleTheme } = useAppContext();
   const navigation = useNavigation<any>();
 
   const styles = getStyles(colors, isDarkMode);
@@ -144,6 +144,19 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                   </View>
                   <ChevronRight size={16} color={colors.border} />
                 </TouchableOpacity>
+
+                <View style={styles.dropdownItem}>
+                  <View style={styles.dropdownItemLeft}>
+                    {isDarkMode ? <Moon size={18} color={colors.textMuted} /> : <Sun size={18} color={colors.textMuted} />}
+                    <Text style={styles.dropdownItemText}>Dark Mode</Text>
+                  </View>
+                  <Switch 
+                    value={isDarkMode} 
+                    onValueChange={toggleTheme}
+                    trackColor={{ false: '#e2e8f0', true: colors.primary }}
+                    thumbColor={isDarkMode ? '#ffffff' : '#f4f3f4'}
+                  />
+                </View>
 
                 <View style={styles.dropdownDivider} />
 

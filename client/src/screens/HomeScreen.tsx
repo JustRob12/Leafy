@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Animated, Easing, FlatList, Dimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { theme } from '../theme';
-import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Leaf, Calendar as CalendarIcon } from 'lucide-react-native';
+import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';

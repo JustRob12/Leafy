@@ -194,63 +194,70 @@ export default function WalletsScreen() {
               key={wallet.id} 
               style={[styles.premiumCard, isReordering && { borderColor: colors.primary, borderStyle: 'dashed', borderWidth: 2 }]}
             >
-              <View style={styles.cardMain}>
-                {isReordering && (
-                  <View style={styles.reorderActions}>
-                    <TouchableOpacity
-                      onPress={() => moveWallet(index, 'up')}
-                      disabled={index === 0}
-                      style={[styles.reorderBtn, index === 0 && { opacity: 0.3 }]}
-                    >
-                      <ChevronRight size={18} color={colors.text} style={{ transform: [{ rotate: '-90deg' }] }} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => moveWallet(index, 'down')}
-                      disabled={index === wallets.length - 1}
-                      style={[styles.reorderBtn, index === wallets.length - 1 && { opacity: 0.3 }]}
-                    >
-                      <ChevronRight size={18} color={colors.text} style={{ transform: [{ rotate: '90deg' }] }} />
-                    </TouchableOpacity>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardHeaderLeft}>
+                  <View style={styles.cardIconBox}>
+                    {(() => {
+                      if (wallet.iconType === 'custom' && wallet.customIcon) {
+                        return <RNImage source={{ uri: wallet.customIcon }} style={styles.cardIconImage} />;
+                      }
+                      if (wallet.iconType === 'preset' && wallet.presetLogo) {
+                        return <RNImage source={brandLogos[wallet.presetLogo]} style={[styles.cardIconImage, { resizeMode: 'contain' }]} />;
+                      }
+                      const PurposeIcon = purposes.find(p => p.label === wallet.purpose)?.icon || WalletIcon;
+                      return <PurposeIcon size={28} color={colors.primary} />;
+                    })()}
                   </View>
-                )}
-
-                <View style={styles.cardIconBox}>
-                  {(() => {
-                    if (wallet.iconType === 'custom' && wallet.customIcon) {
-                      return <RNImage source={{ uri: wallet.customIcon }} style={styles.cardIconImage} />;
-                    }
-                    if (wallet.iconType === 'preset' && wallet.presetLogo) {
-                      return <RNImage source={brandLogos[wallet.presetLogo]} style={[styles.cardIconImage, { resizeMode: 'contain' }]} />;
-                    }
-                    const PurposeIcon = purposes.find(p => p.label === wallet.purpose)?.icon || WalletIcon;
-                    return <PurposeIcon size={40} color={colors.primary} />;
-                  })()}
+                  <Text style={styles.cardName} numberOfLines={1}>{wallet.name}</Text>
                 </View>
-
-                <View style={styles.cardInfo}>
-                  <Text style={styles.cardName}>{wallet.name}</Text>
-                  <Text style={styles.cardBalanceText}>₱{wallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
-                  <View style={styles.purposePill}>
-                    <Text style={styles.purposePillText}>{wallet.purpose}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.cardActions}>
-                  {wallet.qrCodeImage && (
+                
+                <View style={styles.cardHeaderRight}>
+                  {isReordering ? (
+                    <View style={styles.reorderActionsHorizontal}>
+                      <TouchableOpacity
+                        onPress={() => moveWallet(index, 'up')}
+                        disabled={index === 0}
+                        style={[styles.reorderBtnSmall, index === 0 && { opacity: 0.3 }]}
+                      >
+                        <ChevronRight size={14} color={colors.text} style={{ transform: [{ rotate: '-180deg' }] }} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => moveWallet(index, 'down')}
+                        disabled={index === wallets.length - 1}
+                        style={[styles.reorderBtnSmall, index === wallets.length - 1 && { opacity: 0.3 }]}
+                      >
+                        <ChevronRight size={14} color={colors.text} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
                     <TouchableOpacity
-                      onPress={(e) => { e.stopPropagation(); setViewingQrCode(wallet.qrCodeImage || null); }}
-                      style={styles.innerActionBtn}
+                      onPress={() => openEditModal(wallet)}
+                      style={styles.moreActionBtn}
                     >
-                      <QrCode size={18} color={colors.textMuted} />
+                      <MoreHorizontal size={20} color={colors.textMuted} />
                     </TouchableOpacity>
                   )}
-                  <TouchableOpacity
-                    onPress={() => !isReordering && openEditModal(wallet)}
-                    style={styles.moreActionBtn}
-                  >
-                    <MoreHorizontal size={20} color={colors.textMuted} />
-                  </TouchableOpacity>
                 </View>
+              </View>
+
+              <View style={styles.cardBody}>
+                <Text style={styles.cardBalanceText}>₱{wallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
+              </View>
+
+              <View style={styles.cardFooter}>
+                <View style={styles.purposePill}>
+                  <Text style={styles.purposePillText}>{wallet.purpose}</Text>
+                </View>
+
+                {wallet.qrCodeImage && (
+                  <TouchableOpacity
+                    onPress={(e) => { e.stopPropagation(); setViewingQrCode(wallet.qrCodeImage || null); }}
+                    style={styles.qrActionBtn}
+                  >
+                    <QrCode size={18} color={colors.primary} />
+                    <Text style={styles.qrActionText}>QR</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           ))
@@ -558,78 +565,96 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       elevation: 4,
       overflow: 'hidden',
     },
-    cardMain: {
+    cardHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    cardHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    cardHeaderRight: {
       flexDirection: 'row',
       alignItems: 'center',
     },
     cardIconBox: {
-      width: 64,
-      height: 64,
+      width: 44,
+      height: 44,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: 20,
+      marginRight: 12,
       backgroundColor: 'transparent',
     },
-    cardInfo: {
+    cardName: {
+      fontFamily: theme.fonts.semiBold,
+      fontSize: 16,
+      color: colors.text,
       flex: 1,
     },
-    cardName: {
-      fontFamily: theme.fonts.medium,
-      fontSize: 12,
-      color: colors.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: 1.5,
-      marginBottom: 2,
+    cardBody: {
+      alignItems: 'center',
+      paddingVertical: 12,
     },
     cardBalanceText: {
       fontFamily: theme.fonts.bold,
-      fontSize: 26,
+      fontSize: 34,
       color: colors.text,
-      marginBottom: 4,
+      textAlign: 'center',
+    },
+    cardFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 8,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
     },
     purposePill: {
-      alignSelf: 'flex-start',
       backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.05)',
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 8,
     },
     purposePillText: {
       fontFamily: theme.fonts.semiBold,
-      fontSize: 10,
+      fontSize: 11,
       color: colors.primary,
       textTransform: 'uppercase',
     },
-    cardActions: {
+    qrActionBtn: {
+      flexDirection: 'row',
       alignItems: 'center',
-      gap: 16,
+      gap: 6,
+      backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 10,
     },
-    reorderActions: {
-      marginRight: 15,
-      gap: 10,
+    qrActionText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: 12,
+      color: colors.primary,
     },
-    reorderBtn: {
-      width: 32,
-      height: 32,
-      borderRadius: 8,
+    reorderActionsHorizontal: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    reorderBtnSmall: {
+      width: 28,
+      height: 28,
+      borderRadius: 6,
       backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#f8fafc',
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
       borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#f1f5f9',
     },
-    innerActionBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc',
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#f1f5f9',
-    },
     moreActionBtn: {
-      padding: 8,
+      padding: 4,
     },
     cardIconImage: {
       width: '100%',

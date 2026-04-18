@@ -122,6 +122,8 @@ type AppContextType = {
   isUnlocked: boolean;
   setAppPin: (pin: string | null) => Promise<void>;
   toggleSecurity: (enabled: boolean) => Promise<void>;
+  isBiometricsEnabled: boolean;
+  toggleBiometrics: (enabled: boolean) => Promise<void>;
   unlockApp: () => void;
 };
 
@@ -140,6 +142,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [userImage, setUserImageState] = useState<string | null>(null);
   const [appPin, setAppPinState] = useState<string | null>(null);
   const [isSecurityEnabled, setIsSecurityEnabled] = useState(false);
+  const [isBiometricsEnabled, setIsBiometricsEnabled] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode as requested
@@ -183,8 +186,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       const storedPin = await AsyncStorage.getItem('@appPin');
       const storedSecurity = await AsyncStorage.getItem('@isSecurityEnabled');
+      const storedBiometrics = await AsyncStorage.getItem('@isBiometricsEnabled');
       
       if (storedPin) setAppPinState(storedPin);
+      if (storedBiometrics) setIsBiometricsEnabled(storedBiometrics === 'true');
+      
       if (storedSecurity) {
         const enabled = storedSecurity === 'true';
         setIsSecurityEnabled(enabled);
@@ -412,6 +418,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTravels([]);
     setAppPinState(null);
     setIsSecurityEnabled(false);
+    setIsBiometricsEnabled(false);
     setUserImageState(null);
     setIsDarkMode(true);
     showFeedback('delete', 'All Data Cleared');
@@ -574,6 +581,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!enabled) setIsUnlocked(true);
   };
 
+  const toggleBiometrics = async (enabled: boolean) => {
+    await AsyncStorage.setItem('@isBiometricsEnabled', enabled.toString());
+    setIsBiometricsEnabled(enabled);
+  };
+
   const unlockApp = () => {
     setIsUnlocked(true);
   };
@@ -636,6 +648,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isUnlocked,
         setAppPin,
         toggleSecurity,
+        isBiometricsEnabled,
+        toggleBiometrics,
         unlockApp
       }}
     >

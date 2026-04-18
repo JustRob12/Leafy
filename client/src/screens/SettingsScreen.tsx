@@ -1,15 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Animated, Easing } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { theme } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check } from 'lucide-react-native';
+import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check, Fingerprint } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 
 export default function SettingsScreen() {
-  const { username, userImage, setUserImage, clearData, showConfirm, isDarkMode, toggleTheme, colors, appPin, setAppPin, isSecurityEnabled, toggleSecurity } = useAppContext();
+  const { username, userImage, setUserImage, clearData, showConfirm, isDarkMode, toggleTheme, colors, appPin, setAppPin, isSecurityEnabled, toggleSecurity, isBiometricsEnabled, toggleBiometrics } = useAppContext();
   const navigation = useNavigation<any>();
 
   const styles = getStyles(colors, isDarkMode);
@@ -22,6 +23,17 @@ export default function SettingsScreen() {
   const [securityModalVisible, setSecurityModalVisible] = React.useState(false);
   const [pinSetupVisible, setPinSetupVisible] = React.useState(false);
   const [newPin, setNewPin] = React.useState('');
+  const [biometricsSupported, setBiometricsSupported] = React.useState(false);
+
+  React.useEffect(() => {
+    checkBiometricSupport();
+  }, []);
+
+  const checkBiometricSupport = async () => {
+    const hasHardware = await LocalAuthentication.hasHardwareAsync();
+    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+    setBiometricsSupported(hasHardware && isEnrolled);
+  };
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -211,6 +223,23 @@ export default function SettingsScreen() {
                    <Text style={styles.configText}>Require PIN to open app</Text>
                 </View>
             </TouchableOpacity>
+
+            {biometricsSupported && (
+              <TouchableOpacity 
+                  style={styles.configItem} 
+                  onPress={() => toggleBiometrics(!isBiometricsEnabled)}
+              >
+                  <View style={styles.configItemLeft}>
+                    <View style={[styles.checkbox, isBiometricsEnabled && styles.checkboxActive]}>
+                        {isBiometricsEnabled && <Check size={14} color="#ffffff" />}
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                       <Fingerprint size={16} color={colors.textMuted} />
+                       <Text style={styles.configText}>Use Biometrics first</Text>
+                    </View>
+                  </View>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity 
                 style={styles.configItem} 

@@ -33,33 +33,36 @@ export default function WalletPickerModal({ visible, onClose, wallets, selectedW
             </TouchableOpacity>
           </View>
 
-          <FlatList
-            data={wallets}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={true}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => {
-              const isSelected = item.id === selectedWalletId;
-              return (
-                <TouchableOpacity
-                  style={[styles.walletItem, isSelected && styles.walletItemSelected]}
-                  onPress={() => {
-                    onSelectWallet(item.id);
-                    onClose();
-                  }}
-                >
-                  <View style={styles.walletIconWrapper}>
-                    <WalletIcon size={20} color={isSelected ? colors.primary : colors.textMuted} />
-                  </View>
-                  <View style={styles.walletDetails}>
-                    <Text style={[styles.walletName, isSelected && styles.walletNameSelected]}>{item.name}</Text>
-                    <Text style={styles.walletBalanceText}>Balance: ₱{item.balance.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
-                  </View>
-                  {isSelected && <View style={styles.checkIndicator} />}
-                </TouchableOpacity>
-              );
-            }}
-          />
+          <View style={{ flexShrink: 1 }}>
+            <FlatList
+              data={wallets}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.listContent}
+              renderItem={({ item }) => {
+                const isSelected = item.id === selectedWalletId;
+                return (
+                  <TouchableOpacity
+                    style={[styles.walletItem, isSelected && styles.walletItemSelected]}
+                    activeOpacity={1}
+                    onPress={() => {
+                      onSelectWallet(item.id);
+                      onClose();
+                    }}
+                  >
+                    <View style={styles.walletIconWrapper}>
+                      <WalletIcon size={20} color={isSelected ? colors.primary : colors.textMuted} />
+                    </View>
+                    <View style={styles.walletDetails}>
+                      <Text style={[styles.walletName, isSelected && styles.walletNameSelected]}>{item.name}</Text>
+                      <Text style={styles.walletBalanceText}>Balance: ₱{item.balance.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
+                    </View>
+                    {isSelected && <View style={styles.checkIndicator} />}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </View>
         </View>
       </View>
     </Modal>
@@ -70,7 +73,7 @@ export default function WalletPickerModal({ visible, onClose, wallets, selectedW
 const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'transparent',
     justifyContent: 'flex-end',
   },
   dismissArea: {

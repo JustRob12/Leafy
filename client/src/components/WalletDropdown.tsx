@@ -22,7 +22,7 @@ export default function WalletDropdown({ selectedWalletId, onSelectWallet }: Wal
       <TouchableOpacity
         style={styles.dropdownBtn}
         onPress={() => setModalVisible(true)}
-        activeOpacity={0.8}
+        activeOpacity={1}
       >
         <Text style={[styles.dropdownBtnText, !selectedWallet && { color: colors.textMuted }]}>
           {selectedWallet ? `${selectedWallet.name} (₱${selectedWallet.balance.toFixed(0)})` : 'Select Wallet...'}

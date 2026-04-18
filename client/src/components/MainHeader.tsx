@@ -137,21 +137,21 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                   <ChevronRight size={16} color={colors.border} />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.dropdownItem} onPress={() => { setDropdownVisible(false); Alert.alert('App Information', 'Leafy v1.0.0\nSecure Local Finance Manager\nCreated with ❤️'); }}>
+                {/* <TouchableOpacity style={styles.dropdownItem} onPress={() => { setDropdownVisible(false); Alert.alert('App Information', 'Leafy v1.0.0\nSecure Local Finance Manager\nCreated with ❤️'); }}>
                   <View style={styles.dropdownItemLeft}>
                     <Info size={18} color={colors.textMuted} />
                     <Text style={styles.dropdownItemText}>App Information</Text>
                   </View>
                   <ChevronRight size={16} color={colors.border} />
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
                 <View style={styles.dropdownItem}>
                   <View style={styles.dropdownItemLeft}>
                     {isDarkMode ? <Moon size={18} color={colors.textMuted} /> : <Sun size={18} color={colors.textMuted} />}
                     <Text style={styles.dropdownItemText}>Dark Mode</Text>
                   </View>
-                  <Switch 
-                    value={isDarkMode} 
+                  <Switch
+                    value={isDarkMode}
                     onValueChange={toggleTheme}
                     trackColor={{ false: '#e2e8f0', true: colors.primary }}
                     thumbColor={isDarkMode ? '#ffffff' : '#f4f3f4'}
@@ -265,14 +265,14 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
-    paddingTop: 100,
+    paddingTop: 80,
     paddingRight: 20,
   },
   dropdownMenu: {
     backgroundColor: colors.card,
     width: 220,
     borderRadius: 20,
-    padding: 16,
+    padding: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.15,
@@ -320,7 +320,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 5,
   },
   dropdownItemLeft: {
     flexDirection: 'row',

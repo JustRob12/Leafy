@@ -13,10 +13,16 @@ import HomeScreen from './src/screens/HomeScreen';
 import WalletsScreen from './src/screens/WalletsScreen';
 import GoalsScreen from './src/screens/GoalsScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
+import SecurityScreen from './src/screens/SecurityScreen';
 import CalculatorScreen from './src/screens/CalculatorScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import DataTransferScreen from './src/screens/DataTransferScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
+import ReceivablesScreen from './src/screens/ReceivablesScreen';
+import DebtsScreen from './src/screens/DebtsScreen';
+import GroceryScreen from './src/screens/GroceryScreen';
+import GroceryDetailScreen from './src/screens/GroceryDetailScreen';
+import TravelScreen from './src/screens/TravelScreen';
 import MainHeader from './src/components/MainHeader';
 import FeedbackModal from './src/components/FeedbackModal';
 import ConfirmModal from './src/components/ConfirmModal';
@@ -26,7 +32,7 @@ import BottomTabNavigator from './src/navigation/BottomTabNavigator';
 const Stack = createNativeStackNavigator();
 
 function MainNavigation() {
-  const { isLoaded, username, colors, isDarkMode } = useAppContext();
+  const { isLoaded, username, colors, isDarkMode, isSecurityEnabled, isUnlocked } = useAppContext();
   const [showSplash, setShowSplash] = useState(true);
 
   if (showSplash || !isLoaded) {
@@ -38,6 +44,10 @@ function MainNavigation() {
     );
   }
 
+  if (username && isSecurityEnabled && !isUnlocked) {
+    return <SecurityScreen />;
+  }
+
 
 
   return (
@@ -45,7 +55,7 @@ function MainNavigation() {
       <StatusBar style={isDarkMode ? "light" : "dark"} />
       {/* Global Header - Only shows when logged in */}
       {username && <MainHeader />}
-      
+
       <Stack.Navigator screenOptions={{ headerShown: false, animation: 'none' }}>
         {!username ? (
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
@@ -56,6 +66,12 @@ function MainNavigation() {
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="DataTransfer" component={DataTransferScreen} />
             <Stack.Screen name="Calendar" component={CalendarScreen} />
+            <Stack.Screen name="Receivables" component={ReceivablesScreen} />
+            <Stack.Screen name="Debts" component={DebtsScreen} />
+            <Stack.Screen name="Grocery" component={GroceryScreen} />
+            <Stack.Screen name="GroceryDetail" component={GroceryDetailScreen} />
+            <Stack.Screen name="Travel" component={TravelScreen} />
+            <Stack.Screen name="Security" component={SecurityScreen} />
           </Stack.Group>
         )}
       </Stack.Navigator>
@@ -66,7 +82,7 @@ function MainNavigation() {
 // We need to move NavigationContainer outside to manage the ref
 function RootNavigator() {
   return (
-    <NavigationContainer 
+    <NavigationContainer
       ref={navigationRef}
       onStateChange={() => {
         // We can't easily trigger re-render of MainNavigation from here without a shared state or event

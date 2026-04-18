@@ -9,7 +9,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import WalletDropdown from '../components/WalletDropdown';
 
 export default function GoalsScreen() {
-  const { goals, addGoal, editGoal, wallets, showFeedback, colors, isDarkMode } = useAppContext();
+  const { goals, addGoal, editGoal, deleteGoal, wallets, showFeedback, showConfirm, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation<any>();
   const [modalVisible, setModalVisible] = useState(false);
@@ -211,6 +211,15 @@ export default function GoalsScreen() {
           })
         )}
       </ScrollView>
+      
+      {/* Floating Add Button */}
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={() => setModalVisible(true)}
+        activeOpacity={0.8}
+      >
+        <Plus size={28} color="#ffffff" />
+      </TouchableOpacity>
 
       {/* Add Goal Modal */}
       <ActionSheet 
@@ -315,6 +324,22 @@ export default function GoalsScreen() {
               >
                 <Text style={{ fontFamily: theme.fonts.semiBold, color: colors.text, fontSize: 16 }}>Edit Goal</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ backgroundColor: '#fef2f2', borderColor: '#ef4444', borderWidth: 1, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, width: '100%', alignItems: 'center', marginTop: 12 }}
+                onPress={() => {
+                  const idToDelete = selectedGoal.id;
+                  const titleToDelete = selectedGoal.title;
+                  setSelectedGoal(null);
+                  showConfirm(
+                    "Delete Goal",
+                    `Are you sure you want to delete "${titleToDelete}"?`,
+                    () => deleteGoal(idToDelete)
+                  );
+                }}
+              >
+                <Text style={{ fontFamily: theme.fonts.semiBold, color: '#ef4444', fontSize: 16 }}>Delete Goal</Text>
+              </TouchableOpacity>
             </View>
           );
         })()}
@@ -360,7 +385,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   scrollContent: {
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.lg,
-    paddingBottom: 140,
+    paddingBottom: 160, // Increased for FAB
   },
   filterSection: {
     marginBottom: 20,
@@ -631,5 +656,22 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.regular,
     fontSize: 12,
     color: colors.textMuted,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 120, // Raised even higher as requested
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 10,
   },
 });

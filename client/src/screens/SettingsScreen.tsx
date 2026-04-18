@@ -3,13 +3,13 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Ani
 import * as ImagePicker from 'expo-image-picker';
 import { theme } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf } from 'lucide-react-native';
+import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 
 export default function SettingsScreen() {
-  const { username, userImage, setUserImage, clearData, showConfirm, isDarkMode, toggleTheme, colors } = useAppContext();
+  const { username, userImage, setUserImage, clearData, showConfirm, isDarkMode, toggleTheme, colors, appPin, setAppPin, isSecurityEnabled, toggleSecurity } = useAppContext();
   const navigation = useNavigation<any>();
 
   const styles = getStyles(colors, isDarkMode);
@@ -19,6 +19,9 @@ export default function SettingsScreen() {
   const [privacyModalVisible, setPrivacyModalVisible] = React.useState(false);
   const [helpModalVisible, setHelpModalVisible] = React.useState(false);
   const [aboutModalVisible, setAboutModalVisible] = React.useState(false);
+  const [securityModalVisible, setSecurityModalVisible] = React.useState(false);
+  const [pinSetupVisible, setPinSetupVisible] = React.useState(false);
+  const [newPin, setNewPin] = React.useState('');
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -44,6 +47,7 @@ export default function SettingsScreen() {
     { id: '1', title: 'Account Settings', icon: User, action: () => { } },
     { id: '2', title: 'Backup & Restore', icon: Database, action: () => navigation.navigate('DataTransfer') },
     { id: '3', title: 'Privacy & Security', icon: Shield, action: () => { setPrivacyModalVisible(true); } },
+    { id: '7', title: 'Security & PIN', icon: Lock, action: () => { setSecurityModalVisible(true); } },
     { id: '4', title: 'Help & Support', icon: CircleHelp, action: () => { setHelpModalVisible(true); } },
     { id: '6', title: 'About Leafy', icon: Leaf, action: () => { setAboutModalVisible(true); } },
   ];
@@ -174,34 +178,102 @@ export default function SettingsScreen() {
         </View>
       </ActionSheet>
 
-      {/* About Leafy Modal */}
+      {/* Security & PIN Modal */}
       <ActionSheet
-        visible={aboutModalVisible}
-        onClose={() => setAboutModalVisible(false)}
-        title="About Leafy"
+        visible={securityModalVisible}
+        onClose={() => setSecurityModalVisible(false)}
+        title="Security & PIN"
       >
         <View style={styles.modalContent}>
-          <View style={styles.infoSection}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-               <Leaf size={24} color={colors.primary} />
-               <Text style={styles.infoTitle}>Leafy v1.0.0</Text>
-            </View>
-            <Text style={styles.infoDescription}>
-              Leafy is your premium financial companion designed to help you track wallets, set savings goals, and manage transactions with ease. Grow your wealth one leaf at a time.
-            </Text>
+          <View style={styles.securityHeader}>
+             <View style={[styles.securityIconBox, isSecurityEnabled && styles.securityIconBoxActive]}>
+                <Lock size={24} color={isSecurityEnabled ? colors.primary : colors.textMuted} />
+             </View>
+             <View>
+                <Text style={styles.securityHeaderTitle}>{isSecurityEnabled ? 'App Protection Active' : 'App Protection Disabled'}</Text>
+                <Text style={styles.securityHeaderSubtitle}>{isSecurityEnabled ? 'Your financial data is secured with a PIN.' : 'Enable security to protect your data.'}</Text>
+             </View>
           </View>
 
-          <View style={styles.dividerFull} />
+          <View style={styles.configGroup}>
+            <TouchableOpacity 
+                style={styles.configItem} 
+                onPress={() => {
+                    if (isSecurityEnabled) toggleSecurity(false);
+                    else if (appPin) toggleSecurity(true);
+                    else setPinSetupVisible(true);
+                }}
+            >
+                <View style={styles.configItemLeft}>
+                   <View style={[styles.checkbox, isSecurityEnabled && styles.checkboxActive]}>
+                      {isSecurityEnabled && <Check size={14} color="#ffffff" />}
+                   </View>
+                   <Text style={styles.configText}>Require PIN to open app</Text>
+                </View>
+            </TouchableOpacity>
 
-          <View style={styles.infoSection}>
-            <Text style={styles.infoTitle}>Our Mission</Text>
-            <Text style={styles.infoDescription}>
-              To provide simple yet powerful tools that empower individuals to take control of their financial future through local, secure, and intuitive asset management.
-            </Text>
+            <TouchableOpacity 
+                style={styles.configItem} 
+                onPress={() => setPinSetupVisible(true)}
+            >
+                <View style={styles.configItemLeft}>
+                   <View style={styles.checkboxPlaceholder} />
+                   <Text style={styles.configText}>{appPin ? 'Change Application PIN' : 'Set Application PIN'}</Text>
+                </View>
+                <ChevronRight size={18} color={colors.border} />
+            </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.closeBtn} onPress={() => setAboutModalVisible(false)}>
-            <Text style={styles.closeBtnText}>Crafted for Growth</Text>
+          <TouchableOpacity style={styles.closeBtn} onPress={() => setSecurityModalVisible(false)}>
+            <Text style={styles.closeBtnText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </ActionSheet>
+
+      {/* PIN Setup Modal */}
+      <ActionSheet
+        visible={pinSetupVisible}
+        onClose={() => { setPinSetupVisible(false); setNewPin(''); }}
+        title="Set Application PIN"
+      >
+        <View style={styles.modalContent}>
+          <Text style={styles.pinDesc}>Enter a 4-digit PIN to secure your application. You will be asked for this PIN every time you open Leafy.</Text>
+          
+          <View style={styles.pinVisual}>
+             {[1,2,3,4].map((_, i) => (
+                <View key={i} style={[styles.pinCircle, newPin.length > i && styles.pinCircleFilled]} />
+             ))}
+          </View>
+
+          <View style={styles.pinKeypad}>
+             {['1','2','3','4','5','6','7','8','9','','0','DEL'].map((k, i) => (
+                <TouchableOpacity 
+                    key={i} 
+                    style={[styles.pinKey, k === '' && styles.pinKeyEmpty]}
+                    disabled={k === ''}
+                    onPress={() => {
+                        if (k === 'DEL') setNewPin(prev => prev.slice(0, -1));
+                        else if (newPin.length < 4) {
+                            const p = newPin + k;
+                            setNewPin(p);
+                            if (p.length === 4) {
+                                setTimeout(async () => {
+                                    await setAppPin(p);
+                                    if (!isSecurityEnabled) await toggleSecurity(true);
+                                    setPinSetupVisible(false);
+                                    setNewPin('');
+                                }, 300);
+                            }
+                        }
+                    }}
+                >
+                   <Text style={styles.pinKeyText}>{k === 'DEL' ? '←' : k}</Text>
+                </TouchableOpacity>
+             ))}
+          </View>
+
+          <TouchableOpacity style={[styles.closeBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border }]} onPress={() => setPinSetupVisible(false)}>
+            <Text style={[styles.closeBtnText, { color: colors.text }]}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </ActionSheet>
@@ -409,5 +481,123 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: 12,
     color: colors.primary,
     opacity: 0.8,
+  },
+  securityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 24,
+    padding: 4,
+  },
+  securityIconBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 42, 0.05)' : '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  securityIconBoxActive: {
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.05)',
+    borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.1)',
+  },
+  securityHeaderTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 17,
+    color: colors.text,
+  },
+  securityHeaderSubtitle: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  configGroup: {
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc',
+    borderRadius: 16,
+    padding: 4,
+    marginBottom: 24,
+  },
+  configItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+  },
+  configItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  checkboxPlaceholder: {
+    width: 22,
+  },
+  configText: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 15,
+    color: colors.text,
+  },
+  pinDesc: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 30,
+  },
+  pinVisual: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 40,
+  },
+  pinCircle: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  pinCircleFilled: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  pinKeypad: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
+  pinKey: {
+    width: '30%',
+    aspectRatio: 1.5,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pinKeyEmpty: {
+    backgroundColor: 'transparent',
+  },
+  pinKeyText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 20,
+    color: colors.text,
   },
 });

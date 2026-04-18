@@ -1,27 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Animated, Easing, FlatList, Dimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { theme } from '../theme';
-import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon } from 'lucide-react-native';
+import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 import WalletDropdown from '../components/WalletDropdown';
+import AnimatedCounter from '../components/AnimatedCounter';
 
 export default function HomeScreen() {
-  const { totalBalance, wallets, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode } = useAppContext();
+  const { totalBalance, totalReceivables, totalDebts, wallets, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode } = useAppContext();
   const navigation = useNavigation<any>();
 
   const styles = getStyles(colors, isDarkMode);
 
   const SCREEN_WIDTH = Dimensions.get('window').width;
   const WALLET_ITEM_WIDTH = 100; // Tighter ticker
-  
+
   // Carousel logic
   const carouselData = goals.length > 0 ? [...goals, ...goals, ...goals] : []; // Tripled for infinite
   const [activeGoalIndex, setActiveGoalIndex] = useState(goals.length);
   const flatListRef = useRef<FlatList>(null);
   const scrollXAnim = useRef(new Animated.Value(0)).current;
   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isDragging = useRef(false);
 
   // Wallet Carousel logic (Opposite Direction)
@@ -34,41 +36,54 @@ export default function HomeScreen() {
 
 
 
-  // Function to run continuous animation
-  const runAnimation = (startValue: number) => {
+  // Function to run snappy, timed step animation
+  const runAnimation = (startOffset: number) => {
     if (goals.length <= 1) return;
-    
+
+    // Clear any existing timer/animation
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (animationRef.current) animationRef.current.stop();
+
     const setWidth = goals.length * SCREEN_WIDTH;
-    const endValue = setWidth * 2;
-    
-    // Speed: 15000ms per base SCREEN_WIDTH (fairly slow)
-    // Calculate duration based on remaining distance to end of second set
-    const remainingDistance = endValue - startValue;
-    const duration = remainingDistance * (15000 / SCREEN_WIDTH);
+    const currentStep = Math.round(startOffset / SCREEN_WIDTH);
+    const nextOffset = (currentStep + 1) * SCREEN_WIDTH;
 
-    animationRef.current = Animated.timing(scrollXAnim, {
-      toValue: endValue,
-      duration: Math.max(0, duration),
-      easing: Easing.linear,
-      useNativeDriver: false, // Must be false to drive scrollToOffset in listener
-    });
+    // WAIT for 5 seconds on the current item
+    timeoutRef.current = setTimeout(() => {
+      if (isDragging.current) return;
 
-    animationRef.current.start(({ finished }) => {
-      if (finished) {
-        const resetValue = setWidth;
-        scrollXAnim.setValue(resetValue);
-        runAnimation(resetValue);
-      }
-    });
+      // ANIMATE to the next item
+      animationRef.current = Animated.timing(scrollXAnim, {
+        toValue: nextOffset,
+        duration: 1500,
+        easing: Easing.inOut(Easing.poly(3)), // Smoother transition
+        useNativeDriver: false,
+      });
+
+      animationRef.current.start(({ finished }) => {
+        if (finished) {
+          let finalizedOffset = nextOffset;
+
+          // Seamless loop jump logic
+          if (nextOffset >= setWidth * 2) {
+            finalizedOffset = setWidth;
+            scrollXAnim.setValue(finalizedOffset);
+            flatListRef.current?.scrollToOffset({ offset: finalizedOffset, animated: false });
+          }
+
+          runAnimation(finalizedOffset);
+        }
+      });
+    }, 4000);
   };
 
   // Function to run continuous animation for wallets (OPPOSITE: Right to Left -> Left to Right)
   const runWalletAnimation = (startValue: number) => {
     if (wallets.length <= 1) return;
-    
+
     const setWidth = wallets.length * WALLET_ITEM_WIDTH;
     const endValue = 0; // Animating backwards to 0
-    
+
     // Duration based on distance to 0
     const remainingDistance = startValue;
     const duration = remainingDistance * (8000 / WALLET_ITEM_WIDTH); // Faster ticker
@@ -94,7 +109,7 @@ export default function HomeScreen() {
       const setWidth = goals.length * SCREEN_WIDTH;
       // Initial state
       scrollXAnim.setValue(setWidth);
-      
+
       // Local timer to ensure FlatList is ready before initial jump
       const initialJump = setTimeout(() => {
         flatListRef.current?.scrollToOffset({ offset: setWidth, animated: false });
@@ -116,6 +131,7 @@ export default function HomeScreen() {
 
       return () => {
         clearTimeout(initialJump);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
         scrollXAnim.removeListener(listenerId);
         animationRef.current?.stop();
       };
@@ -128,7 +144,7 @@ export default function HomeScreen() {
     if (wallets.length > 1) {
       const setWidth = wallets.length * WALLET_ITEM_WIDTH;
       walletScrollXAnim.setValue(setWidth);
-      
+
       const initialJump = setTimeout(() => {
         walletFlatListRef.current?.scrollToOffset({ offset: setWidth, animated: false });
       }, 100);
@@ -155,6 +171,7 @@ export default function HomeScreen() {
 
   const handleScrollBegin = () => {
     isDragging.current = true;
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     animationRef.current?.stop();
   };
 
@@ -162,7 +179,7 @@ export default function HomeScreen() {
     isDragging.current = false;
     const currentOffset = event.nativeEvent.contentOffset.x;
     const setWidth = goals.length * SCREEN_WIDTH;
-    
+
     // seamless infinite loop logic
     let nextOffset = currentOffset;
     if (currentOffset < setWidth) {
@@ -170,13 +187,13 @@ export default function HomeScreen() {
     } else if (currentOffset >= setWidth * 2) {
       nextOffset = currentOffset - setWidth;
     }
-    
+
     scrollXAnim.setValue(nextOffset);
     flatListRef.current?.scrollToOffset({ offset: nextOffset, animated: false });
-    
+
     const index = Math.round(nextOffset / SCREEN_WIDTH);
     setActiveGoalIndex(index);
-    
+
     // Resume slow slide from new position
     runAnimation(nextOffset);
   };
@@ -198,17 +215,17 @@ export default function HomeScreen() {
     isWalletDragging.current = false;
     const currentOffset = event.nativeEvent.contentOffset.x;
     const setWidth = wallets.length * WALLET_ITEM_WIDTH;
-    
+
     let nextOffset = currentOffset;
     if (currentOffset <= 0) {
       nextOffset = setWidth;
     } else if (currentOffset >= setWidth * 2) {
       nextOffset = setWidth;
     }
-    
+
     walletScrollXAnim.setValue(nextOffset);
     walletFlatListRef.current?.scrollToOffset({ offset: nextOffset, animated: false });
-    
+
     const index = Math.round(nextOffset / WALLET_ITEM_WIDTH);
     setActiveWalletIndex(index);
     runWalletAnimation(nextOffset);
@@ -291,7 +308,10 @@ export default function HomeScreen() {
           <View style={styles.premiumCardTop}>
             <Text style={styles.premiumLabel}>Total Balance</Text>
           </View>
-          <Text style={styles.premiumAmount}>₱{totalBalance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+          <AnimatedCounter 
+            value={totalBalance} 
+            style={styles.premiumAmount} 
+          />
 
           <View style={styles.dividerLight} />
 
@@ -301,11 +321,12 @@ export default function HomeScreen() {
               <Text style={styles.cardFooterValue}>₱{monthlySpent.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.cardFooterLabel}>Available</Text>
-              <Text style={styles.cardFooterValue}>₱{totalBalance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+              <Text style={styles.cardFooterLabel}>To be Received</Text>
+              <Text style={styles.cardFooterValue}>₱{totalReceivables.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
             </View>
           </View>
         </View>
+
 
         {/* QUICK ACTIONS */}
         <View style={styles.actionRow}>
@@ -336,15 +357,37 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.actionText}>Calendar</Text>
           </TouchableOpacity>
-        </View>
 
-        {/* WALLETS SECTION */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Wallets</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Wallets')}>
-            <Text style={styles.seeAllText}>SEE ALL</Text>
+          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Receivables')}>
+            <View style={styles.actionIconBorder}>
+              <Clock size={20} color={colors.text} />
+            </View>
+            <Text style={styles.actionText}>Pending</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Debts')}>
+            <View style={styles.actionIconBorder}>
+              <AlertCircle size={20} color={colors.text} />
+            </View>
+            <Text style={styles.actionText}>Debt</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Grocery')}>
+            <View style={styles.actionIconBorder}>
+              <ShoppingCart size={20} color={colors.text} />
+            </View>
+            <Text style={styles.actionText}>Grocery</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Travel')}>
+            <View style={styles.actionIconBorder}>
+              <Plane size={20} color={colors.text} />
+            </View>
+            <Text style={styles.actionText}>Travel</Text>
           </TouchableOpacity>
         </View>
+
+        {/* WALLETS TICKER (Keep moving wallets, remove header) */}
 
         {/* WALLET TICKER (Opposite Direction, tightly packed) */}
         {wallets.length > 0 && (
@@ -368,12 +411,12 @@ export default function HomeScreen() {
               })}
               renderItem={({ item: wallet }) => (
                 <View style={[styles.walletSlide, { width: WALLET_ITEM_WIDTH }]}>
-                   <View style={styles.walletMinimalCard}>
-                     <View style={styles.walletPill}>
-                       <Wallet size={10} color={theme.colors.primary} />
-                       <Text style={styles.walletNameText} numberOfLines={1}>{wallet.name}</Text>
-                     </View>
-                   </View>
+                  <View style={styles.walletMinimalCard}>
+                    <View style={styles.walletPill}>
+                      <Wallet size={10} color={theme.colors.primary} />
+                      <Text style={styles.walletNameText} numberOfLines={1}>{wallet.name}</Text>
+                    </View>
+                  </View>
                 </View>
               )}
             />
@@ -402,7 +445,10 @@ export default function HomeScreen() {
               data={carouselData}
               keyExtractor={(item, index) => `${item.id}-${index}`}
               horizontal
-              pagingEnabled={false}
+              pagingEnabled={true}
+              snapToAlignment="center"
+              snapToInterval={SCREEN_WIDTH}
+              decelerationRate="fast"
               showsHorizontalScrollIndicator={false}
               onScroll={onScroll}
               onMomentumScrollEnd={handleScrollEnd}
@@ -414,18 +460,45 @@ export default function HomeScreen() {
                 offset: SCREEN_WIDTH * index,
                 index,
               })}
-              renderItem={({ item: goal }) => {
+              renderItem={({ item: goal, index }) => {
                 const linkedWallet = wallets.find(w => w.id === goal.walletId);
                 const currentAmount = linkedWallet ? linkedWallet.balance : 0;
                 const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
 
+                // Position-based interpolation for fade and scale
+                const inputRange = [
+                  (index - 1) * SCREEN_WIDTH,
+                  index * SCREEN_WIDTH,
+                  (index + 1) * SCREEN_WIDTH,
+                ];
+
+                const opacity = scrollXAnim.interpolate({
+                  inputRange,
+                  outputRange: [0.3, 1, 0.3],
+                  extrapolate: 'clamp',
+                });
+
+                const scale = scrollXAnim.interpolate({
+                  inputRange,
+                  outputRange: [0.9, 1, 0.9],
+                  extrapolate: 'clamp',
+                });
+
                 return (
                   <View style={[styles.goalSlide, { width: SCREEN_WIDTH }]}>
-                    <TouchableOpacity 
-                      style={styles.goalCard} 
-                      activeOpacity={0.9}
-                      onPress={() => navigation.navigate('Goals')}
+                    <Animated.View
+                      style={[
+                        styles.goalCard,
+                        {
+                          opacity,
+                          transform: [{ scale }]
+                        }
+                      ]}
                     >
+                      <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={() => navigation.navigate('Goals')}
+                      >
                       <View style={styles.goalRow}>
                         <View style={styles.goalLeft}>
                           <View style={styles.goalIconWrapper}>
@@ -441,27 +514,28 @@ export default function HomeScreen() {
                           </View>
                         </View>
                       </View>
-                      
+
                       <View style={styles.progressBarBg}>
                         <View style={[styles.progressBarFill, { width: `${Math.max(0, Math.min(progress, 100))}%` }]} />
                       </View>
                     </TouchableOpacity>
-                  </View>
+                  </Animated.View>
+                </View>
                 );
               }}
             />
-            
+
             {goals.length > 1 && (
               <View style={styles.pagination}>
                 {goals.slice(0, 5).map((_, i) => {
                   const isActive = (activeGoalIndex % goals.length) === i;
                   return (
-                    <View 
-                      key={i} 
+                    <View
+                      key={i}
                       style={[
-                        styles.dot, 
+                        styles.dot,
                         isActive ? styles.activeDot : styles.inactiveDot
-                      ]} 
+                      ]}
                     />
                   );
                 })}
@@ -610,7 +684,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
+    marginBottom: theme.spacing.sm,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.3,
@@ -673,13 +747,16 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.xl,
+    justifyContent: 'flex-start',
+    flexWrap: 'wrap',
+    columnGap: '1.3%',
+    marginBottom: theme.spacing.sm, // Reduced from xl
     paddingHorizontal: theme.spacing.xs,
   },
   actionItem: {
     alignItems: 'center',
-    width: '23%',
+    width: '24%',
+    marginBottom: 16,
   },
   actionIconBorder: {
     width: 52,
@@ -916,8 +993,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     color: '#ffffff',
   },
   walletTickerContainer: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
     marginHorizontal: -theme.spacing.lg,
+    marginTop: -theme.spacing.xs, // Pull it closer to buttons
   },
   walletSlide: {
     paddingHorizontal: 2,
@@ -946,6 +1024,55 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: 10,
     color: colors.primary,
     textTransform: 'uppercase',
+  },
+  pendingCard: {
+    backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.12)' : '#fffbeb',
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: theme.spacing.lg,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.15)',
+  },
+  pendingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  pendingIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingLabel: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+    color: isDarkMode ? '#fcd34d' : '#b45309',
+    marginBottom: 1,
+  },
+  pendingAmount: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 18,
+    color: colors.text,
+  },
+  pendingActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.05)' : '#f0fdf4',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  pendingActionText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 10,
+    color: colors.primary,
   },
 
 });

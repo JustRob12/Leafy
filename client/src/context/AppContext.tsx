@@ -7,6 +7,10 @@ export type WalletType = {
   name: string;
   purpose: string;
   balance: number;
+  qrCodeImage?: string;
+  iconType?: 'purpose' | 'preset' | 'custom';
+  presetLogo?: string;
+  customIcon?: string;
 };
 
 export type TransactionType = {
@@ -26,6 +30,46 @@ export type GoalType = {
   imageUrl?: string;
 };
 
+export type ReceivableType = {
+  id: string;
+  personName: string;
+  taskName: string;
+  amount: number;
+  date: string;
+};
+
+export type DebtType = {
+  id: string;
+  personName: string;
+  taskName: string;
+  amount: number;
+  date: string;
+};
+
+export type GroceryItemType = {
+  id: string;
+  name: string;
+  quantity: string;
+  price?: number;
+  completed: boolean;
+};
+
+export type GroceryListType = {
+  id: string;
+  title: string;
+  items: GroceryItemType[];
+  date: string;
+};
+
+export type TravelType = {
+  id: string;
+  name: string;
+  location: string;
+  expenses: number;
+  startDate: string;
+  endDate: string;
+};
+
 type AppContextType = {
   isLoaded: boolean;
   username: string | null;
@@ -36,11 +80,20 @@ type AppContextType = {
   addTransaction: (tx: Omit<TransactionType, 'id' | 'date'>) => Promise<void>;
   goals: GoalType[];
   addGoal: (goal: Omit<GoalType, 'id'>) => Promise<void>;
+  reorderWallets: (newWallets: WalletType[]) => Promise<void>;
   editWallet: (id: string, updates: Partial<WalletType>) => Promise<void>;
   editGoal: (id: string, updates: Partial<GoalType>) => Promise<void>;
   deleteWallet: (id: string) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
+  receivables: ReceivableType[];
+  addReceivable: (receivable: Omit<ReceivableType, 'id' | 'date'>) => Promise<void>;
+  deleteReceivable: (id: string) => Promise<void>;
+  totalReceivables: number;
+  debts: DebtType[];
+  addDebt: (debt: Omit<DebtType, 'id' | 'date'>) => Promise<void>;
+  deleteDebt: (id: string) => Promise<void>;
+  totalDebts: number;
   totalBalance: number;
   clearData: () => Promise<void>;
   feedback: { visible: boolean; type: 'success' | 'delete' | 'error'; message: string };
@@ -55,6 +108,21 @@ type AppContextType = {
   isDarkMode: boolean;
   toggleTheme: () => Promise<void>;
   colors: typeof lightPalette;
+  groceryLists: GroceryListType[];
+  addGroceryList: (title: string) => Promise<void>;
+  deleteGroceryList: (id: string) => Promise<void>;
+  addGroceryItem: (listId: string, item: Omit<GroceryItemType, 'id' | 'completed'>) => Promise<void>;
+  deleteGroceryItem: (listId: string, itemId: string) => Promise<void>;
+  toggleGroceryItem: (listId: string, itemId: string) => Promise<void>;
+  travels: TravelType[];
+  addTravel: (travel: Omit<TravelType, 'id'>) => Promise<void>;
+  deleteTravel: (id: string) => Promise<void>;
+  appPin: string | null;
+  isSecurityEnabled: boolean;
+  isUnlocked: boolean;
+  setAppPin: (pin: string | null) => Promise<void>;
+  toggleSecurity: (enabled: boolean) => Promise<void>;
+  unlockApp: () => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -65,7 +133,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [wallets, setWallets] = useState<WalletType[]>([]);
   const [transactions, setTransactions] = useState<TransactionType[]>([]);
   const [goals, setGoals] = useState<GoalType[]>([]);
+  const [receivables, setReceivables] = useState<ReceivableType[]>([]);
+  const [debts, setDebts] = useState<DebtType[]>([]);
+  const [groceryLists, setGroceryLists] = useState<GroceryListType[]>([]);
+  const [travels, setTravels] = useState<TravelType[]>([]);
   const [userImage, setUserImageState] = useState<string | null>(null);
+  const [appPin, setAppPinState] = useState<string | null>(null);
+  const [isSecurityEnabled, setIsSecurityEnabled] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode as requested
   const [feedback, setFeedback] = useState<{ visible: boolean; type: 'success' | 'delete' | 'error'; message: string }>({
@@ -90,13 +165,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const storedWallets = await AsyncStorage.getItem('@wallets');
       const storedTransactions = await AsyncStorage.getItem('@transactions');
       const storedGoals = await AsyncStorage.getItem('@goals');
+      const storedReceivables = await AsyncStorage.getItem('@receivables');
+      const storedDebts = await AsyncStorage.getItem('@debts');
       const storedImage = await AsyncStorage.getItem('@userImage');
 
       if (storedName) setUserNameState(storedName);
       if (storedWallets) setWallets(JSON.parse(storedWallets));
       if (storedTransactions) setTransactions(JSON.parse(storedTransactions));
       if (storedGoals) setGoals(JSON.parse(storedGoals));
+      if (storedReceivables) setReceivables(JSON.parse(storedReceivables));
+      if (storedDebts) setDebts(JSON.parse(storedDebts));
+      const storedGrocery = await AsyncStorage.getItem('@groceryLists');
+      if (storedGrocery) setGroceryLists(JSON.parse(storedGrocery));
+      const storedTravels = await AsyncStorage.getItem('@travels');
+      if (storedTravels) setTravels(JSON.parse(storedTravels));
       if (storedImage) setUserImageState(storedImage);
+      
+      const storedPin = await AsyncStorage.getItem('@appPin');
+      const storedSecurity = await AsyncStorage.getItem('@isSecurityEnabled');
+      
+      if (storedPin) setAppPinState(storedPin);
+      if (storedSecurity) {
+        const enabled = storedSecurity === 'true';
+        setIsSecurityEnabled(enabled);
+        if (!enabled) setIsUnlocked(true);
+      } else {
+        setIsUnlocked(true);
+      }
       
       const storedTheme = await AsyncStorage.getItem('@isDarkMode');
       if (storedTheme !== null) {
@@ -171,6 +266,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLoading(false);
     showFeedback('success', 'Goal Defined');
   };
+
+  const addReceivable = async (receivableData: Omit<ReceivableType, 'id' | 'date'>) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const newReceivable: ReceivableType = {
+      ...receivableData,
+      id: Date.now().toString(),
+      date: new Date().toISOString(),
+    };
+    const updated = [...receivables, newReceivable];
+    setReceivables(updated);
+    await AsyncStorage.setItem('@receivables', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('success', 'Added to Receivables');
+  };
+
+  const addDebt = async (debtData: Omit<DebtType, 'id' | 'date'>) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const newDebt: DebtType = {
+      ...debtData,
+      id: Date.now().toString(),
+      date: new Date().toISOString(),
+    };
+    const updated = [...debts, newDebt];
+    setDebts(updated);
+    await AsyncStorage.setItem('@debts', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('success', 'Debt Recorded');
+  };
   
   const setUserImage = async (image: string | null) => {
     if (image) {
@@ -189,6 +314,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await AsyncStorage.setItem('@wallets', JSON.stringify(updated));
     setLoading(false);
     showFeedback('success', 'Wallet Updated');
+  };
+
+  const reorderWallets = async (newWallets: WalletType[]) => {
+    setWallets(newWallets);
+    await AsyncStorage.setItem('@wallets', JSON.stringify(newWallets));
   };
 
   const editGoal = async (id: string, updates: Partial<GoalType>) => {
@@ -220,6 +350,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await AsyncStorage.setItem('@goals', JSON.stringify(updated));
     setLoading(false);
     showFeedback('delete', 'Goal Removed');
+  };
+
+  const deleteReceivable = async (id: string) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const updated = receivables.filter(r => r.id !== id);
+    setReceivables(updated);
+    await AsyncStorage.setItem('@receivables', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('delete', 'Removed from Receivables');
+  };
+
+  const deleteDebt = async (id: string) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const updated = debts.filter(d => d.id !== id);
+    setDebts(updated);
+    await AsyncStorage.setItem('@debts', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('delete', 'Debt Cleared');
   };
 
   const deleteTransaction = async (id: string) => {
@@ -256,6 +406,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setWallets([]);
     setTransactions([]);
     setGoals([]);
+    setReceivables([]);
+    setDebts([]);
+    setGroceryLists([]);
+    setTravels([]);
+    setAppPinState(null);
+    setIsSecurityEnabled(false);
     setUserImageState(null);
     setIsDarkMode(true);
     showFeedback('delete', 'All Data Cleared');
@@ -280,6 +436,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ['@wallets', data.wallets ? JSON.stringify(data.wallets) : '[]'],
         ['@transactions', data.transactions ? JSON.stringify(data.transactions) : '[]'],
         ['@goals', data.goals ? JSON.stringify(data.goals) : '[]'],
+        ['@receivables', data.receivables ? JSON.stringify(data.receivables) : '[]'],
+        ['@debts', data.debts ? JSON.stringify(data.debts) : '[]'],
         ['@userImage', data.userImage || null],
       ];
       
@@ -296,6 +454,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setWallets(data.wallets || []);
       setTransactions(data.transactions || []);
       setGoals(data.goals || []);
+      setReceivables(data.receivables || []);
+      setDebts(data.debts || []);
       setUserImageState(data.userImage || null);
       
       showFeedback('success', 'Data Imported Successfully');
@@ -321,6 +481,105 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setConfirmState(prev => ({ ...prev, visible: false }));
   };
 
+  const addGroceryList = async (title: string) => {
+    const newList: GroceryListType = {
+      id: Date.now().toString(),
+      title,
+      items: [],
+      date: new Date().toISOString(),
+    };
+    const updated = [...groceryLists, newList];
+    setGroceryLists(updated);
+    await AsyncStorage.setItem('@groceryLists', JSON.stringify(updated));
+    showFeedback('success', 'List Created');
+  };
+
+  const deleteGroceryList = async (id: string) => {
+    const updated = groceryLists.filter(l => l.id !== id);
+    setGroceryLists(updated);
+    await AsyncStorage.setItem('@groceryLists', JSON.stringify(updated));
+    showFeedback('delete', 'List Removed');
+  };
+
+  const addGroceryItem = async (listId: string, itemData: Omit<GroceryItemType, 'id' | 'completed'>) => {
+    const updated = groceryLists.map(list => {
+      if (list.id === listId) {
+        const newItem: GroceryItemType = {
+          ...itemData,
+          id: Date.now().toString(),
+          completed: false,
+        };
+        return { ...list, items: [...list.items, newItem] };
+      }
+      return list;
+    });
+    setGroceryLists(updated);
+    await AsyncStorage.setItem('@groceryLists', JSON.stringify(updated));
+  };
+
+  const deleteGroceryItem = async (listId: string, itemId: string) => {
+    const updated = groceryLists.map(list => {
+      if (list.id === listId) {
+        return { ...list, items: list.items.filter(i => i.id !== itemId) };
+      }
+      return list;
+    });
+    setGroceryLists(updated);
+    await AsyncStorage.setItem('@groceryLists', JSON.stringify(updated));
+  };
+
+  const toggleGroceryItem = async (listId: string, itemId: string) => {
+    const updated = groceryLists.map(list => {
+      if (list.id === listId) {
+        return {
+          ...list,
+          items: list.items.map(item =>
+            item.id === itemId ? { ...item, completed: !item.completed } : item
+          )
+        };
+      }
+      return list;
+    });
+    setGroceryLists(updated);
+    await AsyncStorage.setItem('@groceryLists', JSON.stringify(updated));
+  };
+
+  const addTravel = async (travelData: Omit<TravelType, 'id'>) => {
+    const newTravel: TravelType = {
+      ...travelData,
+      id: Date.now().toString(),
+    };
+    const updated = [newTravel, ...travels];
+    setTravels(updated);
+    await AsyncStorage.setItem('@travels', JSON.stringify(updated));
+    showFeedback('success', 'Travel Recorded');
+  };
+
+  const deleteTravel = async (id: string) => {
+    const updated = travels.filter(t => t.id !== id);
+    setTravels(updated);
+    await AsyncStorage.setItem('@travels', JSON.stringify(updated));
+    showFeedback('delete', 'Travel Removed');
+  };
+
+  const setAppPin = async (pin: string | null) => {
+    if (pin) await AsyncStorage.setItem('@appPin', pin);
+    else await AsyncStorage.removeItem('@appPin');
+    setAppPinState(pin);
+  };
+
+  const toggleSecurity = async (enabled: boolean) => {
+    await AsyncStorage.setItem('@isSecurityEnabled', enabled.toString());
+    setIsSecurityEnabled(enabled);
+    if (!enabled) setIsUnlocked(true);
+  };
+
+  const unlockApp = () => {
+    setIsUnlocked(true);
+  };
+
+  const totalReceivables = receivables.reduce((acc, r) => acc + r.amount, 0);
+  const totalDebts = debts.reduce((acc, d) => acc + d.amount, 0);
   const totalBalance = wallets.reduce((acc, wallet) => acc + wallet.balance, 0);
 
   return (
@@ -335,11 +594,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addTransaction,
         goals,
         addGoal,
+        reorderWallets,
         editWallet,
         editGoal,
         deleteWallet,
         deleteTransaction,
         deleteGoal,
+        receivables,
+        addReceivable,
+        deleteReceivable,
+        totalReceivables,
+        debts,
+        addDebt,
+        deleteDebt,
+        totalDebts,
         totalBalance,
         clearData,
         feedback,
@@ -353,7 +621,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         importData,
         isDarkMode,
         toggleTheme,
-        colors
+        colors,
+        groceryLists,
+        addGroceryList,
+        deleteGroceryList,
+        addGroceryItem,
+        deleteGroceryItem,
+        toggleGroceryItem,
+        travels,
+        addTravel,
+        deleteTravel,
+        appPin,
+        isSecurityEnabled,
+        isUnlocked,
+        setAppPin,
+        toggleSecurity,
+        unlockApp
       }}
     >
       {children}

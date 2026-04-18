@@ -42,7 +42,7 @@ export default function ActionSheet({ visible, onClose, title, children }: Actio
                 </TouchableOpacity>
               </View>
               <ScrollView 
-                showsVerticalScrollIndicator={true}
+                showsVerticalScrollIndicator={false}
                 style={styles.scrollArea}
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"

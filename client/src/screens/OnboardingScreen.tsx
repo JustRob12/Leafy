@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Animated } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Animated, Image } from 'react-native';
 import { theme } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Leaf, ArrowRight, Lock, Fingerprint, Delete, ShieldCheck, Key } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import * as LocalAuthentication from 'expo-local-authentication';
+const LogoSource = require('../../assets/leafylogo.png');
 
 export default function OnboardingScreen() {
   const { setUsername, setAppPin, toggleSecurity, toggleBiometrics, colors, isDarkMode } = useAppContext();
@@ -14,7 +15,7 @@ export default function OnboardingScreen() {
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
   const [biometricsSupported, setBiometricsSupported] = useState(false);
-  
+
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   // Keypad numbers
@@ -45,7 +46,7 @@ export default function OnboardingScreen() {
   const checkBiometricsAndProceed = async () => {
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
     const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-    
+
     if (hasHardware && isEnrolled) {
       setBiometricsSupported(true);
       triggerTransition(3);
@@ -61,7 +62,7 @@ export default function OnboardingScreen() {
       if (pin.length < 4) {
         const newPin = pin + key;
         setPin(newPin);
-        
+
         if (newPin.length === 4) {
           setTimeout(() => {
             checkBiometricsAndProceed();
@@ -80,7 +81,7 @@ export default function OnboardingScreen() {
       if (useBiometrics) {
         await toggleBiometrics(true);
       }
-      
+
       // Setting username triggers the navigation away from Onboarding
       await setUsername(name.trim());
     } catch (error) {
@@ -91,17 +92,17 @@ export default function OnboardingScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           style={styles.keyboardView}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <Animated.View style={[styles.innerContainer, { opacity: fadeAnim }]}>
-            
+
             {step === 1 && (
               <>
                 <View style={styles.topSection}>
                   <View style={styles.iconContainer}>
-                    <Leaf size={32} color="#ffffff" />
+                    <Image source={LogoSource} style={styles.logoImage} />
                   </View>
                   <Text style={styles.title}>Welcome to Leafy</Text>
                   <Text style={styles.subtitle}>Your Invisible Architect for personal finance.</Text>
@@ -119,12 +120,12 @@ export default function OnboardingScreen() {
                     returnKeyType="done"
                     onSubmitEditing={handleNameContinue}
                   />
-                  
-                  <TouchableOpacity 
+
+                  <TouchableOpacity
                     style={[
                       styles.button,
                       name.trim().length === 0 && styles.buttonDisabled
-                    ]} 
+                    ]}
                     onPress={handleNameContinue}
                     disabled={name.trim().length === 0}
                   >
@@ -145,22 +146,22 @@ export default function OnboardingScreen() {
 
                 <View style={styles.pinContainer}>
                   {[1, 2, 3, 4].map((_, i) => (
-                    <View 
-                        key={i} 
-                        style={[
-                            styles.pinDot, 
-                            pin.length > i && styles.pinDotFilled,
-                        ]} 
+                    <View
+                      key={i}
+                      style={[
+                        styles.pinDot,
+                        pin.length > i && styles.pinDotFilled,
+                      ]}
                     />
                   ))}
                 </View>
 
                 <View style={styles.keypad}>
                   {keys.map((key, index) => (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       key={index}
                       style={[
-                        styles.key, 
+                        styles.key,
                         key === '' && styles.keyEmpty,
                       ]}
                       onPress={() => handleKeypadPress(key)}
@@ -180,23 +181,23 @@ export default function OnboardingScreen() {
 
             {step === 3 && (
               <View style={styles.setupSection}>
-                <View style={[styles.iconContainerVariant, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                <View style={[styles.iconContainerVariant, { backgroundColor: '#10b9811a' }]}>
                   <Fingerprint size={38} color={colors.primary} />
                 </View>
                 <Text style={styles.titleCenter}>Enable Biometrics</Text>
                 <Text style={styles.subtitleCenter}>Unlock Leafy faster with your fingerprint or face ID.</Text>
 
                 <View style={styles.step3Actions}>
-                  <TouchableOpacity 
-                    style={[styles.button, { width: '100%', marginBottom: 16 }]} 
+                  <TouchableOpacity
+                    style={[styles.button, { width: '100%', marginBottom: 16 }]}
                     onPress={() => finalizeOnboarding(true)}
                   >
                     <ShieldCheck size={20} color="#ffffff" />
                     <Text style={styles.buttonText}>Enable Biometrics</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity 
-                    style={styles.skipButton} 
+                  <TouchableOpacity
+                    style={styles.skipButton}
                     onPress={() => finalizeOnboarding(false)}
                   >
                     <Text style={styles.skipButtonText}>I'll just use my PIN</Text>
@@ -234,13 +235,18 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     alignItems: 'center',
   },
   iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: theme.borderRadius.xl,
-    backgroundColor: colors.primary,
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: theme.spacing.xl,
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
   },
   iconContainerVariant: {
     width: 72,

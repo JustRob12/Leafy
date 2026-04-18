@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Animated, Easing, TextInput } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { theme } from '../theme';
@@ -21,7 +21,9 @@ export default function SettingsScreen() {
   const [helpModalVisible, setHelpModalVisible] = React.useState(false);
   const [aboutModalVisible, setAboutModalVisible] = React.useState(false);
   const [securityModalVisible, setSecurityModalVisible] = React.useState(false);
+  const [accountModalVisible, setAccountModalVisible] = React.useState(false);
   const [pinSetupVisible, setPinSetupVisible] = React.useState(false);
+  const [editName, setEditName] = React.useState(username || '');
   const [newPin, setNewPin] = React.useState('');
   const [biometricsSupported, setBiometricsSupported] = React.useState(false);
 
@@ -56,23 +58,13 @@ export default function SettingsScreen() {
   };
 
   const settingsOptions = [
-    { id: '1', title: 'Account Settings', icon: User, action: () => { } },
+    { id: '1', title: 'Account Settings', icon: User, action: () => { setEditName(username || ''); setAccountModalVisible(true); } },
     { id: '2', title: 'Backup & Restore', icon: Database, action: () => navigation.navigate('DataTransfer') },
     { id: '3', title: 'Privacy & Security', icon: Shield, action: () => { setPrivacyModalVisible(true); } },
     { id: '7', title: 'Security & PIN', icon: Lock, action: () => { setSecurityModalVisible(true); } },
     { id: '4', title: 'Help & Support', icon: CircleHelp, action: () => { setHelpModalVisible(true); } },
     { id: '6', title: 'About Leafy', icon: Leaf, action: () => { setAboutModalVisible(true); } },
   ];
-
-  const handleClearData = () => {
-    showConfirm(
-      "Clear All Data",
-      "Are you sure you want to clear all your local data? This will reset your name, wallets, transactions, and goals. This action cannot be undone.",
-      async () => {
-        await clearData();
-      }
-    );
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -104,8 +96,8 @@ export default function SettingsScreen() {
             return (
               <React.Fragment key={option.id}>
                 <View style={styles.settingItemWrapper}>
-                  <TouchableOpacity 
-                    style={styles.settingItem} 
+                  <TouchableOpacity
+                    style={styles.settingItem}
                     onPress={option.action as any}
                   >
                     <View style={styles.settingItemLeft}>
@@ -120,11 +112,6 @@ export default function SettingsScreen() {
             );
           })}
         </View>
-
-        <TouchableOpacity style={styles.logoutButton} onPress={handleClearData}>
-          <Trash2 size={20} color="#ef4444" />
-          <Text style={styles.logoutText}>Clear App Data</Text>
-        </TouchableOpacity>
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -198,58 +185,58 @@ export default function SettingsScreen() {
       >
         <View style={styles.modalContent}>
           <View style={styles.securityHeader}>
-             <View style={[styles.securityIconBox, isSecurityEnabled && styles.securityIconBoxActive]}>
-                <Lock size={24} color={isSecurityEnabled ? colors.primary : colors.textMuted} />
-             </View>
-             <View>
-                <Text style={styles.securityHeaderTitle}>{isSecurityEnabled ? 'App Protection Active' : 'App Protection Disabled'}</Text>
-                <Text style={styles.securityHeaderSubtitle}>{isSecurityEnabled ? 'Your financial data is secured with a PIN.' : 'Enable security to protect your data.'}</Text>
-             </View>
+            <View style={[styles.securityIconBox, isSecurityEnabled && styles.securityIconBoxActive]}>
+              <Lock size={24} color={isSecurityEnabled ? colors.primary : colors.textMuted} />
+            </View>
+            <View>
+              <Text style={styles.securityHeaderTitle}>{isSecurityEnabled ? 'App Protection Active' : 'App Protection Disabled'}</Text>
+              <Text style={styles.securityHeaderSubtitle}>{isSecurityEnabled ? 'Your financial data is secured with a PIN.' : 'Enable security to protect your data.'}</Text>
+            </View>
           </View>
 
           <View style={styles.configGroup}>
-            <TouchableOpacity 
-                style={styles.configItem} 
-                onPress={() => {
-                    if (isSecurityEnabled) toggleSecurity(false);
-                    else if (appPin) toggleSecurity(true);
-                    else setPinSetupVisible(true);
-                }}
+            <TouchableOpacity
+              style={styles.configItem}
+              onPress={() => {
+                if (isSecurityEnabled) toggleSecurity(false);
+                else if (appPin) toggleSecurity(true);
+                else setPinSetupVisible(true);
+              }}
             >
-                <View style={styles.configItemLeft}>
-                   <View style={[styles.checkbox, isSecurityEnabled && styles.checkboxActive]}>
-                      {isSecurityEnabled && <Check size={14} color="#ffffff" />}
-                   </View>
-                   <Text style={styles.configText}>Require PIN to open app</Text>
+              <View style={styles.configItemLeft}>
+                <View style={[styles.checkbox, isSecurityEnabled && styles.checkboxActive]}>
+                  {isSecurityEnabled && <Check size={14} color="#ffffff" />}
                 </View>
+                <Text style={styles.configText}>Require PIN to open app</Text>
+              </View>
             </TouchableOpacity>
 
             {biometricsSupported && (
-              <TouchableOpacity 
-                  style={styles.configItem} 
-                  onPress={() => toggleBiometrics(!isBiometricsEnabled)}
+              <TouchableOpacity
+                style={styles.configItem}
+                onPress={() => toggleBiometrics(!isBiometricsEnabled)}
               >
-                  <View style={styles.configItemLeft}>
-                    <View style={[styles.checkbox, isBiometricsEnabled && styles.checkboxActive]}>
-                        {isBiometricsEnabled && <Check size={14} color="#ffffff" />}
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                       <Fingerprint size={16} color={colors.textMuted} />
-                       <Text style={styles.configText}>Use Biometrics first</Text>
-                    </View>
+                <View style={styles.configItemLeft}>
+                  <View style={[styles.checkbox, isBiometricsEnabled && styles.checkboxActive]}>
+                    {isBiometricsEnabled && <Check size={14} color="#ffffff" />}
                   </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Fingerprint size={16} color={colors.textMuted} />
+                    <Text style={styles.configText}>Use Biometrics first</Text>
+                  </View>
+                </View>
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity 
-                style={styles.configItem} 
-                onPress={() => setPinSetupVisible(true)}
+            <TouchableOpacity
+              style={styles.configItem}
+              onPress={() => setPinSetupVisible(true)}
             >
-                <View style={styles.configItemLeft}>
-                   <View style={styles.checkboxPlaceholder} />
-                   <Text style={styles.configText}>{appPin ? 'Change Application PIN' : 'Set Application PIN'}</Text>
-                </View>
-                <ChevronRight size={18} color={colors.border} />
+              <View style={styles.configItemLeft}>
+                <View style={styles.checkboxPlaceholder} />
+                <Text style={styles.configText}>{appPin ? 'Change Application PIN' : 'Set Application PIN'}</Text>
+              </View>
+              <ChevronRight size={18} color={colors.border} />
             </TouchableOpacity>
           </View>
 
@@ -267,43 +254,95 @@ export default function SettingsScreen() {
       >
         <View style={styles.modalContent}>
           <Text style={styles.pinDesc}>Enter a 4-digit PIN to secure your application. You will be asked for this PIN every time you open Leafy.</Text>
-          
+
           <View style={styles.pinVisual}>
-             {[1,2,3,4].map((_, i) => (
-                <View key={i} style={[styles.pinCircle, newPin.length > i && styles.pinCircleFilled]} />
-             ))}
+            {[1, 2, 3, 4].map((_, i) => (
+              <View key={i} style={[styles.pinCircle, newPin.length > i && styles.pinCircleFilled]} />
+            ))}
           </View>
 
           <View style={styles.pinKeypad}>
-             {['1','2','3','4','5','6','7','8','9','','0','DEL'].map((k, i) => (
-                <TouchableOpacity 
-                    key={i} 
-                    style={[styles.pinKey, k === '' && styles.pinKeyEmpty]}
-                    disabled={k === ''}
-                    onPress={() => {
-                        if (k === 'DEL') setNewPin(prev => prev.slice(0, -1));
-                        else if (newPin.length < 4) {
-                            const p = newPin + k;
-                            setNewPin(p);
-                            if (p.length === 4) {
-                                setTimeout(async () => {
-                                    await setAppPin(p);
-                                    if (!isSecurityEnabled) await toggleSecurity(true);
-                                    setPinSetupVisible(false);
-                                    setNewPin('');
-                                }, 300);
-                            }
-                        }
-                    }}
-                >
-                   <Text style={styles.pinKeyText}>{k === 'DEL' ? '←' : k}</Text>
-                </TouchableOpacity>
-             ))}
+            {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'DEL'].map((k, i) => (
+              <TouchableOpacity
+                key={i}
+                style={[styles.pinKey, k === '' && styles.pinKeyEmpty]}
+                disabled={k === ''}
+                onPress={() => {
+                  if (k === 'DEL') setNewPin(prev => prev.slice(0, -1));
+                  else if (newPin.length < 4) {
+                    const p = newPin + k;
+                    setNewPin(p);
+                    if (p.length === 4) {
+                      setTimeout(async () => {
+                        await setAppPin(p);
+                        if (!isSecurityEnabled) await toggleSecurity(true);
+                        setPinSetupVisible(false);
+                        setNewPin('');
+                      }, 300);
+                    }
+                  }
+                }}
+              >
+                <Text style={styles.pinKeyText}>{k === 'DEL' ? '←' : k}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
           <TouchableOpacity style={[styles.closeBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border }]} onPress={() => setPinSetupVisible(false)}>
             <Text style={[styles.closeBtnText, { color: colors.text }]}>Cancel</Text>
           </TouchableOpacity>
+        </View>
+      </ActionSheet>
+
+      {/* Account Settings Modal */}
+      <ActionSheet
+        visible={accountModalVisible}
+        onClose={() => setAccountModalVisible(false)}
+        title="Account Settings"
+      >
+        <View style={styles.modalContent}>
+          <Text style={styles.infoTitle}>Update Name</Text>
+          <View style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginBottom: 20 }}>
+            <TextInput
+              style={{ padding: 16, fontFamily: theme.fonts.medium, fontSize: 16, color: colors.text }}
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="Your Name"
+              placeholderTextColor={colors.textMuted}
+            />
+          </View>
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={async () => {
+              if (editName.trim().length > 0) {
+                // @ts-ignore
+                await useAppContext().setUsername(editName.trim());
+                setAccountModalVisible(false);
+              }
+            }}
+          >
+            <Text style={styles.closeBtnText}>Save Changes</Text>
+          </TouchableOpacity>
+        </View>
+      </ActionSheet>
+
+      {/* About Leafy Modal */}
+      <ActionSheet
+        visible={aboutModalVisible}
+        onClose={() => setAboutModalVisible(false)}
+        title="About Leafy"
+      >
+        <View style={styles.modalContent}>
+          <View style={styles.aboutHeader}>
+            <Leaf size={32} color={colors.primary} />
+            <Text style={styles.aboutTitle}>Leafy v1.1.0</Text>
+          </View>
+          <Text style={styles.aboutDescription}>
+            Leafy is your premium financial companion designed to help you track wallets, set savings goals, manage grocery lists, and plan your travels with ease. Grow your wealth one leaf at a time.
+          </Text>
+          <View style={styles.aboutFooter}>
+            <Text style={styles.aboutVersion}>Made with ❤️ by Roberto Prisoris together with his Girlfriend Lady Marianne Bauyot</Text>
+          </View>
         </View>
       </ActionSheet>
 
@@ -315,7 +354,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingBottom: 90, 
+    paddingBottom: 90,
   },
   scrollContent: {
     padding: theme.spacing.lg,
@@ -413,22 +452,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     height: 1,
     backgroundColor: colors.border,
     marginLeft: 52,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: theme.spacing.md,
-    backgroundColor: colors.isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2',
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.isDarkMode ? 'rgba(239, 68, 68, 0.2)' : '#fecaca',
-  },
-  logoutText: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 16,
-    color: '#ef4444',
-    marginLeft: 8,
   },
   modalContent: {
     paddingVertical: theme.spacing.md,

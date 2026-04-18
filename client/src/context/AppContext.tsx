@@ -183,14 +183,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const storedTravels = await AsyncStorage.getItem('@travels');
       if (storedTravels) setTravels(JSON.parse(storedTravels));
       if (storedImage) setUserImageState(storedImage);
-      
+
       const storedPin = await AsyncStorage.getItem('@appPin');
       const storedSecurity = await AsyncStorage.getItem('@isSecurityEnabled');
       const storedBiometrics = await AsyncStorage.getItem('@isBiometricsEnabled');
-      
+
       if (storedPin) setAppPinState(storedPin);
       if (storedBiometrics) setIsBiometricsEnabled(storedBiometrics === 'true');
-      
+
       if (storedSecurity) {
         const enabled = storedSecurity === 'true';
         setIsSecurityEnabled(enabled);
@@ -198,7 +198,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else {
         setIsUnlocked(true);
       }
-      
+
       const storedTheme = await AsyncStorage.getItem('@isDarkMode');
       if (storedTheme !== null) {
         setIsDarkMode(storedTheme === 'true');
@@ -238,7 +238,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: Date.now().toString(),
       date: new Date().toISOString(),
     };
-    
+
     const updatedTx = [newTx, ...transactions];
     setTransactions(updatedTx);
     await AsyncStorage.setItem('@transactions', JSON.stringify(updatedTx));
@@ -302,7 +302,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLoading(false);
     showFeedback('success', 'Debt Recorded');
   };
-  
+
   const setUserImage = async (image: string | null) => {
     if (image) {
       await AsyncStorage.setItem('@userImage', image);
@@ -435,9 +435,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const importData = async (jsonString: string) => {
     try {
       const data = JSON.parse(jsonString);
-      
+
       if (typeof data !== 'object') throw new Error('Invalid data format');
-      
+
       const keysToSave: [string, string | null][] = [
         ['@username', data.username || null],
         ['@wallets', data.wallets ? JSON.stringify(data.wallets) : '[]'],
@@ -445,9 +445,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ['@goals', data.goals ? JSON.stringify(data.goals) : '[]'],
         ['@receivables', data.receivables ? JSON.stringify(data.receivables) : '[]'],
         ['@debts', data.debts ? JSON.stringify(data.debts) : '[]'],
+        ['@groceryLists', data.groceryLists ? JSON.stringify(data.groceryLists) : '[]'],
+        ['@travels', data.travels ? JSON.stringify(data.travels) : '[]'],
+        ['@appPin', data.appPin || null],
+        ['@isSecurityEnabled', data.isSecurityEnabled !== undefined ? String(data.isSecurityEnabled) : null],
+        ['@isBiometricsEnabled', data.isBiometricsEnabled !== undefined ? String(data.isBiometricsEnabled) : null],
+        ['@isDarkMode', data.isDarkMode !== undefined ? String(data.isDarkMode) : null],
         ['@userImage', data.userImage || null],
       ];
-      
+
       for (const [key, value] of keysToSave) {
         if (value !== null) {
           await AsyncStorage.setItem(key, value);
@@ -455,7 +461,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           await AsyncStorage.removeItem(key);
         }
       }
-      
+
       // Update local state
       setUserNameState(data.username || null);
       setWallets(data.wallets || []);
@@ -463,8 +469,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setGoals(data.goals || []);
       setReceivables(data.receivables || []);
       setDebts(data.debts || []);
+      setGroceryLists(data.groceryLists || []);
+      setTravels(data.travels || []);
+      setAppPinState(data.appPin || null);
+
+      if (data.isSecurityEnabled !== undefined) {
+        setIsSecurityEnabled(!!data.isSecurityEnabled);
+        if (!data.isSecurityEnabled) setIsUnlocked(true);
+        else setIsUnlocked(false);
+      }
+
+      if (data.isBiometricsEnabled !== undefined) {
+        setIsBiometricsEnabled(!!data.isBiometricsEnabled);
+      }
+
+      if (data.isDarkMode !== undefined) {
+        setIsDarkMode(!!data.isDarkMode);
+      }
+
       setUserImageState(data.userImage || null);
-      
+
       showFeedback('success', 'Data Imported Successfully');
     } catch (e) {
       console.error('Failed to import data', e);

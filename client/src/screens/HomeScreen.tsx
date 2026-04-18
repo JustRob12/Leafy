@@ -26,13 +26,30 @@ export default function HomeScreen() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isDragging = useRef(false);
 
-  // Wallet Carousel logic (Opposite Direction)
-  const walletCarouselData = wallets.length > 0 ? [...wallets, ...wallets, ...wallets] : [];
-  const [activeWalletIndex, setActiveWalletIndex] = useState(wallets.length);
-  const walletFlatListRef = useRef<FlatList>(null);
-  const walletScrollXAnim = useRef(new Animated.Value(0)).current;
-  const walletAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
-  const isWalletDragging = useRef(false);
+  // News Ticker Logic
+  const tickerAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
+
+  useEffect(() => {
+    let isActive = true;
+    const runTicker = () => {
+      if (!isActive) return;
+      tickerAnim.setValue(0);
+      Animated.timing(tickerAnim, {
+        toValue: -1400, // Exactly the width of one block
+        duration: 40000, // Adjust speed proportionate to the new width
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished && isActive) runTicker();
+      });
+    };
+    runTicker();
+
+    return () => {
+      isActive = false;
+      tickerAnim.stopAnimation();
+    };
+  }, []);
 
 
 
@@ -77,32 +94,6 @@ export default function HomeScreen() {
     }, 4000);
   };
 
-  // Function to run continuous animation for wallets (OPPOSITE: Right to Left -> Left to Right)
-  const runWalletAnimation = (startValue: number) => {
-    if (wallets.length <= 1) return;
-
-    const setWidth = wallets.length * WALLET_ITEM_WIDTH;
-    const endValue = 0; // Animating backwards to 0
-
-    // Duration based on distance to 0
-    const remainingDistance = startValue;
-    const duration = remainingDistance * (8000 / WALLET_ITEM_WIDTH); // Faster ticker
-
-    walletAnimationRef.current = Animated.timing(walletScrollXAnim, {
-      toValue: endValue,
-      duration: Math.max(0, duration),
-      easing: Easing.linear,
-      useNativeDriver: false,
-    });
-
-    walletAnimationRef.current.start(({ finished }) => {
-      if (finished) {
-        const resetValue = setWidth;
-        walletScrollXAnim.setValue(resetValue);
-        runWalletAnimation(resetValue);
-      }
-    });
-  };
 
   useEffect(() => {
     if (goals.length > 1) {
@@ -140,34 +131,7 @@ export default function HomeScreen() {
 
 
 
-  useEffect(() => {
-    if (wallets.length > 1) {
-      const setWidth = wallets.length * WALLET_ITEM_WIDTH;
-      walletScrollXAnim.setValue(setWidth);
 
-      const initialJump = setTimeout(() => {
-        walletFlatListRef.current?.scrollToOffset({ offset: setWidth, animated: false });
-      }, 100);
-
-      const listenerId = walletScrollXAnim.addListener(({ value }) => {
-        if (!isWalletDragging.current) {
-          walletFlatListRef.current?.scrollToOffset({ offset: value, animated: false });
-          const index = Math.round(value / WALLET_ITEM_WIDTH);
-          if (index !== activeWalletIndex) {
-            setActiveWalletIndex(index);
-          }
-        }
-      });
-
-      runWalletAnimation(setWidth);
-
-      return () => {
-        clearTimeout(initialJump);
-        walletScrollXAnim.removeListener(listenerId);
-        walletAnimationRef.current?.stop();
-      };
-    }
-  }, [wallets.length]);
 
   const handleScrollBegin = () => {
     isDragging.current = true;
@@ -206,38 +170,7 @@ export default function HomeScreen() {
     }
   };
 
-  const handleWalletScrollBegin = () => {
-    isWalletDragging.current = true;
-    walletAnimationRef.current?.stop();
-  };
 
-  const handleWalletScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    isWalletDragging.current = false;
-    const currentOffset = event.nativeEvent.contentOffset.x;
-    const setWidth = wallets.length * WALLET_ITEM_WIDTH;
-
-    let nextOffset = currentOffset;
-    if (currentOffset <= 0) {
-      nextOffset = setWidth;
-    } else if (currentOffset >= setWidth * 2) {
-      nextOffset = setWidth;
-    }
-
-    walletScrollXAnim.setValue(nextOffset);
-    walletFlatListRef.current?.scrollToOffset({ offset: nextOffset, animated: false });
-
-    const index = Math.round(nextOffset / WALLET_ITEM_WIDTH);
-    setActiveWalletIndex(index);
-    runWalletAnimation(nextOffset);
-  };
-
-  const onWalletScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (isWalletDragging.current) {
-      const contentOffset = event.nativeEvent.contentOffset.x;
-      const index = Math.round(contentOffset / WALLET_ITEM_WIDTH);
-      setActiveWalletIndex(index);
-    }
-  };
 
   const [savingsModalVisible, setSavingsModalVisible] = useState(false);
   const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
@@ -308,9 +241,9 @@ export default function HomeScreen() {
           <View style={styles.premiumCardTop}>
             <Text style={styles.premiumLabel}>Total Balance</Text>
           </View>
-          <AnimatedCounter 
-            value={totalBalance} 
-            style={styles.premiumAmount} 
+          <AnimatedCounter
+            value={totalBalance}
+            style={styles.premiumAmount}
           />
 
           <View style={styles.dividerLight} />
@@ -371,7 +304,7 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.actionText}>Debt</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Grocery')}>
             <View style={styles.actionIconBorder}>
               <ShoppingCart size={20} color={colors.text} />
@@ -387,41 +320,21 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* WALLETS TICKER (Keep moving wallets, remove header) */}
-
-        {/* WALLET TICKER (Opposite Direction, tightly packed) */}
-        {wallets.length > 0 && (
-          <View style={styles.walletTickerContainer}>
-            <FlatList
-              ref={walletFlatListRef}
-              data={walletCarouselData}
-              keyExtractor={(item, index) => `${item.id}-${index}`}
-              horizontal
-              pagingEnabled={false}
-              showsHorizontalScrollIndicator={false}
-              onScroll={onWalletScroll}
-              onMomentumScrollEnd={handleWalletScrollEnd}
-              scrollEventThrottle={16}
-              onScrollBeginDrag={handleWalletScrollBegin}
-              onScrollEndDrag={handleWalletScrollEnd}
-              getItemLayout={(_, index) => ({
-                length: WALLET_ITEM_WIDTH,
-                offset: WALLET_ITEM_WIDTH * index,
-                index,
-              })}
-              renderItem={({ item: wallet }) => (
-                <View style={[styles.walletSlide, { width: WALLET_ITEM_WIDTH }]}>
-                  <View style={styles.walletMinimalCard}>
-                    <View style={styles.walletPill}>
-                      <Wallet size={10} color={theme.colors.primary} />
-                      <Text style={styles.walletNameText} numberOfLines={1}>{wallet.name}</Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-            />
-          </View>
-        )}
+        {/* SCROLLING NEWS TICKER */}
+        <View style={styles.tickerContainer}>
+          <Animated.View style={{ transform: [{ translateX: tickerAnim }], flexDirection: 'row', width: 2800 }}>
+            <View style={{ width: 1400 }}>
+              <Text style={styles.tickerText} numberOfLines={1}>
+                Welcome to Leafy! Track your wallets, set ambitious goals, manage your debts, and log your daily expenses. Let's build your financial future together!
+              </Text>
+            </View>
+            <View style={{ width: 1400 }}>
+              <Text style={styles.tickerText} numberOfLines={1}>
+                Welcome to Leafy! Track your wallets, set ambitious goals, manage your debts, and log your daily expenses. Let's build your financial future together!
+              </Text>
+            </View>
+          </Animated.View>
+        </View>
 
         {/* ACTIVE GOALS */}
         <View style={styles.sectionHeader}>
@@ -499,28 +412,28 @@ export default function HomeScreen() {
                         activeOpacity={0.9}
                         onPress={() => navigation.navigate('Goals')}
                       >
-                      <View style={styles.goalRow}>
-                        <View style={styles.goalLeft}>
-                          <View style={styles.goalIconWrapper}>
-                            {goal.imageUrl ? (
-                              <Image source={{ uri: goal.imageUrl }} style={{ width: '100%', height: '100%', borderRadius: 14 }} />
-                            ) : (
-                              <Target size={20} color={theme.colors.primary} />
-                            )}
-                          </View>
-                          <View>
-                            <Text style={styles.goalTitle}>{goal.title}</Text>
-                            <Text style={styles.goalAmountText}>₱{currentAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })} / ₱{goal.targetAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
+                        <View style={styles.goalRow}>
+                          <View style={styles.goalLeft}>
+                            <View style={styles.goalIconWrapper}>
+                              {goal.imageUrl ? (
+                                <Image source={{ uri: goal.imageUrl }} style={{ width: '100%', height: '100%', borderRadius: 14 }} />
+                              ) : (
+                                <Target size={20} color={theme.colors.primary} />
+                              )}
+                            </View>
+                            <View>
+                              <Text style={styles.goalTitle}>{goal.title}</Text>
+                              <Text style={styles.goalAmountText}>₱{currentAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })} / ₱{goal.targetAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
+                            </View>
                           </View>
                         </View>
-                      </View>
 
-                      <View style={styles.progressBarBg}>
-                        <View style={[styles.progressBarFill, { width: `${Math.max(0, Math.min(progress, 100))}%` }]} />
-                      </View>
-                    </TouchableOpacity>
-                  </Animated.View>
-                </View>
+                        <View style={styles.progressBarBg}>
+                          <View style={[styles.progressBarFill, { width: `${Math.max(0, Math.min(progress, 100))}%` }]} />
+                        </View>
+                      </TouchableOpacity>
+                    </Animated.View>
+                  </View>
                 );
               }}
             />
@@ -992,10 +905,18 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: 16,
     color: '#ffffff',
   },
-  walletTickerContainer: {
+  tickerContainer: {
+    backgroundColor: '#10B981',
+    overflow: 'hidden',
+    paddingVertical: 10,
     marginBottom: theme.spacing.md,
-    marginHorizontal: -theme.spacing.lg,
-    marginTop: -theme.spacing.xs, // Pull it closer to buttons
+    marginTop: -theme.spacing.xs,
+    marginHorizontal: -theme.spacing.lg, // Make it span full width
+  },
+  tickerText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 14,
+    color: '#ffffff',
   },
   walletSlide: {
     paddingHorizontal: 2,

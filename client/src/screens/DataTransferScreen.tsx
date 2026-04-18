@@ -11,7 +11,11 @@ import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 
 export default function DataTransferScreen() {
-  const { username, wallets, transactions, goals, userImage, importData, clearData, showConfirm, colors, isDarkMode } = useAppContext();
+  const {
+    username, wallets, transactions, goals, userImage,
+    receivables, debts, groceryLists, travels, appPin, isSecurityEnabled, isBiometricsEnabled, isDarkMode,
+    importData, clearData, showConfirm, colors
+  } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation<any>();
 
@@ -22,9 +26,17 @@ export default function DataTransferScreen() {
         wallets,
         transactions,
         goals,
+        receivables,
+        debts,
+        groceryLists,
+        travels,
+        appPin,
+        isSecurityEnabled,
+        isBiometricsEnabled,
+        isDarkMode,
         userImage,
         exportDate: new Date().toISOString(),
-        version: '1.0.0'
+        version: '1.1.0'
       };
 
       const jsonString = JSON.stringify(backupData);

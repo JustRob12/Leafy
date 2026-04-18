@@ -1,26 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Vibration, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Vibration, StatusBar, Image } from 'react-native';
 import { theme } from '../theme';
 import { Shield, Fingerprint, Lock, ShieldAlert, CheckCircle2, Leaf, Key } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as LocalAuthentication from 'expo-local-authentication';
+const LogoSource = require('../../assets/leafylogo.png');
 
 export default function SecurityScreen() {
   const { appPin, unlockApp, colors, isBiometricsEnabled } = useAppContext();
-  
+
   const UI_COLORS = {
-    deepBackground: '#064E3B', 
+    deepBackground: '#064E3B',
     glassBackground: 'rgba(255, 255, 255, 0.08)',
     keyBackground: 'rgba(255, 255, 255, 0.12)',
     text: '#FFFFFF',
     textMuted: 'rgba(255, 255, 255, 0.6)',
-    primary: '#10B981', 
+    primary: '#10B981',
     error: '#FF4B4B',
   };
 
   const styles = getStyles(UI_COLORS);
-  
+
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
   const [screen, setScreen] = useState<'choice' | 'pin'>('choice');
@@ -103,14 +104,14 @@ export default function SecurityScreen() {
       <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.safeArea}>
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          
+
           <View style={styles.header}>
             <View style={styles.brand}>
-               <Leaf size={32} color={UI_COLORS.primary} fill={UI_COLORS.primary} />
-               <Text style={styles.brandText}>Leafy</Text>
+              <Image source={LogoSource} style={styles.brandLogo} />
+              <Text style={styles.brandText}>Leafy</Text>
             </View>
             <View style={[styles.iconWrapper, error && styles.iconWrapperError]}>
-               <Lock size={28} color={error ? UI_COLORS.error : UI_COLORS.text} />
+              <Lock size={28} color={error ? UI_COLORS.error : UI_COLORS.text} />
             </View>
             <Text style={styles.title}>Vault Access</Text>
             <Text style={styles.subtitle}>Choose your preferred way to unlock</Text>
@@ -119,32 +120,32 @@ export default function SecurityScreen() {
           {screen === 'choice' ? (
             <View style={styles.choiceContainer}>
               {isBiometricsEnabled && (
-                <TouchableOpacity 
-                   style={styles.choiceBtn} 
-                   onPress={handleBiometrics}
-                   activeOpacity={0.7}
+                <TouchableOpacity
+                  style={styles.choiceBtn}
+                  onPress={handleBiometrics}
+                  activeOpacity={0.7}
                 >
                   <View style={styles.choiceIconBox}>
-                     <Fingerprint size={32} color={UI_COLORS.primary} />
+                    <Fingerprint size={32} color={UI_COLORS.primary} />
                   </View>
                   <View style={styles.choiceTextBox}>
-                     <Text style={styles.choiceTitle}>Unlock with Fingerprint</Text>
-                     <Text style={styles.choiceSub}>Quick biometric access</Text>
+                    <Text style={styles.choiceTitle}>Unlock with Fingerprint</Text>
+                    <Text style={styles.choiceSub}>Quick biometric access</Text>
                   </View>
                 </TouchableOpacity>
               )}
 
-              <TouchableOpacity 
-                 style={[styles.choiceBtn, { marginTop: 12 }]} 
-                 onPress={switchToPin}
-                 activeOpacity={0.7}
+              <TouchableOpacity
+                style={[styles.choiceBtn, { marginTop: 12 }]}
+                onPress={switchToPin}
+                activeOpacity={0.7}
               >
                 <View style={[styles.choiceIconBox, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
-                   <Key size={28} color="#FFFFFF" />
+                  <Key size={28} color="#FFFFFF" />
                 </View>
                 <View style={styles.choiceTextBox}>
-                   <Text style={styles.choiceTitle}>Unlock with PIN</Text>
-                   <Text style={styles.choiceSub}>Enter your 4-digit code</Text>
+                  <Text style={styles.choiceTitle}>Unlock with PIN</Text>
+                  <Text style={styles.choiceSub}>Enter your 4-digit code</Text>
                 </View>
               </TouchableOpacity>
             </View>
@@ -152,23 +153,23 @@ export default function SecurityScreen() {
             <>
               <Animated.View style={[styles.pinContainer, { transform: [{ translateX: shakeAnim }] }]}>
                 {[1, 2, 3, 4].map((_, i) => (
-                  <View 
-                      key={i} 
-                      style={[
-                          styles.pinDot, 
-                          pin.length > i && styles.pinDotFilled,
-                          error && styles.pinDotError
-                      ]} 
+                  <View
+                    key={i}
+                    style={[
+                      styles.pinDot,
+                      pin.length > i && styles.pinDotFilled,
+                      error && styles.pinDotError
+                    ]}
                   />
                 ))}
               </Animated.View>
 
               <View style={styles.keypad}>
                 {keys.map((key, index) => (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     key={index}
                     style={[
-                      styles.key, 
+                      styles.key,
                       key === '' && styles.keyEmpty,
                     ]}
                     onPress={() => handlePress(key)}
@@ -185,14 +186,14 @@ export default function SecurityScreen() {
               </View>
 
               <TouchableOpacity style={styles.backBtn} onPress={() => setScreen('choice')}>
-                 <Text style={styles.backBtnText}>BACK TO METHODS</Text>
+                <Text style={styles.backBtnText}>BACK TO METHODS</Text>
               </TouchableOpacity>
             </>
           )}
 
           <View style={styles.footer}>
-             <Shield size={14} color={UI_COLORS.textMuted} />
-             <Text style={styles.footerText}>Secure local encryption</Text>
+            <Shield size={14} color={UI_COLORS.textMuted} />
+            <Text style={styles.footerText}>Secure local encryption</Text>
           </View>
         </Animated.View>
       </SafeAreaView>
@@ -230,6 +231,11 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 22,
     color: '#FFFFFF',
     letterSpacing: 1,
+  },
+  brandLogo: {
+    width: 32,
+    height: 32,
+    resizeMode: 'contain',
   },
   iconWrapper: {
     width: 60,

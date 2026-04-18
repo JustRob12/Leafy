@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, Image } from 'react-native';
 import { theme } from '../theme';
 import { Leaf } from 'lucide-react-native';
+const LogoSource = require('../../assets/leafylogo.png');
 
 import { AppProvider, useAppContext } from '../context/AppContext';
 
@@ -47,7 +48,7 @@ export default function LoadingScreen({ onFinish }: LoadingScreenProps) {
     <View style={styles.container}>
       <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
         <View style={styles.iconContainer}>
-          <Leaf size={48} color={isDarkMode ? colors.primary : '#ffffff'} />
+          <Image source={LogoSource} style={styles.logoImage} />
         </View>
         <Text style={styles.title}>Leafy</Text>
         <Text style={styles.subtitle}>Your Invisible Architect</Text>
@@ -68,13 +69,18 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     alignItems: 'center',
   },
   iconContainer: {
-    width: 96,
-    height: 96,
+    width: 120,
+    height: 120,
     borderRadius: theme.borderRadius.xl,
-    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255,255,255,0.2)',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: theme.spacing.lg,
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
   },
   title: {
     fontFamily: theme.fonts.bold,

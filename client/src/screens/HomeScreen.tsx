@@ -62,36 +62,34 @@ export default function HomeScreen() {
     if (animationRef.current) animationRef.current.stop();
 
     const setWidth = goals.length * SCREEN_WIDTH;
-    const currentStep = Math.round(startOffset / SCREEN_WIDTH);
-    const nextOffset = (currentStep + 1) * SCREEN_WIDTH;
+    const currentOffset = startOffset;
+    
+    // Calculate how many more card widths we can go before needing to loop
+    // Since we are going left, we want to stay above 0.
+    const nextOffset = currentOffset - SCREEN_WIDTH;
 
-    // WAIT for 5 seconds on the current item
-    timeoutRef.current = setTimeout(() => {
-      if (isDragging.current) return;
+    // Continuous smooth slide (Left-to-Right)
+    animationRef.current = Animated.timing(scrollXAnim, {
+      toValue: nextOffset,
+      duration: 12000, // Very slow continuous move
+      easing: Easing.linear,
+      useNativeDriver: false,
+    });
 
-      // ANIMATE to the next item
-      animationRef.current = Animated.timing(scrollXAnim, {
-        toValue: nextOffset,
-        duration: 1500,
-        easing: Easing.inOut(Easing.poly(3)), // Smoother transition
-        useNativeDriver: false,
-      });
+    animationRef.current.start(({ finished }) => {
+      if (finished) {
+        let finalizedOffset = nextOffset;
 
-      animationRef.current.start(({ finished }) => {
-        if (finished) {
-          let finalizedOffset = nextOffset;
-
-          // Seamless loop jump logic
-          if (nextOffset >= setWidth * 2) {
-            finalizedOffset = setWidth;
-            scrollXAnim.setValue(finalizedOffset);
-            flatListRef.current?.scrollToOffset({ offset: finalizedOffset, animated: false });
-          }
-
-          runAnimation(finalizedOffset);
+        // Loop logic: When we reach the start, jump back to the middle
+        if (nextOffset <= 0) {
+          finalizedOffset = setWidth;
+          scrollXAnim.setValue(finalizedOffset);
+          flatListRef.current?.scrollToOffset({ offset: finalizedOffset, animated: false });
         }
-      });
-    }, 4000);
+
+        runAnimation(finalizedOffset);
+      }
+    });
   };
 
 
@@ -358,10 +356,9 @@ export default function HomeScreen() {
               data={carouselData}
               keyExtractor={(item, index) => `${item.id}-${index}`}
               horizontal
-              pagingEnabled={true}
               snapToAlignment="center"
               snapToInterval={SCREEN_WIDTH}
-              decelerationRate="fast"
+              decelerationRate="normal"
               showsHorizontalScrollIndicator={false}
               onScroll={onScroll}
               onMomentumScrollEnd={handleScrollEnd}
@@ -750,11 +747,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDarkMode ? 0.3 : 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
   pagination: {
     flexDirection: 'row',

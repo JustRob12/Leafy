@@ -35,7 +35,7 @@ export default function BottomTabNavigator() {
           height: 64,
           borderTopWidth: 0,
           paddingBottom: 10,
-          paddingTop: 8,
+          paddingTop: 10,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 10 },
           shadowOpacity: isDarkMode ? 0.3 : 0.1,

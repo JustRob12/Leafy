@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image as RNImage, Modal, Dimensions } from 'react-native';
 import { theme } from '../theme';
-import { Plane, Plus, Wallet as WalletIcon, ShoppingBag, AlertTriangle, User, MoreHorizontal, Leaf, QrCode, Image as ImageIcon, X, ChevronRight, Search } from 'lucide-react-native';
+import { Plane, Plus, Wallet as WalletIcon, ShoppingBag, AlertTriangle, User, MoreHorizontal, Leaf, QrCode, Image as ImageIcon, X, ChevronRight, Search, ChevronUp, ChevronDown } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -213,20 +213,20 @@ export default function WalletsScreen() {
 
                 <View style={styles.cardHeaderRight}>
                   {isReordering ? (
-                    <View style={styles.reorderActionsHorizontal}>
+                    <View style={styles.reorderActionsVertical}>
                       <TouchableOpacity
                         onPress={() => moveWallet(index, 'up')}
                         disabled={index === 0}
                         style={[styles.reorderBtnSmall, index === 0 && { opacity: 0.3 }]}
                       >
-                        <ChevronRight size={14} color={colors.text} style={{ transform: [{ rotate: '-180deg' }] }} />
+                        <ChevronUp size={16} color={colors.text} />
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => moveWallet(index, 'down')}
                         disabled={index === wallets.length - 1}
                         style={[styles.reorderBtnSmall, index === wallets.length - 1 && { opacity: 0.3 }]}
                       >
-                        <ChevronRight size={14} color={colors.text} />
+                        <ChevronDown size={16} color={colors.text} />
                       </TouchableOpacity>
                     </View>
                   ) : (
@@ -639,9 +639,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       fontSize: 12,
       color: colors.primary,
     },
-    reorderActionsHorizontal: {
-      flexDirection: 'row',
-      gap: 8,
+    reorderActionsVertical: {
+      flexDirection: 'column',
+      gap: 4,
     },
     reorderBtnSmall: {
       width: 28,

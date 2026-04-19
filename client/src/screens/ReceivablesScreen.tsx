@@ -4,17 +4,25 @@ import { theme } from '../theme';
 import { Plus, User, FileText, DollarSign, Trash2, Clock, ChevronLeft } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
+import WalletDropdown from '../components/WalletDropdown';
 import { useNavigation } from '@react-navigation/native';
 
 export default function ReceivablesScreen() {
-  const { receivables, addReceivable, deleteReceivable, showConfirm, colors, isDarkMode } = useAppContext();
+  const { receivables, addReceivable, payReceivable, deleteReceivable, showConfirm, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation();
 
+  // Add Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [personName, setPersonName] = useState('');
   const [taskName, setTaskName] = useState('');
   const [amount, setAmount] = useState('');
+
+  // Pay Modal State
+  const [payModalVisible, setPayModalVisible] = useState(false);
+  const [selectedReceivableId, setSelectedReceivableId] = useState<string | null>(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
 
   const handleAddReceivable = async () => {
     const numericAmount = parseFloat(amount);
@@ -35,10 +43,27 @@ export default function ReceivablesScreen() {
     setAmount('');
   };
 
+  const handleOpenPayModal = (id: string, currentAmount: number) => {
+    setSelectedReceivableId(id);
+    setPayAmount(currentAmount.toString());
+    setPayModalVisible(true);
+  };
+
+  const handlePayConfirm = async () => {
+    const numericAmount = parseFloat(payAmount);
+    if (selectedReceivableId && selectedWalletId && !isNaN(numericAmount) && numericAmount > 0) {
+      await payReceivable(selectedReceivableId, numericAmount, selectedWalletId);
+      setPayModalVisible(false);
+      setSelectedReceivableId(null);
+      setPayAmount('');
+      setSelectedWalletId(null);
+    }
+  };
+
   const handleDelete = (id: string, name: string) => {
     showConfirm(
-      "Mark as Paid?",
-      `Has "${name}" paid for the task? This will remove it from the list.`,
+      'Delete Record',
+      `Are you sure you want to delete the pending payment from ${name}? This action cannot be undone.`,
       () => deleteReceivable(id)
     );
   };
@@ -90,7 +115,15 @@ export default function ReceivablesScreen() {
                     <Text style={styles.dateText}>{formatDate(item.date)}</Text>
                   </View>
                 </View>
-                <Text style={styles.amountText}>₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <TouchableOpacity
+                    style={styles.trashBtnTop}
+                    onPress={() => handleDelete(item.id, item.personName)}
+                  >
+                    <Trash2 size={16} color="#ef4444" />
+                  </TouchableOpacity>
+                  <Text style={styles.amountText}>₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
+                </View>
               </View>
 
               <View style={styles.cardDivider} />
@@ -102,7 +135,7 @@ export default function ReceivablesScreen() {
                 </View>
                 <TouchableOpacity
                   style={styles.paidBtn}
-                  onPress={() => handleDelete(item.id, item.personName)}
+                  onPress={() => handleOpenPayModal(item.id, item.amount)}
                 >
                   <Text style={styles.paidBtnText}>Mark Paid</Text>
                 </TouchableOpacity>
@@ -161,6 +194,64 @@ export default function ReceivablesScreen() {
         >
           <Text style={styles.saveBtnText}>Record Payment</Text>
         </TouchableOpacity>
+      </ActionSheet>
+
+      <ActionSheet
+        visible={payModalVisible}
+        onClose={() => { setPayModalVisible(false); setSelectedReceivableId(null); }}
+        title="Process Payment"
+      >
+        {(() => {
+          const item = receivables.find(r => r.id === selectedReceivableId);
+          if (!item) return null;
+
+          return (
+            <>
+              <View style={styles.payInfoRow}>
+                <View>
+                  <Text style={styles.payLabel}>From</Text>
+                  <Text style={styles.payValue}>{item.personName}</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.payLabel}>Total Due</Text>
+                  <Text style={styles.payValue}>₱{item.amount.toLocaleString()}</Text>
+                </View>
+              </View>
+
+              <Text style={styles.inputLabel}>Select Wallet to Receive Funds</Text>
+              <WalletDropdown
+                selectedWalletId={selectedWalletId}
+                onSelectWallet={setSelectedWalletId}
+              />
+
+              <Text style={styles.inputLabel}>Payment Amount (₱)</Text>
+              <View style={styles.inputWrapper}>
+                <DollarSign size={18} color={colors.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="0.00"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="numeric"
+                  value={payAmount}
+                  onChangeText={setPayAmount}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.saveBtn,
+                  (!selectedWalletId || !payAmount || parseFloat(payAmount) <= 0) && styles.saveBtnDisabled
+                ]}
+                onPress={handlePayConfirm}
+                disabled={!selectedWalletId || !payAmount || parseFloat(payAmount) <= 0}
+              >
+                <Text style={styles.saveBtnText}>
+                  {parseFloat(payAmount) >= item.amount ? 'Mark Fully Paid' : 'Record Partial Payment'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          );
+        })()}
       </ActionSheet>
     </View>
   );
@@ -337,6 +428,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: 12,
     color: colors.primary,
   },
+  trashBtnTop: {
+    marginBottom: 4,
+    padding: 2,
+  },
   inputLabel: {
     fontFamily: theme.fonts.medium,
     fontSize: 14,
@@ -379,5 +474,26 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize: 16,
     color: '#ffffff',
+  },
+  payInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  payLabel: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+    color: colors.textMuted,
+    marginBottom: 4,
+  },
+  payValue: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 16,
+    color: colors.text,
   },
 });

@@ -190,8 +190,8 @@ export default function WalletsScreen() {
           </View>
         ) : (
           wallets.map((wallet, index) => (
-            <View 
-              key={wallet.id} 
+            <View
+              key={wallet.id}
               style={[styles.premiumCard, isReordering && { borderColor: colors.primary, borderStyle: 'dashed', borderWidth: 2 }]}
             >
               <View style={styles.cardHeader}>
@@ -210,7 +210,7 @@ export default function WalletsScreen() {
                   </View>
                   <Text style={styles.cardName} numberOfLines={1}>{wallet.name}</Text>
                 </View>
-                
+
                 <View style={styles.cardHeaderRight}>
                   {isReordering ? (
                     <View style={styles.reorderActionsHorizontal}>
@@ -659,7 +659,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     cardIconImage: {
       width: '100%',
       height: '100%',
-      borderRadius: 16,
+      borderRadius: 5,
     },
     iconTypeRow: {
       flexDirection: 'row',
@@ -699,7 +699,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     previewLogo: {
       width: 40,
       height: 40,
-      borderRadius: 8,
+      borderRadius: 0,
       backgroundColor: '#ffffff',
       resizeMode: 'contain',
       marginRight: 12,
@@ -766,7 +766,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     logoIconBox: {
       width: 64,
       height: 64,
-      borderRadius: 16,
+      borderRadius: 0,
       backgroundColor: '#ffffff',
       alignItems: 'center',
       justifyContent: 'center',

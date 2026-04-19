@@ -7,14 +7,20 @@ import ActionSheet from '../components/ActionSheet';
 import { useNavigation } from '@react-navigation/native';
 
 export default function DebtsScreen() {
-  const { debts, addDebt, deleteDebt, showConfirm, colors, isDarkMode } = useAppContext();
+  const { debts, addDebt, payDebt, deleteDebt, showConfirm, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation();
 
+  // New Debt Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [personName, setPersonName] = useState('');
   const [taskName, setTaskName] = useState('');
   const [amount, setAmount] = useState('');
+
+  // Settlement Modal State
+  const [payModalVisible, setPayModalVisible] = useState(false);
+  const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
+  const [payAmount, setPayAmount] = useState('');
 
   const handleAddDebt = async () => {
     const numericAmount = parseFloat(amount);
@@ -35,10 +41,26 @@ export default function DebtsScreen() {
     setAmount('');
   };
 
+  const handleOpenPayModal = (id: string, currentAmount: number) => {
+    setSelectedDebtId(id);
+    setPayAmount(currentAmount.toString());
+    setPayModalVisible(true);
+  };
+
+  const handlePayConfirm = async () => {
+    const numericAmount = parseFloat(payAmount);
+    if (selectedDebtId && !isNaN(numericAmount) && numericAmount > 0) {
+      await payDebt(selectedDebtId, numericAmount);
+      setPayModalVisible(false);
+      setSelectedDebtId(null);
+      setPayAmount('');
+    }
+  };
+
   const handleDelete = (id: string, name: string) => {
     showConfirm(
-      "Mark as Settled?",
-      `Have you paid "${name}"? This will remove the debt from your list.`,
+      'Delete Record',
+      `Are you sure you want to delete the debt record to ${name}? This action cannot be undone.`,
       () => deleteDebt(id)
     );
   };
@@ -92,7 +114,15 @@ export default function DebtsScreen() {
                     <Text style={styles.dateText}>{formatDate(item.date)}</Text>
                   </View>
                 </View>
-                <Text style={styles.amountText}>₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <TouchableOpacity
+                    style={styles.trashBtnTop}
+                    onPress={() => handleDelete(item.id, item.personName)}
+                  >
+                    <Trash2 size={16} color={statusRed} />
+                  </TouchableOpacity>
+                  <Text style={styles.amountText}>₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
+                </View>
               </View>
 
               <View style={styles.cardDivider} />
@@ -104,7 +134,7 @@ export default function DebtsScreen() {
                 </View>
                 <TouchableOpacity
                   style={styles.paidBtn}
-                  onPress={() => handleDelete(item.id, item.personName)}
+                  onPress={() => handleOpenPayModal(item.id, item.amount)}
                 >
                   <Text style={styles.paidBtnText}>Mark Settled</Text>
                 </TouchableOpacity>
@@ -163,6 +193,62 @@ export default function DebtsScreen() {
         >
           <Text style={styles.saveBtnText}>Record Debt</Text>
         </TouchableOpacity>
+      </ActionSheet>
+
+      <ActionSheet
+        visible={payModalVisible}
+        onClose={() => { setPayModalVisible(false); setSelectedDebtId(null); }}
+        title="Settle Debt"
+      >
+        {(() => {
+          const item = debts.find(d => d.id === selectedDebtId);
+          if (!item) return null;
+
+          return (
+            <>
+              <View style={styles.payInfoRow}>
+                <View>
+                  <Text style={styles.payLabel}>To</Text>
+                  <Text style={styles.payValue}>{item.personName}</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.payLabel}>Total Owed</Text>
+                  <Text style={styles.payValue}>₱{item.amount.toLocaleString()}</Text>
+                </View>
+              </View>
+
+              <Text style={styles.inputLabel}>Amount Paid (₱)</Text>
+              <View style={styles.inputWrapper}>
+                <DollarSign size={18} color={colors.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="0.00"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="numeric"
+                  value={payAmount}
+                  onChangeText={setPayAmount}
+                />
+              </View>
+
+              <View style={styles.infoBox}>
+                <Text style={styles.infoText}>Note: Settling debts records the transaction in history for your tracking, but does not deduct from your wallet balances.</Text>
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.saveBtn,
+                  (!payAmount || parseFloat(payAmount) <= 0) && styles.saveBtnDisabled
+                ]}
+                onPress={handlePayConfirm}
+                disabled={!payAmount || parseFloat(payAmount) <= 0}
+              >
+                <Text style={styles.saveBtnText}>
+                  {parseFloat(payAmount) >= item.amount ? 'Mark Fully Settled' : 'Record Partial Settlement'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          );
+        })()}
       </ActionSheet>
     </View>
   );
@@ -343,6 +429,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       fontSize: 12,
       color: statusRed,
     },
+    trashBtnTop: {
+      marginBottom: 4,
+      padding: 2,
+    },
     inputLabel: {
       fontFamily: theme.fonts.medium,
       fontSize: 14,
@@ -385,6 +475,42 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       fontFamily: theme.fonts.bold,
       fontSize: 16,
       color: '#ffffff',
+    },
+    payInfoRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : '#fef2f2',
+      padding: 16,
+      borderRadius: 16,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    payLabel: {
+      fontFamily: theme.fonts.medium,
+      fontSize: 12,
+      color: colors.textMuted,
+      marginBottom: 4,
+    },
+    payValue: {
+      fontFamily: theme.fonts.bold,
+      fontSize: 16,
+      color: colors.text,
+    },
+    infoBox: {
+      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc',
+      padding: 12,
+      borderRadius: 12,
+      marginTop: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    infoText: {
+      fontFamily: theme.fonts.regular,
+      fontSize: 12,
+      color: colors.textMuted,
+      lineHeight: 16,
+      textAlign: 'center',
     },
   });
 };

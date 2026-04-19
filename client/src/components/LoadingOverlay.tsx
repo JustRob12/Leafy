@@ -46,16 +46,23 @@ export default function LoadingOverlay() {
   });
 
   return (
-    <View style={styles.overlay}>
-      <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-        <View style={styles.loaderBox}>
-          <Animated.View style={{ transform: [{ rotate: spin }] }}>
-            <Leaf size={40} color={colors.primary} />
-          </Animated.View>
-          <Text style={styles.loadingText}>Processing...</Text>
-        </View>
-      </Animated.View>
-    </View>
+    <Modal
+      transparent
+      visible={loading}
+      animationType="none"
+      statusBarTranslucent
+    >
+      <View style={styles.overlay}>
+        <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+          <View style={styles.loaderBox}>
+            <Animated.View style={{ transform: [{ rotate: spin }] }}>
+              <Leaf size={40} color={colors.primary} />
+            </Animated.View>
+            <Text style={styles.loadingText}>Processing...</Text>
+          </View>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
 

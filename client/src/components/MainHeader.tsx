@@ -5,20 +5,21 @@ import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { navigationRef } from '../navigation/navigationUtils';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, User, Settings, LogOut, Info, ChevronRight, Moon, Sun } from 'lucide-react-native';
+import { Plus, User, Settings, LogOut, Info, ChevronRight, Moon, Sun, Flame, Sprout, TreeDeciduous, Egg, X } from 'lucide-react-native';
 
 export interface MainHeaderProps {
   activeRoute?: string;
 }
 
 export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderProps) {
-  const { username, userImage, showConfirm, clearData, colors, isDarkMode, toggleTheme } = useAppContext();
+  const { username, userImage, streakCount, transactionDates, showConfirm, clearData, colors, isDarkMode, toggleTheme } = useAppContext();
   const navigation = useNavigation<any>();
 
   const styles = getStyles(colors, isDarkMode);
   const [internalActiveRoute, setInternalActiveRoute] = useState('Home');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [streakModalVisible, setStreakModalVisible] = useState(false);
 
   const activeRoute = propActiveRoute || internalActiveRoute;
 
@@ -82,10 +83,32 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
           <View>
             <Text style={styles.realtimeDate}>{formattedDate}</Text>
             <Text style={styles.greeting}>Hello, {username || 'User'}</Text>
-            <Text style={styles.appMessage}>Welcome to Leafy the Personal Finance Tracker</Text>
+            <Text style={styles.appMessage}>Welcome to Leafy</Text>
           </View>
 
           <View style={styles.rightActions}>
+            <TouchableOpacity 
+              style={[
+                styles.streakBadge,
+                streakCount >= 8 ? styles.streakBadgeTree : 
+                streakCount >= 3 ? styles.streakBadgeSapling : 
+                styles.streakBadgeSeed
+              ]}
+              onPress={() => setStreakModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              {(() => {
+                if (streakCount >= 8) return <TreeDeciduous size={16} color="#15803d" fill="#15803d" />;
+                if (streakCount >= 3) return <Sprout size={16} color="#22c55e" fill="#22c55e" />;
+                return <Egg size={16} color="#92400e" fill="#92400e" />;
+              })()}
+              <Text style={[
+                styles.streakText,
+                streakCount >= 8 ? { color: '#15803d' } : 
+                streakCount >= 3 ? { color: '#16a34a' } : 
+                { color: '#92400e' }
+              ]}>{streakCount}</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.profileCircle}
               onPress={() => setDropdownVisible(true)}
@@ -168,6 +191,123 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                     <LogOut size={18} color="#ef4444" />
                     <Text style={[styles.dropdownItemText, { color: '#ef4444' }]}>Log Out</Text>
                   </View>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Streak Detail Modal */}
+      <Modal
+        visible={streakModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setStreakModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setStreakModalVisible(false)}>
+          <View style={styles.modalOverlayCenter}>
+            <TouchableWithoutFeedback>
+              <View style={styles.streakModal}>
+                <View style={styles.streakModalHeader}>
+                  <Text style={styles.streakModalTitle}>Your Growth Journey</Text>
+                  <TouchableOpacity onPress={() => setStreakModalVisible(false)}>
+                    <X size={20} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.streakStatsRow}>
+                  <View style={styles.streakStatItem}>
+                    <Text style={styles.streakStatValue}>{streakCount}</Text>
+                    <Text style={styles.streakStatLabel}>Day Streak</Text>
+                  </View>
+                  <View style={styles.streakStatDivider} />
+                  <View style={styles.streakStatItem}>
+                    <Text style={styles.streakStatValue}>
+                      {streakCount >= 8 ? 'Tree' : streakCount >= 3 ? 'Sapling' : 'Seed'}
+                    </Text>
+                    <Text style={styles.streakStatLabel}>Current Stage</Text>
+                  </View>
+                </View>
+
+                {/* WEEKLY STEPPER */}
+                <View style={styles.stepperContainer}>
+                  <View style={styles.stepperLine} />
+                  <View style={styles.daysRow}>
+                    {(() => {
+                      const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+                      const today = new Date();
+                      const currentDayIdx = today.getDay();
+                      const startOfWeek = new Date(today);
+                      startOfWeek.setDate(today.getDate() - currentDayIdx);
+
+                      return days.map((day, idx) => {
+                        const date = new Date(startOfWeek);
+                        date.setDate(startOfWeek.getDate() + idx);
+                        const dateStr = date.toISOString().split('T')[0];
+                        const isCompleted = transactionDates.includes(dateStr);
+                        const isToday = idx === currentDayIdx;
+
+                        return (
+                          <View key={idx} style={styles.dayStep}>
+                            <View style={[
+                              styles.dayCircle,
+                              isCompleted && styles.dayCircleCompleted,
+                              isToday && styles.dayCircleToday
+                            ]}>
+                              <Text style={[
+                                styles.dayText,
+                                isCompleted && styles.dayTextCompleted,
+                                isToday && styles.dayTextToday
+                              ]}>{day}</Text>
+                            </View>
+                          </View>
+                        );
+                      });
+                    })()}
+                  </View>
+                </View>
+
+                {/* GROWTH GUIDE */}
+                <View style={styles.guideContainer}>
+                  <Text style={styles.guideTitle}>How Your Forest Grows</Text>
+                  
+                  <View style={styles.guideRow}>
+                    <View style={styles.guideItem}>
+                      <View style={[styles.guideIconCircle, { backgroundColor: isDarkMode ? 'rgba(146, 64, 14, 0.1)' : '#fffbeb' }]}>
+                        <Egg size={20} color="#92400e" fill="#92400e" />
+                      </View>
+                      <Text style={styles.guideStageName}>Seed</Text>
+                      <Text style={styles.guideStageDesc}>Day 1-2</Text>
+                    </View>
+
+                    <View style={styles.guideConnector} />
+
+                    <View style={styles.guideItem}>
+                      <View style={[styles.guideIconCircle, { backgroundColor: isDarkMode ? 'rgba(34, 197, 94, 0.1)' : '#f0fdf4' }]}>
+                        <Sprout size={20} color="#22c55e" fill="#22c55e" />
+                      </View>
+                      <Text style={styles.guideStageName}>Sapling</Text>
+                      <Text style={styles.guideStageDesc}>Day 3-7</Text>
+                    </View>
+
+                    <View style={styles.guideConnector} />
+
+                    <View style={styles.guideItem}>
+                      <View style={[styles.guideIconCircle, { backgroundColor: isDarkMode ? 'rgba(21, 128, 61, 0.1)' : '#f0fdf4' }]}>
+                        <TreeDeciduous size={20} color="#15803d" fill="#15803d" />
+                      </View>
+                      <Text style={styles.guideStageName}>Tree</Text>
+                      <Text style={styles.guideStageDesc}>Day 8+</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <TouchableOpacity 
+                  style={styles.closeStreakBtn}
+                  onPress={() => setStreakModalVisible(false)}
+                >
+                  <Text style={styles.closeStreakBtnText}>Keep Growing</Text>
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>
@@ -331,5 +471,209 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.medium,
     fontSize: 14,
     color: colors.text,
-  }
+  },
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: isDarkMode ? 'rgba(249, 115, 22, 0.1)' : '#fff7ed',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(249, 115, 22, 0.2)' : '#ffedd5',
+  },
+  streakText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 14,
+    color: '#f97316',
+  },
+  streakBadgeSeed: {
+    backgroundColor: isDarkMode ? 'rgba(146, 64, 14, 0.1)' : '#fffbeb',
+    borderColor: isDarkMode ? 'rgba(146, 64, 14, 0.2)' : '#fef3c7',
+  },
+  streakBadgeSapling: {
+    backgroundColor: isDarkMode ? 'rgba(34, 197, 94, 0.1)' : '#f0fdf4',
+    borderColor: isDarkMode ? 'rgba(34, 197, 94, 0.2)' : '#dcfce7',
+  },
+  streakBadgeTree: {
+    backgroundColor: isDarkMode ? 'rgba(21, 128, 61, 0.1)' : '#f0fdf4',
+    borderColor: isDarkMode ? 'rgba(21, 128, 61, 0.2)' : '#dcfce7',
+  },
+  modalOverlayCenter: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  streakModal: {
+    backgroundColor: colors.card,
+    width: '100%',
+    borderRadius: 24,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 5,
+  },
+  streakModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  streakModalTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 20,
+    color: colors.text,
+  },
+  streakStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc',
+    padding: 12,
+    borderRadius: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  streakStatItem: {
+    alignItems: 'center',
+  },
+  streakStatValue: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 22,
+    color: colors.primary,
+  },
+  streakStatLabel: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  streakStatDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: colors.border,
+  },
+  stepperContainer: {
+    height: 70,
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  stepperLine: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    top: 40,
+    height: 2,
+    backgroundColor: colors.border,
+    zIndex: 1,
+  },
+  daysRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    zIndex: 2,
+  },
+  dayStep: {
+    alignItems: 'center',
+    width: 35,
+  },
+  dayCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.card,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayCircleCompleted: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  dayCircleToday: {
+    borderColor: colors.primary,
+    borderWidth: 2,
+  },
+  dayText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  dayTextCompleted: {
+    color: '#ffffff',
+  },
+  dayTextToday: {
+    color: colors.primary,
+  },
+  guideContainer: {
+    marginTop: 4,
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : '#fcfcfc',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  guideTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 14,
+    color: colors.text,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  guideRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  guideItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  guideIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  guideStageName: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 13,
+    color: colors.text,
+  },
+  guideStageDesc: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 11,
+    color: colors.textMuted,
+  },
+  guideConnector: {
+    width: 20,
+    height: 1,
+    backgroundColor: colors.border,
+    marginTop: -16,
+  },
+  closeStreakBtn: {
+    backgroundColor: colors.primary,
+    height: 46,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  closeStreakBtnText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 16,
+    color: '#ffffff',
+  },
 });

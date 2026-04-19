@@ -125,6 +125,10 @@ type AppContextType = {
   isBiometricsEnabled: boolean;
   toggleBiometrics: (enabled: boolean) => Promise<void>;
   unlockApp: () => void;
+  payReceivable: (id: string, amount: number, walletId: string) => Promise<void>;
+  payDebt: (id: string, amount: number) => Promise<void>;
+  streakCount: number;
+  transactionDates: string[];
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -614,9 +618,138 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsUnlocked(true);
   };
 
+  const payReceivable = async (id: string, amount: number, walletId: string) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    const receivable = receivables.find(r => r.id === id);
+    if (!receivable) {
+      setLoading(false);
+      return;
+    }
+
+    // 1. Update Receivables (Partial or Full)
+    let updatedReceivables;
+    let isFullPayment = amount >= receivable.amount;
+
+    if (isFullPayment) {
+      updatedReceivables = receivables.filter(r => r.id !== id);
+    } else {
+      updatedReceivables = receivables.map(r =>
+        r.id === id ? { ...r, amount: r.amount - amount } : r
+      );
+    }
+    setReceivables(updatedReceivables);
+    await AsyncStorage.setItem('@receivables', JSON.stringify(updatedReceivables));
+
+    // 2. Add Transaction
+    const newTx: TransactionType = {
+      id: Date.now().toString(),
+      title: `Payment from ${receivable.personName}`,
+      amount: amount,
+      date: new Date().toISOString(),
+      type: 'deposit',
+      walletId: walletId,
+    };
+    const updatedTx = [newTx, ...transactions];
+    setTransactions(updatedTx);
+    await AsyncStorage.setItem('@transactions', JSON.stringify(updatedTx));
+
+    // 3. Update Wallet Balance
+    const updatedWallets = wallets.map(w => {
+      if (w.id === walletId) {
+        return { ...w, balance: w.balance + amount };
+      }
+      return w;
+    });
+    setWallets(updatedWallets);
+    await AsyncStorage.setItem('@wallets', JSON.stringify(updatedWallets));
+
+    setLoading(false);
+    showFeedback('success', isFullPayment ? 'Payment Received' : 'Partial Payment Recorded');
+  };
+
+  const payDebt = async (id: string, amount: number) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    const debt = debts.find(d => d.id === id);
+    if (!debt) {
+      setLoading(false);
+      return;
+    }
+
+    // 1. Update Debts (Partial or Full)
+    let updatedDebts;
+    let isFullPayment = amount >= debt.amount;
+
+    if (isFullPayment) {
+      updatedDebts = debts.filter(d => d.id !== id);
+    } else {
+      updatedDebts = debts.map(d =>
+        d.id === id ? { ...d, amount: d.amount - amount } : d
+      );
+    }
+    setDebts(updatedDebts);
+    await AsyncStorage.setItem('@debts', JSON.stringify(updatedDebts));
+
+    // 2. Add Transaction to History (but don't touch wallets)
+    const newTx: TransactionType = {
+      id: Date.now().toString(),
+      title: `Settled debt to ${debt.personName}`,
+      amount: amount,
+      date: new Date().toISOString(),
+      type: 'withdrawal',
+      walletId: 'external', // Marks it as not affecting any local wallet balance
+    };
+    const updatedTx = [newTx, ...transactions];
+    setTransactions(updatedTx);
+    await AsyncStorage.setItem('@transactions', JSON.stringify(updatedTx));
+
+    setLoading(false);
+    showFeedback('success', isFullPayment ? 'Debt Settled' : 'Partial Payment Recorded');
+  };
+
   const totalReceivables = receivables.reduce((acc, r) => acc + r.amount, 0);
   const totalDebts = debts.reduce((acc, d) => acc + d.amount, 0);
   const totalBalance = wallets.reduce((acc, wallet) => acc + wallet.balance, 0);
+
+  const calculateStreak = () => {
+    if (transactions.length === 0) return 0;
+
+    // Get unique dates in YYYY-MM-DD format
+    const uniqueDates = new Set(
+      transactions.map(tx => new Date(tx.date).toISOString().split('T')[0])
+    );
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    // Check if streak is broken (neither today nor yesterday has a transaction)
+    if (!uniqueDates.has(todayStr) && !uniqueDates.has(yesterdayStr)) {
+      return 0;
+    }
+
+    let streak = 0;
+    let checkDate = uniqueDates.has(todayStr) ? new Date() : yesterday;
+    
+    while (true) {
+      const checkStr = checkDate.toISOString().split('T')[0];
+      if (uniqueDates.has(checkStr)) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+
+    return streak;
+  };
+
+  const streakCount = calculateStreak();
+  const transactionDates = Array.from(new Set(transactions.map(tx => new Date(tx.date).toISOString().split('T')[0])));
 
   return (
     <AppContext.Provider
@@ -674,7 +807,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleSecurity,
         isBiometricsEnabled,
         toggleBiometrics,
-        unlockApp
+        unlockApp,
+        payReceivable,
+        payDebt,
+        streakCount,
+        transactionDates
       }}
     >
       {children}

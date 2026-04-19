@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
-import { Calculator as CalcIcon, Delete, X, Divide, Minus, Plus, Equal, ArrowLeft } from 'lucide-react-native';
+import { Calculator as CalcIcon, Delete, X, Divide, Minus, Plus, Equal, ChevronLeft } from 'lucide-react-native';
 import WalletDropdown from '../components/WalletDropdown';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
-const BUTTON_WIDTH = (width - 64) / 4;
+const BUTTON_WIDTH = (width - 80) / 4; // Slightly narrower
 
 export default function CalculatorScreen() {
   const navigation = useNavigation<any>();
@@ -32,9 +32,24 @@ export default function CalculatorScreen() {
   };
 
   const handleOperator = (op: string) => {
-    setExpression(currentValue + ' ' + op + ' ');
-    setCurrentValue('0');
-    setIsResult(false);
+    if (expression && !isResult) {
+      // Continuous calculation: evaluate the current pair before adding the next operator
+      try {
+        const fullExpr = expression + currentValue;
+        const result = eval(fullExpr.replace('×', '*').replace('÷', '/'));
+        const displayResult = String(Number(Number(result).toFixed(2)));
+        setExpression(displayResult + ' ' + op + ' ');
+        setCurrentValue(displayResult);
+        setIsResult(true);
+      } catch (e) {
+        setCurrentValue('Error');
+        setExpression('');
+      }
+    } else {
+      // Initial operator or operator switch
+      setExpression(currentValue + ' ' + op + ' ');
+      setIsResult(true);
+    }
   };
 
   const calculate = () => {
@@ -66,12 +81,15 @@ export default function CalculatorScreen() {
     }
   };
 
-  const useWalletBalance = () => {
-    if (selectedWallet) {
-      // Round to 2 decimal places to avoid floating point precision issues (e.g. 331.94000000004)
-      const roundedBalance = Number(selectedWallet.balance.toFixed(2));
-      setCurrentValue(String(roundedBalance));
-      setIsResult(false);
+  const handleSelectWallet = (id: string | null) => {
+    setSelectedWalletId(id);
+    if (id) {
+      const wallet = wallets.find(w => w.id === id);
+      if (wallet) {
+        const roundedBalance = Number(wallet.balance.toFixed(2));
+        setCurrentValue(String(roundedBalance));
+        setIsResult(false);
+      }
     }
   };
 
@@ -91,8 +109,8 @@ export default function CalculatorScreen() {
     }
 
     return (
-      <TouchableOpacity 
-        style={[styles.btn, { backgroundColor: bgColor }]} 
+      <TouchableOpacity
+        style={[styles.btn, { backgroundColor: bgColor }]}
         onPress={onPress}
         activeOpacity={0.7}
       >
@@ -106,29 +124,22 @@ export default function CalculatorScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <ArrowLeft size={24} color={colors.text} />
+          <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Calculator</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Wallet Selector & Balance Info */}
+      {/* Wallet Selector */}
       <View style={styles.walletSection}>
         <Text style={styles.sectionLabel}>Reference Wallet</Text>
-        <WalletDropdown 
+        <WalletDropdown
           selectedWalletId={selectedWalletId}
-          onSelectWallet={setSelectedWalletId}
+          onSelectWallet={handleSelectWallet}
         />
-        {selectedWallet && (
-          <TouchableOpacity style={styles.balanceShortcut} onPress={useWalletBalance}>
-            <Text style={styles.balanceLabel}>Wallet Balance:</Text>
-            <Text style={styles.balanceValue}>₱{selectedWallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
-            <Text style={styles.balanceHint}>(Tap to Use)</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Display Area */}
@@ -166,13 +177,13 @@ export default function CalculatorScreen() {
           <View style={{ flex: 3, flexDirection: 'row', gap: 12 }}>
             <View style={{ flex: 1 }}>
               <View style={styles.row}>
-                 <CalcButton label="1" onPress={() => handleNumber('1')} />
-                 <CalcButton label="2" onPress={() => handleNumber('2')} />
-                 <CalcButton label="3" onPress={() => handleNumber('3')} />
+                <CalcButton label="1" onPress={() => handleNumber('1')} />
+                <CalcButton label="2" onPress={() => handleNumber('2')} />
+                <CalcButton label="3" onPress={() => handleNumber('3')} />
               </View>
-              <View style={[styles.row, { marginTop: 12 }]}>
-                 <CalcButton label="0" onPress={() => handleNumber('0')} style={{ flex: 2 }} />
-                 <CalcButton label="." onPress={() => handleNumber('.')} />
+              <View style={[styles.row, { marginTop: 8 }]}>
+                <CalcButton label="0" onPress={() => handleNumber('0')} style={{ flex: 2 }} />
+                <CalcButton label="." onPress={() => handleNumber('.')} />
               </View>
             </View>
           </View>
@@ -190,19 +201,18 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
-    backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9',
+    padding: 4,
   },
   headerTitle: {
     fontFamily: theme.fonts.bold,
@@ -218,31 +228,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: 14,
     color: colors.textMuted,
     marginBottom: 8,
-  },
-  balanceShortcut: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
-    padding: 12,
-    borderRadius: 12,
-    marginTop: -8,
-    gap: 8,
-  },
-  balanceLabel: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 13,
-    color: colors.textMuted,
-  },
-  balanceValue: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 14,
-    color: colors.primary,
-  },
-  balanceHint: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 11,
-    color: colors.primary,
-    opacity: 0.7,
   },
   displayArea: {
     flex: 1,
@@ -267,11 +252,11 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     width: '100%',
   },
   keypad: {
-    padding: 24,
+    padding: 16,
     backgroundColor: colors.card,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    gap: 12,
+    gap: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -10 },
     shadowOpacity: isDarkMode ? 0.3 : 0.05,
@@ -280,12 +265,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
   btn: {
     flex: 1,
-    height: BUTTON_WIDTH,
-    borderRadius: 20,
+    height: BUTTON_WIDTH - 15,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -293,6 +278,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   btnText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 24,
+    fontSize: 20,
   },
 });

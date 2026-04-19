@@ -41,8 +41,8 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
     };
   }, []);
 
-  // Use the user's specific request: hide on Calculator
-  if (activeRoute === 'Calculator') return null;
+  // Use the user's specific request: show on Calculator as well
+  // if (activeRoute === 'Calculator') return null;
 
   const formattedDate = currentDate.toLocaleDateString('en-US', {
     weekday: 'long',

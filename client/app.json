@@ -21,7 +21,11 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.devrob.leafy"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -35,6 +39,11 @@
           "cameraPermission": "The app accesses your camera to let you take goal cover images."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b35f4de6-8dc2-4d6a-b00a-a5f4fd2ed55a"
+      }
+    }
   }
 }

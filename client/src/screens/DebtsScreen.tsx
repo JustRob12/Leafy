@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { theme } from '../theme';
 import { Plus, User, FileText, DollarSign, Trash2, AlertCircle, ChevronLeft } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
@@ -73,9 +75,10 @@ export default function DebtsScreen() {
   const statusRed = '#ef4444';
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Who do you owe?</Text>
@@ -257,7 +260,7 @@ export default function DebtsScreen() {
           );
         })()}
       </ActionSheet>
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -1,9 +1,11 @@
 import React from 'react';
-import { View } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { View, Animated } from 'react-native';
+import { createBottomTabNavigator, BottomTabBar } from '@react-navigation/bottom-tabs';
 import { Home, Wallet, Target, Clock } from 'lucide-react-native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
+import { globalTabBarTranslateY } from '../hooks/useScrollHideTabBar';
+
 
 import HomeScreen from '../screens/HomeScreen';
 import WalletsScreen from '../screens/WalletsScreen';
@@ -18,7 +20,23 @@ export default function BottomTabNavigator() {
   return (
     <Tab.Navigator
       detachInactiveScreens={false}
+      tabBar={(props) => (
+        <Animated.View 
+          style={{ 
+            position: 'absolute', 
+            bottom: 0, 
+            left: 0, 
+            right: 0, 
+            transform: [{ translateY: globalTabBarTranslateY }],
+            zIndex: 100,
+            elevation: 100,
+          }}
+        >
+          <BottomTabBar {...props} />
+        </Animated.View>
+      )}
       screenOptions={{
+
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,

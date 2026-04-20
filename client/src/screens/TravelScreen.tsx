@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { theme } from '../theme';
 import { Plus, Trash2, ChevronLeft, Calendar, Plane, MapPin, DollarSign, Wallet } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
@@ -74,9 +76,10 @@ export default function TravelScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Adventures</Text>
@@ -235,7 +238,7 @@ export default function TravelScreen() {
           title={pickerMode === 'start' ? "Select Start Date" : "Select End Date"}
         />
       </ActionSheet>
-    </View>
+    </SafeAreaView>
   );
 }
 

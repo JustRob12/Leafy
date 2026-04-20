@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Animated, Easing, FlatList, Dimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Animated, Easing, FlatList, Dimensions, NativeSyntheticEvent, NativeScrollEvent, Modal, Platform, StatusBar } from 'react-native';
+import { Audio } from 'expo-av';
+
+
+
 import { theme } from '../theme';
 import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
@@ -7,10 +11,14 @@ import { useNavigation } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 import WalletDropdown from '../components/WalletDropdown';
 import AnimatedCounter from '../components/AnimatedCounter';
+import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
+
 
 export default function HomeScreen() {
-  const { totalBalance, totalReceivables, totalDebts, wallets, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode } = useAppContext();
+  const { totalBalance, totalReceivables, totalDebts, wallets, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode, isTutorialActive, stopTutorial } = useAppContext();
+
   const navigation = useNavigation<any>();
+  const { handleScroll } = useScrollHideTabBar();
 
   const styles = getStyles(colors, isDarkMode);
 
@@ -170,6 +178,156 @@ export default function HomeScreen() {
 
 
 
+  // Tutorial Logic
+  const [currentStep, setCurrentStep] = useState(0);
+  const [targetLayout, setTargetLayout] = useState<{ x: number, y: number, w: number, h: number } | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+
+  const balanceRef = useRef<View>(null);
+  const addSavingsRef = useRef<View>(null);
+  const withdrawRef = useRef<View>(null);
+  const calculatorRef = useRef<View>(null);
+  const calendarRef = useRef<View>(null);
+  const pendingRef = useRef<View>(null);
+  const debtRef = useRef<View>(null);
+  const groceryRef = useRef<View>(null);
+  const travelRef = useRef<View>(null);
+
+  const tutorialRefs = [
+    balanceRef, addSavingsRef, withdrawRef, calculatorRef,
+    calendarRef, pendingRef, debtRef, groceryRef, travelRef
+  ];
+
+  const tutorialSteps = [
+    { title: 'Total Balance', description: 'View your combined net worth across all active wallets in one real-time total.', borderRadius: 24 },
+    { title: 'Add Savings', description: 'Quickly record new deposits and watch your individual wallet balances grow.', borderRadius: 16 },
+    { title: 'Withdraw', description: 'Log your daily expenses and outgoings to keep your spending habits on track.', borderRadius: 16 },
+    { title: 'Calculator', description: 'Use the built-in math tool to instantly calculate totals without leaving the app.', borderRadius: 16 },
+    { title: 'Calendar', description: 'Visualize your daily spending patterns and financial history over any period of time.', borderRadius: 16 },
+    { title: 'Pending', description: 'Track the money people owe you and stay updated on all incoming receivables.', borderRadius: 16 },
+    { title: 'Debt', description: 'Monitor your outstanding balances and stay organized as you work toward being debt-free.', borderRadius: 16 },
+    { title: 'Grocery', description: 'Create and manage shopping lists to streamline your errands and stay within budget.', borderRadius: 16 },
+    { title: 'Travel', description: 'Log your trip expenses as you go to keep your vacation spending organized.', borderRadius: 16 },
+  ];
+
+
+  const playStepSound = async (stepIndex: number) => {
+    try {
+      // 1. Aggressively unload any existing sound
+      if (soundRef.current) {
+        const soundToUnload = soundRef.current;
+        soundRef.current = null;
+        await soundToUnload.unloadAsync();
+      }
+
+      // 2. Check if tutorial is still active before loading next
+      if (!isTutorialActive) return;
+
+      // Map step to audio file
+      const sounds = [
+        require('../../assets/sound/TotalBalance.mp3'),
+        require('../../assets/sound/AddSavings.mp3'),
+        require('../../assets/sound/Withdraw.mp3'),
+        require('../../assets/sound/Calculator.mp3'),
+        require('../../assets/sound/Calendar.mp3'),
+        require('../../assets/sound/Pending.mp3'),
+        require('../../assets/sound/Debt.mp3'),
+        require('../../assets/sound/Grocery.mp3'),
+        require('../../assets/sound/Travel.mp3'),
+      ];
+
+      const source = sounds[stepIndex];
+      if (!source) return;
+
+      // 3. Create the new sound
+      const { sound } = await Audio.Sound.createAsync(source);
+      
+      // 4. Final check before playing - user might have skipped during loading
+      if (!isTutorialActive) {
+        await sound.unloadAsync();
+        return;
+      }
+
+      soundRef.current = sound;
+      await sound.playAsync();
+    } catch (error) {
+      console.log('Error playing step sound:', error);
+    }
+  };
+
+
+  const measureTarget = (stepIndex: number) => {
+    const ref = tutorialRefs[stepIndex];
+    if (ref && ref.current) {
+      ref.current.measureInWindow((x, y, width, height) => {
+        // Since the Modal is statusBarTranslucent, we must add the status bar height 
+        // to the measured Y on Android to align correctly.
+        const adjustedY = Platform.OS === 'android' ? y + (StatusBar.currentHeight || 0) : y;
+        setTargetLayout({ x, y: adjustedY, w: width, h: height });
+      });
+    }
+  };
+
+
+
+
+
+
+  useEffect(() => {
+    if (isTutorialActive) {
+      setCurrentStep(0);
+      measureTarget(0);
+    }
+  }, [isTutorialActive]);
+
+  useEffect(() => {
+    const handleTutorialState = async () => {
+      if (isTutorialActive) {
+        playStepSound(currentStep);
+        measureTarget(currentStep);
+      } else {
+        // Force stop and unload when tutorial is deactivated
+        if (soundRef.current) {
+          const soundToUnload = soundRef.current;
+          soundRef.current = null;
+          try {
+            await soundToUnload.stopAsync();
+            await soundToUnload.unloadAsync();
+          } catch (e) {
+            // Shadow ignore errors during cleanup
+          }
+        }
+      }
+    };
+    
+    handleTutorialState();
+  }, [currentStep, isTutorialActive]);
+
+
+  // General cleanup for sound on unmount
+  useEffect(() => {
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+    };
+  }, []);
+
+
+  const handleNext = () => {
+    if (currentStep < tutorialSteps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      stopTutorial();
+    }
+  };
+
+  const handleSkip = () => {
+    stopTutorial();
+  };
+
+
   const [savingsModalVisible, setSavingsModalVisible] = useState(false);
   const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
 
@@ -231,10 +389,16 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
 
         {/* PREMIUM BALANCE CARD (Glass Green Palette) */}
-        <View style={styles.premiumCard}>
+        <View ref={balanceRef} collapsable={false} style={styles.premiumCard}>
+
           <View style={styles.glowEffect} />
           <View style={styles.premiumCardTop}>
             <Text style={styles.premiumLabel}>Total Balance</Text>
@@ -243,6 +407,7 @@ export default function HomeScreen() {
             value={totalBalance}
             style={styles.premiumAmount}
           />
+
 
           <View style={styles.dividerLight} />
 
@@ -262,61 +427,77 @@ export default function HomeScreen() {
         {/* QUICK ACTIONS */}
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.actionItem} onPress={() => setSavingsModalVisible(true)}>
-            <View style={styles.actionIconBorder}>
+            <View ref={addSavingsRef} collapsable={false} style={styles.actionIconBorder}>
               <Plus size={20} color={colors.text} />
             </View>
             <Text style={styles.actionText}>Add Savings</Text>
           </TouchableOpacity>
 
+
+
           <TouchableOpacity style={styles.actionItem} onPress={() => setWithdrawModalVisible(true)}>
-            <View style={styles.actionIconBorder}>
+            <View ref={withdrawRef} collapsable={false} style={styles.actionIconBorder}>
               <ArrowUpRight size={20} color={colors.text} />
             </View>
             <Text style={styles.actionText}>Withdraw</Text>
           </TouchableOpacity>
 
+
+
           <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Calculator')}>
-            <View style={styles.actionIconBorder}>
+            <View ref={calculatorRef} collapsable={false} style={styles.actionIconBorder}>
               <Calculator size={20} color={colors.text} />
             </View>
             <Text style={styles.actionText}>Calculator</Text>
           </TouchableOpacity>
 
+
+
           <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Calendar')}>
-            <View style={styles.actionIconBorder}>
+            <View ref={calendarRef} collapsable={false} style={styles.actionIconBorder}>
               <CalendarIcon size={20} color={colors.text} />
             </View>
             <Text style={styles.actionText}>Calendar</Text>
           </TouchableOpacity>
 
+
+
           <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Receivables')}>
-            <View style={styles.actionIconBorder}>
+            <View ref={pendingRef} collapsable={false} style={styles.actionIconBorder}>
               <Clock size={20} color={colors.text} />
             </View>
             <Text style={styles.actionText}>Pending</Text>
           </TouchableOpacity>
 
+
+
           <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Debts')}>
-            <View style={styles.actionIconBorder}>
+            <View ref={debtRef} collapsable={false} style={styles.actionIconBorder}>
               <AlertCircle size={20} color={colors.text} />
             </View>
             <Text style={styles.actionText}>Debt</Text>
           </TouchableOpacity>
 
+
+
           <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Grocery')}>
-            <View style={styles.actionIconBorder}>
+            <View ref={groceryRef} collapsable={false} style={styles.actionIconBorder}>
               <ShoppingCart size={20} color={colors.text} />
             </View>
             <Text style={styles.actionText}>Grocery</Text>
           </TouchableOpacity>
 
+
+
           <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Travel')}>
-            <View style={styles.actionIconBorder}>
+            <View ref={travelRef} collapsable={false} style={styles.actionIconBorder}>
               <Plane size={20} color={colors.text} />
             </View>
             <Text style={styles.actionText}>Travel</Text>
           </TouchableOpacity>
+
         </View>
+
 
         {/* SCROLLING NEWS TICKER */}
         <View style={styles.tickerContainer}>
@@ -575,6 +756,68 @@ export default function HomeScreen() {
           );
         })()}
       </ActionSheet>
+
+      {/* TUTORIAL OVERLAY */}
+      <Modal visible={isTutorialActive} transparent animationType="fade" statusBarTranslucent={true}>
+
+        <View style={styles.tutorialContainer}>
+          {targetLayout && (
+            <>
+              {/* Single-view spotlight with rounded borders using massive border width */}
+              <View
+                style={[
+                  styles.spotlight,
+                  {
+                    left: targetLayout.x - 2000,
+                    top: targetLayout.y - 2000,
+                    width: targetLayout.w + 4000,
+                    height: targetLayout.h + 4000,
+                    borderWidth: 2000,
+                    borderRadius: (tutorialSteps[currentStep].borderRadius || 16) + 2000,
+                  }
+                ]}
+              />
+
+              {/* Subtle highlight border */}
+              <View
+                style={[
+                  styles.highlight,
+                  {
+                    left: targetLayout.x - 2,
+                    top: targetLayout.y - 2,
+                    width: targetLayout.w + 4,
+                    height: targetLayout.h + 4,
+                    borderRadius: tutorialSteps[currentStep].borderRadius || 16,
+                  }
+                ]}
+              />
+            </>
+          )}
+
+
+          <View style={[
+            styles.tooltip,
+            targetLayout ? { top: targetLayout.y + targetLayout.h + 32 } : { top: '30%' }
+          ]}>
+
+            <Text style={styles.tooltipTitle}>{tutorialSteps[currentStep].title}</Text>
+            <Text style={styles.tooltipDesc}>{tutorialSteps[currentStep].description}</Text>
+
+            <View style={styles.tooltipActions}>
+              <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
+                <Text style={styles.skipBtnText}>Skip</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleNext} style={styles.nextBtn}>
+                <Text style={styles.nextBtnText}>
+                  {currentStep === tutorialSteps.length - 1 ? 'Finish' : 'Next'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+
 
     </View>
   );
@@ -988,5 +1231,76 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: 10,
     color: colors.primary,
   },
+  tutorialContainer: {
+    flex: 1,
+  },
+  spotlight: {
+    position: 'absolute',
+    borderColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'transparent',
+  },
+  highlight: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    backgroundColor: 'transparent',
+  },
+
+
+
+  tooltip: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  tooltipTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 18,
+    color: colors.text,
+    marginBottom: 8,
+  },
+  tooltipDesc: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 14,
+    color: colors.textMuted,
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  tooltipActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  skipBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  skipBtnText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  nextBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  nextBtnText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 14,
+    color: '#ffffff',
+  },
+
 
 });

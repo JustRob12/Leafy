@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { theme } from '../theme';
 import { Plus, ShoppingCart, Trash2, Calendar, ChevronLeft, ChevronRight, List } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
@@ -36,9 +38,10 @@ export default function GroceryScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Grocery Lists</Text>
@@ -131,7 +134,7 @@ export default function GroceryScreen() {
           <Text style={styles.saveBtnText}>Create List</Text>
         </TouchableOpacity>
       </ActionSheet>
-    </View>
+    </SafeAreaView>
   );
 }
 

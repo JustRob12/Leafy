@@ -7,11 +7,13 @@ import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import WalletDropdown from '../components/WalletDropdown';
+import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 
 export default function GoalsScreen() {
   const { goals, addGoal, editGoal, deleteGoal, wallets, showFeedback, showConfirm, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation<any>();
+  const { handleScroll } = useScrollHideTabBar();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   
@@ -111,7 +113,12 @@ export default function GoalsScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
         {/* Wallet Filter Bar */}
         {wallets.length > 0 && goals.length > 0 && (
           <View style={styles.filterSection}>

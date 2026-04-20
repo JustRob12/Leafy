@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { theme } from '../theme';
 import { Plus, User, FileText, DollarSign, Trash2, Clock, ChevronLeft } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
@@ -74,9 +76,10 @@ export default function ReceivablesScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Who hasn't paid yet?</Text>
@@ -260,7 +263,7 @@ export default function ReceivablesScreen() {
           );
         })()}
       </ActionSheet>
-    </View>
+    </SafeAreaView>
   );
 }
 

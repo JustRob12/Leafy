@@ -5,14 +5,16 @@ import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { navigationRef } from '../navigation/navigationUtils';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, User, Settings, LogOut, Info, ChevronRight, Moon, Sun, Flame, Sprout, TreeDeciduous, Egg, X, Image as ImageIcon } from 'lucide-react-native';
+import { Plus, User, Settings, LogOut, Info, ChevronRight, Moon, Sun, Flame, Sprout, TreeDeciduous, Egg, X, Image as ImageIcon, HelpCircle } from 'lucide-react-native';
+
 
 export interface MainHeaderProps {
   activeRoute?: string;
 }
 
 export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderProps) {
-  const { username, userImage, streakCount, transactionDates, showConfirm, clearData, colors, isDarkMode, toggleTheme } = useAppContext();
+  const { username, userImage, streakCount, transactionDates, showConfirm, clearData, colors, isDarkMode, toggleTheme, startTutorial } = useAppContext();
+
   const navigation = useNavigation<any>();
 
   const styles = getStyles(colors, isDarkMode);
@@ -151,19 +153,6 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                   <ChevronRight size={16} color={colors.border} />
                 </TouchableOpacity>
 
-                <View style={styles.dropdownItem}>
-                  <View style={styles.dropdownItemLeft}>
-                    {isDarkMode ? <Moon size={18} color={colors.textMuted} /> : <Sun size={18} color={colors.textMuted} />}
-                    <Text style={styles.dropdownItemText}>Dark Mode</Text>
-                  </View>
-                  <Switch
-                    value={isDarkMode}
-                    onValueChange={toggleTheme}
-                    trackColor={{ false: '#e2e8f0', true: colors.primary }}
-                    thumbColor={isDarkMode ? '#ffffff' : '#f4f3f4'}
-                  />
-                </View>
-
                 <TouchableOpacity
                   style={styles.dropdownItem}
                   onPress={() => {
@@ -177,6 +166,37 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                   </View>
                   <ChevronRight size={16} color={colors.border} />
                 </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    setDropdownVisible(false);
+                    navigation.navigate('Main', { screen: 'Home' });
+                    startTutorial();
+                  }}
+                >
+                  <View style={styles.dropdownItemLeft}>
+                    <HelpCircle size={18} color={colors.textMuted} />
+                    <Text style={styles.dropdownItemText}>Tutorial</Text>
+                  </View>
+                  <ChevronRight size={16} color={colors.border} />
+                </TouchableOpacity>
+
+
+                <View style={styles.dropdownItem}>
+                  <View style={styles.dropdownItemLeft}>
+                    {isDarkMode ? <Moon size={18} color={colors.textMuted} /> : <Sun size={18} color={colors.textMuted} />}
+                    <Text style={styles.dropdownItemText}>Dark Mode</Text>
+                  </View>
+                  <Switch
+                    value={isDarkMode}
+                    onValueChange={toggleTheme}
+                    trackColor={{ false: '#e2e8f0', true: colors.primary }}
+                    thumbColor={isDarkMode ? '#ffffff' : '#f4f3f4'}
+                  />
+                </View>
+
+
 
                 <View style={styles.dropdownDivider} />
 
@@ -429,8 +449,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    paddingVertical: 12,
+    minHeight: 48,
   },
+
   dropdownItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',

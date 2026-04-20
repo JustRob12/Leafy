@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { theme } from '../theme';
 import { ChevronLeft, ChevronRight, Calculator, Calendar as CalendarIcon, ArrowDownRight, ArrowUpRight } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
@@ -105,7 +107,7 @@ export default function CalendarScreen() {
     : [];
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <ChevronLeft size={24} color={colors.text} />
@@ -113,6 +115,7 @@ export default function CalendarScreen() {
         <Text style={styles.headerTitle}>Transaction Calendar</Text>
         <View style={{ width: 40 }} />
       </View>
+
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
         {/* HEADER MINI CARD */}
@@ -202,9 +205,10 @@ export default function CalendarScreen() {
           })
         )}
       </ActionSheet>
-    </View>
+    </SafeAreaView>
   );
 }
+
 
 const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {

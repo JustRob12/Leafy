@@ -4,8 +4,9 @@ import * as ImagePicker from 'expo-image-picker';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { theme } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check, Fingerprint } from 'lucide-react-native';
+import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check, Fingerprint, ChevronLeft } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
+
 import { useNavigation } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 
@@ -67,8 +68,16 @@ export default function SettingsScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <ChevronLeft size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Settings</Text>
+        <View style={{ width: 40 }} />
+      </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
+
 
 
         <View style={styles.profileSection}>
@@ -358,6 +367,25 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   scrollContent: {
     padding: theme.spacing.lg,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backBtn: {
+    padding: 4,
+  },
+  headerTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 18,
+    color: colors.text,
   },
   title: {
     fontFamily: theme.fonts.bold,

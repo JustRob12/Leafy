@@ -6,12 +6,14 @@ import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 
 export default function WalletsScreen() {
   const [viewingQrCode, setViewingQrCode] = useState<string | null>(null);
   const [isReordering, setIsReordering] = useState(false);
   const { wallets, addWallet, editWallet, deleteWallet, reorderWallets, showFeedback, showConfirm, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
+  const { handleScroll } = useScrollHideTabBar();
 
   const brandLogos: { [key: string]: any } = {
     'gcash.png': require('../../public/walletimages/gcash.png'),
@@ -161,7 +163,12 @@ export default function WalletsScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
         {wallets.length > 1 && (
           <TouchableOpacity
             style={[styles.reorderToggle, isReordering && styles.reorderToggleActive]}

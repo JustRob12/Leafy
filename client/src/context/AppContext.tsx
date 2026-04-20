@@ -131,7 +131,11 @@ type AppContextType = {
   transactionDates: string[];
   statusCardBg: string | null;
   setStatusCardBg: (image: string | null) => Promise<void>;
+  isTutorialActive: boolean;
+  startTutorial: () => void;
+  stopTutorial: () => void;
 };
+
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -164,6 +168,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     message: '',
     isDestructive: true
   });
+  const [isTutorialActive, setIsTutorialActive] = useState(false);
+
 
   useEffect(() => {
     loadData();
@@ -761,6 +767,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const streakCount = calculateStreak();
   const transactionDates = Array.from(new Set(transactions.map(tx => new Date(tx.date).toISOString().split('T')[0])));
 
+  const startTutorial = () => {
+    setIsTutorialActive(true);
+  };
+
+  const stopTutorial = () => {
+    setIsTutorialActive(false);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -824,12 +838,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         transactionDates,
         statusCardBg,
         setStatusCardBg,
+        isTutorialActive,
+        startTutorial,
+        stopTutorial
       }}
     >
       {children}
     </AppContext.Provider>
   );
 };
+
 
 export const useAppContext = () => {
   const context = useContext(AppContext);

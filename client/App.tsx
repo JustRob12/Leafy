@@ -34,6 +34,8 @@ const Stack = createNativeStackNavigator();
 
 function MainNavigation() {
   const { isLoaded, username, colors, isDarkMode, isSecurityEnabled, isUnlocked } = useAppContext();
+
+
   const [showSplash, setShowSplash] = useState(true);
 
   if (showSplash || !isLoaded) {
@@ -54,18 +56,22 @@ function MainNavigation() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
-      {/* Global Header - Only shows when logged in */}
-      {username && <MainHeader />}
 
       <Stack.Navigator screenOptions={{ headerShown: false, animation: 'none' }}>
+
         {!username ? (
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         ) : (
           <Stack.Group>
-            <Stack.Screen name="Main" component={BottomTabNavigator} />
+            <Stack.Screen 
+              name="Main" 
+              component={BottomTabNavigator} 
+              options={{ headerShown: true, header: () => <MainHeader /> }} 
+            />
             <Stack.Screen name="Calculator" component={CalculatorScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="DataTransfer" component={DataTransferScreen} />
+
             <Stack.Screen name="Calendar" component={CalendarScreen} />
             <Stack.Screen name="Receivables" component={ReceivablesScreen} />
             <Stack.Screen name="Debts" component={DebtsScreen} />

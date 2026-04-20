@@ -3,10 +3,12 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { ArrowLeft, ArrowUpRight, ArrowDownRight, Calendar, Filter, Trash2 } from 'lucide-react-native';
+import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 
 export default function HistoryScreen() {
   const { transactions, deleteTransaction, showConfirm, showFeedback, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
+  const { handleScroll } = useScrollHideTabBar();
 
   const handleDeleteTx = (id: string, name: string) => {
     showConfirm(
@@ -76,7 +78,12 @@ export default function HistoryScreen() {
       </View>
 
       {/* LIST */}
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
         {filteredTransactions.length === 0 ? (
           <View style={styles.emptyState}>
             <Filter size={48} color={colors.border} />

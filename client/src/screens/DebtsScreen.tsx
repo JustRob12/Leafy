@@ -79,9 +79,7 @@ export default function DebtsScreen() {
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Who do you owe?</Text>
-        <TouchableOpacity style={styles.addBtnHeader} onPress={() => setModalVisible(true)}>
-          <Plus size={20} color="#ffffff" />
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -143,6 +141,15 @@ export default function DebtsScreen() {
           ))
         )}
       </ScrollView>
+
+      {/* Floating Add Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setModalVisible(true)}
+        activeOpacity={0.8}
+      >
+        <Plus size={30} color="#ffffff" />
+      </TouchableOpacity>
 
       <ActionSheet
         visible={modalVisible}
@@ -268,7 +275,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: theme.spacing.lg,
-      paddingTop: theme.spacing.xl,
+      paddingTop: theme.spacing.md,
       paddingBottom: theme.spacing.md,
       backgroundColor: colors.card,
       borderBottomWidth: 1,
@@ -292,7 +299,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     scrollContent: {
       padding: theme.spacing.lg,
-      paddingBottom: 100,
+      paddingBottom: 140,
     },
     emptyState: {
       alignItems: 'center',
@@ -511,6 +518,23 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       color: colors.textMuted,
       lineHeight: 16,
       textAlign: 'center',
+    },
+    fab: {
+      position: 'absolute',
+      bottom: 120,
+      right: 24,
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      backgroundColor: statusRed,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 6,
+      zIndex: 10,
     },
   });
 };

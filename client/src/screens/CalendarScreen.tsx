@@ -4,11 +4,13 @@ import { theme } from '../theme';
 import { ChevronLeft, ChevronRight, Calculator, Calendar as CalendarIcon, ArrowDownRight, ArrowUpRight } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
+import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = (width - 48) / 7;
 
 export default function CalendarScreen() {
+  const navigation = useNavigation<any>();
   const { transactions, wallets, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -104,6 +106,13 @@ export default function CalendarScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <ChevronLeft size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Transaction Calendar</Text>
+        <View style={{ width: 40 }} />
+      </View>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
         {/* HEADER MINI CARD */}
@@ -379,5 +388,24 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   txAmountNegative: {
     color: colors.danger,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backBtn: {
+    padding: 4,
+  },
+  headerTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 18,
+    color: colors.text,
   },
 });

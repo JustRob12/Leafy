@@ -1,7 +1,8 @@
 import React, { useRef, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Download, Share2, Info, ShoppingBag, Utensils, Car, LayoutGrid } from 'lucide-react-native';
+import { ChevronLeft, Download, Share2, Info, ShoppingBag, Utensils, Car, LayoutGrid, Leaf } from 'lucide-react-native';
+
 import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
 import ViewShot, { captureRef } from 'react-native-view-shot';
@@ -80,8 +81,9 @@ export default function StatusCardScreen() {
         name: tx.title,
         amount: tx.amount,
         icon: LayoutGrid,
-        percent: Math.round((tx.amount / totalSpent) * 100)
+        percent: income > 0 ? Math.round((tx.amount / income) * 100) : 0
       }))
+
     };
   }, [transactions]);
 
@@ -160,28 +162,42 @@ export default function StatusCardScreen() {
           <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }} style={styles.viewShot}>
             <View style={styles.premiumCard}>
               <View style={styles.cardContent}>
-                {/* TOP SECTION: Bar Graph Above All */}
-                <View style={styles.topSection}>
-                  <Text style={[styles.dateLabel, { color: textColor + 'aa' }]}>{dateStr}</Text>
-                  
-                  <LinearProgressBar percent={stats.expenseRatio} />
+                {/* BRAND HEADER: Using Leaf icon instead of Image */}
+                <View style={styles.brandHeader}>
+                    <Leaf size={24} color={textColor} fill={textColor + '22'} />
+                    <Text style={[styles.brandName, { color: textColor }]}>Leafy</Text>
+                </View>
 
-                  <View style={[styles.tagPill, { backgroundColor: textColor + '22', marginTop: 15 }]}>
-                    <Text style={[styles.tagText, { color: textColor }]}>SAVINGS</Text>
+
+                {/* TOP SECTION: Graph */}
+                <View style={styles.topSection}>
+                  <LinearProgressBar percent={stats.expenseRatio} />
+                </View>
+
+
+                {/* GREETING & HERO SECTION */}
+                <View style={styles.heroSection}>
+                  <View>
+                    <Text style={[styles.greeting, { color: textColor }]}>Hello {username || 'Buddy'},</Text>
+                    <Text style={[styles.dateLabel, { color: textColor + '88' }]}>{dateStr}</Text>
                   </View>
                   
-                  <Text style={[styles.greeting, { color: textColor }]}>Hey {username || 'Buddy'},</Text>
-                  <Text style={[styles.headline, { color: textColor }]}>{stats.savedPercent}%</Text>
-                  <Text style={[styles.subHeadline, { color: textColor + 'bb' }]}>saved this month</Text>
+                  <View style={styles.savingsHero}>
+                    <Text style={[styles.headline, { color: textColor }]}>{stats.savedPercent}%</Text>
+                    <Text style={[styles.subHeadline, { color: textColor + 'bb' }]}>SAVED THIS MONTH</Text>
+                  </View>
+
                 </View>
 
-                {/* MIDDLE SECTION: Simplified Motivation */}
+
+
+                {/* MOTIVATION SECTION */}
                 <View style={styles.middleSection}>
-                  <Text style={[styles.sectionTitle, { color: textColor }]}>Monthly Goal</Text>
                   <Text style={[styles.motivation, { color: textColor + '99' }]}>
-                    {stats.savedPercent > 40 ? 'You are doing great with your monthly savings!' : 'Let\'s try to keep those monthly expenses lean.'}
+                    {stats.savedPercent > 40 ? 'You\'re crushing your savings goals this month! Keep it up.' : 'Every peso counts. Try to trim some non-essential spending.'}
                   </Text>
                 </View>
+
 
                 {/* BREAKDOWN SECTION */}
                 <View style={styles.breakdownSection}>
@@ -196,7 +212,7 @@ export default function StatusCardScreen() {
                             <item.icon size={16} color={textColor + '99'} />
                             <Text style={[styles.breakdownName, { color: textColor }]} numberOfLines={1}>{item.name}</Text>
                           </View>
-                          <Text style={[styles.breakdownPercentText, { color: textColor + '99' }]}>₱{item.amount.toLocaleString()}</Text>
+                          <Text style={[styles.breakdownPercentText, { color: textColor + '99' }]}>{item.percent}%</Text>
                         </View>
                         <View style={[styles.progressTrack, { backgroundColor: textColor + '22' }]}>
                           <View style={[styles.progressFill, { width: `${item.percent}%`, backgroundColor: textColor }]} />
@@ -206,28 +222,10 @@ export default function StatusCardScreen() {
                   )}
                 </View>
 
-                {/* FOOTER */}
-                <View style={styles.footer}>
-                  <View style={styles.metricsRow}>
-                    <View style={styles.metricItem}>
-                      <Text style={[styles.metricLabel, { color: textColor + '88' }]}>INCOME</Text>
-                      <Text style={[styles.metricValue, { color: textColor }]}>₱{Math.round(stats.income).toLocaleString()}</Text>
-                    </View>
-                    <View style={styles.metricItem}>
-                      <Text style={[styles.metricLabel, { color: textColor + '88' }]}>EXPENSES</Text>
-                      <Text style={[styles.metricValue, { color: textColor }]}>₱{Math.round(stats.expenses).toLocaleString()}</Text>
-                    </View>
-                    <View style={styles.metricItem}>
-                      <Text style={[styles.metricLabel, { color: textColor + '88' }]}>SAVED</Text>
-                      <Text style={[styles.metricValue, { color: textColor }]}>₱{Math.round(stats.saved).toLocaleString()}</Text>
-                    </View>
-                  </View>
+                {/* FOOTER: Empty or can be used for extra padding */}
+                <View style={styles.footer} />
 
-                  <View style={styles.brandRow}>
-                    <Image source={require('../../assets/leafylogo.png')} style={styles.brandLogo} />
-                    <Text style={[styles.brandName, { color: textColor }]}>Leafy</Text>
-                  </View>
-                </View>
+
               </View>
             </View>
           </ViewShot>
@@ -339,154 +337,178 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
   },
+  brandHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 20,
+  },
   topSection: {
     marginTop: 0,
+    marginBottom: 20,
+  },
+
+  heroSection: {
+    marginBottom: 25,
   },
   dateLabel: {
     fontFamily: theme.fonts.bold,
-    fontSize: 11,
-    letterSpacing: 1.5,
-    marginBottom: 15,
+    fontSize: 10,
+    letterSpacing: 1,
+    marginTop: 4,
+  },
+  savingsHero: {
+    marginTop: 20,
   },
   tagPill: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 10,
-    marginBottom: 10,
+    borderRadius: 8,
+    marginBottom: 8,
   },
   tagText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 10,
+    fontSize: 9,
     letterSpacing: 1,
   },
   greeting: {
     fontFamily: theme.fonts.bold,
-    fontSize: 22,
-    marginBottom: 0,
+    fontSize: 24,
+  },
+  headlineRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 12,
   },
   headline: {
     fontFamily: theme.fonts.bold,
-    fontSize: 72,
-    lineHeight: 76,
-    marginVertical: -5,
+    fontSize: 84,
+    lineHeight: 84,
+  },
+  headlineSub: {
+    justifyContent: 'center',
   },
   subHeadline: {
-    fontFamily: theme.fonts.medium,
+    fontFamily: theme.fonts.bold,
     fontSize: 16,
-    opacity: 0.8,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginTop: -5,
   },
+
   middleSection: {
-    marginTop: 15,
+    marginBottom: 20,
   },
   sectionTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 16,
-    marginBottom: 4,
+    fontSize: 14,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   motivation: {
-    fontFamily: theme.fonts.regular,
-    fontSize: 13,
-    marginBottom: 12,
-    lineHeight: 18,
+    fontFamily: theme.fonts.medium,
+    fontSize: 14,
+    lineHeight: 20,
   },
   paceContainer: {
     width: '100%',
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 5,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    padding: 15,
+    borderRadius: 20,
   },
   paceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   paceTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 12,
-    letterSpacing: 1,
+    fontSize: 11,
+    letterSpacing: 1.5,
   },
   paceSubtitle: {
-    fontFamily: theme.fonts.medium,
+    fontFamily: theme.fonts.bold,
     fontSize: 11,
-    letterSpacing: 1,
+    opacity: 0.6,
   },
   breakdownSection: {
-    marginTop: 15,
+    flex: 1,
   },
   breakdownItem: {
-    marginBottom: 12,
+    marginBottom: 15,
   },
   breakdownLabelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   breakdownLabelLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   breakdownName: {
-    fontFamily: theme.fonts.semiBold,
+    fontFamily: theme.fonts.bold,
     fontSize: 14,
   },
   breakdownPercentText: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 12,
+    fontFamily: theme.fonts.bold,
+    fontSize: 13,
   },
   progressTrack: {
-    height: 4,
-    borderRadius: 2,
+    height: 6,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: 3,
   },
   footer: {
-    marginTop: 15,
+    paddingTop: 20,
   },
   metricsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
-    paddingBottom: 10,
+    gap: 10,
+    marginBottom: 25,
   },
   metricItem: {
-    alignItems: 'flex-start',
+    flex: 1,
+    padding: 15,
+    borderRadius: 18,
   },
   metricLabel: {
     fontFamily: theme.fonts.bold,
     fontSize: 10,
     letterSpacing: 1,
-    marginBottom: 5,
+    marginBottom: 6,
   },
   metricValue: {
     fontFamily: theme.fonts.bold,
-    fontSize: 18,
+    fontSize: 20,
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
   },
   brandLogo: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     resizeMode: 'contain',
   },
   brandName: {
     fontFamily: theme.fonts.bold,
-    fontSize: 16,
-    letterSpacing: 1,
+    fontSize: 18,
+    letterSpacing: 0.5,
   },
+
   exportPanel: {
     width: '100%',
     padding: 24,

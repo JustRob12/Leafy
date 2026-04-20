@@ -4,7 +4,7 @@ import { theme } from '../theme';
 import { Plane, Plus, Wallet as WalletIcon, ShoppingBag, AlertTriangle, User, MoreHorizontal, Leaf, QrCode, Image as ImageIcon, X, ChevronRight, Search, ChevronUp, ChevronDown } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useScrollToTop } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 
@@ -44,6 +44,8 @@ export default function WalletsScreen() {
 
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const scrollViewRef = React.useRef<ScrollView>(null);
+  useScrollToTop(scrollViewRef);
 
   React.useEffect(() => {
     if (route.params?.openAddModal) {
@@ -164,6 +166,7 @@ export default function WalletsScreen() {
   return (
     <View style={styles.container}>
       <ScrollView 
+        ref={scrollViewRef}
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}

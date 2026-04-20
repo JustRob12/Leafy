@@ -166,21 +166,8 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                   </View>
                   <ChevronRight size={16} color={colors.border} />
                 </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() => {
-                    setDropdownVisible(false);
-                    navigation.navigate('Main', { screen: 'Home' });
-                    startTutorial();
-                  }}
-                >
-                  <View style={styles.dropdownItemLeft}>
-                    <HelpCircle size={18} color={colors.textMuted} />
-                    <Text style={styles.dropdownItemText}>Tutorial</Text>
-                  </View>
-                  <ChevronRight size={16} color={colors.border} />
-                </TouchableOpacity>
+
+
 
 
                 <View style={styles.dropdownItem}>

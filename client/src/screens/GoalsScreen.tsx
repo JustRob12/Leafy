@@ -5,7 +5,7 @@ import { Target, Plus, Flag, ImagePlus, Camera, Image as ImageIcon, Wallet } fro
 import * as ImagePicker from 'expo-image-picker';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useScrollToTop } from '@react-navigation/native';
 import WalletDropdown from '../components/WalletDropdown';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 
@@ -13,6 +13,8 @@ export default function GoalsScreen() {
   const { goals, addGoal, editGoal, deleteGoal, wallets, showFeedback, showConfirm, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation<any>();
+  const scrollViewRef = React.useRef<ScrollView>(null);
+  useScrollToTop(scrollViewRef);
   const { handleScroll } = useScrollHideTabBar();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
@@ -114,6 +116,7 @@ export default function GoalsScreen() {
   return (
     <View style={styles.container}>
       <ScrollView 
+        ref={scrollViewRef}
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}

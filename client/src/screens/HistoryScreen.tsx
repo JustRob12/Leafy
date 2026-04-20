@@ -4,11 +4,14 @@ import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { ArrowLeft, ArrowUpRight, ArrowDownRight, Calendar, Filter, Trash2 } from 'lucide-react-native';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
+import { useScrollToTop } from '@react-navigation/native';
 
 export default function HistoryScreen() {
   const { transactions, deleteTransaction, showConfirm, showFeedback, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const { handleScroll } = useScrollHideTabBar();
+  const scrollViewRef = React.useRef<ScrollView>(null);
+  useScrollToTop(scrollViewRef);
 
   const handleDeleteTx = (id: string, name: string) => {
     showConfirm(
@@ -79,6 +82,7 @@ export default function HistoryScreen() {
 
       {/* LIST */}
       <ScrollView 
+        ref={scrollViewRef}
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}

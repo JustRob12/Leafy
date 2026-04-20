@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Animated, Easing, FlatList, Dimensions, NativeSyntheticEvent, NativeScrollEvent, Modal, Platform, StatusBar } from 'react-native';
-import { Audio } from 'expo-av';
+import { AudioPlayer, createAudioPlayer } from 'expo-audio';
 
 
 
 import { theme } from '../theme';
 import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useScrollToTop } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 import WalletDropdown from '../components/WalletDropdown';
 import AnimatedCounter from '../components/AnimatedCounter';
@@ -19,6 +19,8 @@ export default function HomeScreen() {
 
   const navigation = useNavigation<any>();
   const { handleScroll } = useScrollHideTabBar();
+  const scrollViewRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollViewRef);
 
   const styles = getStyles(colors, isDarkMode);
 
@@ -181,7 +183,7 @@ export default function HomeScreen() {
   // Tutorial Logic
   const [currentStep, setCurrentStep] = useState(0);
   const [targetLayout, setTargetLayout] = useState<{ x: number, y: number, w: number, h: number } | null>(null);
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const soundRef = useRef<AudioPlayer | null>(null);
 
 
   const balanceRef = useRef<View>(null);
@@ -216,9 +218,8 @@ export default function HomeScreen() {
     try {
       // 1. Aggressively unload any existing sound
       if (soundRef.current) {
-        const soundToUnload = soundRef.current;
+        soundRef.current.pause();
         soundRef.current = null;
-        await soundToUnload.unloadAsync();
       }
 
       // 2. Check if tutorial is still active before loading next
@@ -240,17 +241,17 @@ export default function HomeScreen() {
       const source = sounds[stepIndex];
       if (!source) return;
 
-      // 3. Create the new sound
-      const { sound } = await Audio.Sound.createAsync(source);
+      // 3. Create the new sound player
+      const player = createAudioPlayer(source);
       
       // 4. Final check before playing - user might have skipped during loading
       if (!isTutorialActive) {
-        await sound.unloadAsync();
+        player.pause();
         return;
       }
 
-      soundRef.current = sound;
-      await sound.playAsync();
+      soundRef.current = player;
+      player.play();
     } catch (error) {
       console.log('Error playing step sound:', error);
     }
@@ -276,8 +277,11 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (isTutorialActive) {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: false });
       setCurrentStep(0);
-      measureTarget(0);
+      setTimeout(() => {
+        measureTarget(0);
+      }, 50);
     }
   }, [isTutorialActive]);
 
@@ -292,8 +296,7 @@ export default function HomeScreen() {
           const soundToUnload = soundRef.current;
           soundRef.current = null;
           try {
-            await soundToUnload.stopAsync();
-            await soundToUnload.unloadAsync();
+            soundToUnload.pause();
           } catch (e) {
             // Shadow ignore errors during cleanup
           }
@@ -309,7 +312,8 @@ export default function HomeScreen() {
   useEffect(() => {
     return () => {
       if (soundRef.current) {
-        soundRef.current.unloadAsync();
+        soundRef.current.pause();
+        soundRef.current = null;
       }
     };
   }, []);
@@ -390,6 +394,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <ScrollView 
+        ref={scrollViewRef}
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}

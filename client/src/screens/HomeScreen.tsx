@@ -63,7 +63,7 @@ export default function HomeScreen() {
 
     const setWidth = goals.length * SCREEN_WIDTH;
     const currentOffset = startOffset;
-    
+
     // Calculate how many more card widths we can go before needing to loop
     // Since we are going left, we want to stay above 0.
     const nextOffset = currentOffset - SCREEN_WIDTH;
@@ -657,6 +657,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
+    paddingTop: theme.spacing.md,
     justifyContent: 'flex-start',
     flexWrap: 'wrap',
     columnGap: '1.3%',

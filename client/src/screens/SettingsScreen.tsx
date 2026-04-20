@@ -489,7 +489,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   closeBtnText: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 16,
-    color: "#ef4444",
+    color: "#ffffff",
   },
   aboutCard: {
     backgroundColor: colors.card,

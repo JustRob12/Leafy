@@ -23,6 +23,7 @@ import DebtsScreen from './src/screens/DebtsScreen';
 import GroceryScreen from './src/screens/GroceryScreen';
 import GroceryDetailScreen from './src/screens/GroceryDetailScreen';
 import TravelScreen from './src/screens/TravelScreen';
+import StatusCardScreen from './src/screens/StatusCardScreen';
 import MainHeader from './src/components/MainHeader';
 import FeedbackModal from './src/components/FeedbackModal';
 import ConfirmModal from './src/components/ConfirmModal';
@@ -72,6 +73,7 @@ function MainNavigation() {
             <Stack.Screen name="GroceryDetail" component={GroceryDetailScreen} />
             <Stack.Screen name="Travel" component={TravelScreen} />
             <Stack.Screen name="Security" component={SecurityScreen} />
+            <Stack.Screen name="StatusCard" component={StatusCardScreen} />
           </Stack.Group>
         )}
       </Stack.Navigator>

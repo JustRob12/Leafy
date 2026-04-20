@@ -129,6 +129,8 @@ type AppContextType = {
   payDebt: (id: string, amount: number) => Promise<void>;
   streakCount: number;
   transactionDates: string[];
+  statusCardBg: string | null;
+  setStatusCardBg: (image: string | null) => Promise<void>;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -149,6 +151,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isBiometricsEnabled, setIsBiometricsEnabled] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [statusCardBg, setStatusCardBgState] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode as requested
   const [feedback, setFeedback] = useState<{ visible: boolean; type: 'success' | 'delete' | 'error'; message: string }>({
     visible: false,
@@ -187,6 +190,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const storedTravels = await AsyncStorage.getItem('@travels');
       if (storedTravels) setTravels(JSON.parse(storedTravels));
       if (storedImage) setUserImageState(storedImage);
+      const storedStatusBg = await AsyncStorage.getItem('@statusCardBg');
+      if (storedStatusBg) setStatusCardBgState(storedStatusBg);
 
       const storedPin = await AsyncStorage.getItem('@appPin');
       const storedSecurity = await AsyncStorage.getItem('@isSecurityEnabled');
@@ -308,12 +313,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const setUserImage = async (image: string | null) => {
-    if (image) {
-      await AsyncStorage.setItem('@userImage', image);
-    } else {
-      await AsyncStorage.removeItem('@userImage');
-    }
+    if (image) await AsyncStorage.setItem('@userImage', image);
+    else await AsyncStorage.removeItem('@userImage');
     setUserImageState(image);
+  };
+
+  const setStatusCardBg = async (image: string | null) => {
+    if (image) await AsyncStorage.setItem('@statusCardBg', image);
+    else await AsyncStorage.removeItem('@statusCardBg');
+    setStatusCardBgState(image);
   };
 
   const editWallet = async (id: string, updates: Partial<WalletType>) => {
@@ -456,6 +464,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ['@isBiometricsEnabled', data.isBiometricsEnabled !== undefined ? String(data.isBiometricsEnabled) : null],
         ['@isDarkMode', data.isDarkMode !== undefined ? String(data.isDarkMode) : null],
         ['@userImage', data.userImage || null],
+        ['@statusCardBg', data.statusCardBg || null],
       ];
 
       for (const [key, value] of keysToSave) {
@@ -492,6 +501,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       setUserImageState(data.userImage || null);
+      if (data.statusCardBg !== undefined) setStatusCardBgState(data.statusCardBg);
 
       showFeedback('success', 'Data Imported Successfully');
     } catch (e) {
@@ -811,7 +821,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         payReceivable,
         payDebt,
         streakCount,
-        transactionDates
+        transactionDates,
+        statusCardBg,
+        setStatusCardBg,
       }}
     >
       {children}

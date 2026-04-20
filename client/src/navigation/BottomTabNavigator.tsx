@@ -14,7 +14,7 @@ const Tab = createBottomTabNavigator();
 
 export default function BottomTabNavigator() {
   const { colors, isDarkMode } = useAppContext();
-  
+
   return (
     <Tab.Navigator
       detachInactiveScreens={false}
@@ -28,14 +28,14 @@ export default function BottomTabNavigator() {
         ),
         tabBarStyle: {
           position: 'absolute',
-          bottom: 24,
-          marginHorizontal: 24,
+          bottom: 18,
+          marginHorizontal: 18,
           backgroundColor: colors.card,
           borderRadius: 24,
-          height: 64,
+          height: 60,
           borderTopWidth: 0,
-          paddingBottom: 10,
-          paddingTop: 10,
+          paddingBottom: 12,
+          paddingTop: 2,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 10 },
           shadowOpacity: isDarkMode ? 0.3 : 0.1,

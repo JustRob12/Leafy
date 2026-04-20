@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Modal, Image, Alert, Switch } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { navigationRef } from '../navigation/navigationUtils';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, User, Settings, LogOut, Info, ChevronRight, Moon, Sun, Flame, Sprout, TreeDeciduous, Egg, X } from 'lucide-react-native';
+import { Plus, User, Settings, LogOut, Info, ChevronRight, Moon, Sun, Flame, Sprout, TreeDeciduous, Egg, X, Image as ImageIcon } from 'lucide-react-native';
 
 export interface MainHeaderProps {
   activeRoute?: string;
@@ -41,20 +41,17 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
     };
   }, []);
 
-  // Use the user's specific request: show on Calculator as well
-  // if (activeRoute === 'Calculator') return null;
+  const handlePlusPress = () => {
+    if (navigationRef.isReady()) {
+      navigationRef.setParams({ openAddModal: true } as any);
+    }
+  };
 
   const formattedDate = currentDate.toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
     day: 'numeric'
   });
-
-  const handlePlusPress = () => {
-    if (navigationRef.isReady()) {
-      navigationRef.setParams({ openAddModal: true } as any);
-    }
-  };
 
   const handleLogout = () => {
     setDropdownVisible(false);
@@ -72,10 +69,6 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
     navigation.navigate('Settings');
   };
 
-  const isHome = activeRoute === 'Home' || activeRoute === 'Main';
-  const showPlus = activeRoute === 'Wallets' || activeRoute === 'Goals';
-  const displayTitle = (activeRoute === 'Main' || activeRoute === 'Home') ? 'Dashboard' : activeRoute;
-
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <View style={styles.container}>
@@ -87,12 +80,12 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
           </View>
 
           <View style={styles.rightActions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
                 styles.streakBadge,
-                streakCount >= 8 ? styles.streakBadgeTree : 
-                streakCount >= 3 ? styles.streakBadgeSapling : 
-                styles.streakBadgeSeed
+                streakCount >= 8 ? styles.streakBadgeTree :
+                  streakCount >= 3 ? styles.streakBadgeSapling :
+                    styles.streakBadgeSeed
               ]}
               onPress={() => setStreakModalVisible(true)}
               activeOpacity={0.7}
@@ -104,9 +97,9 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
               })()}
               <Text style={[
                 styles.streakText,
-                streakCount >= 8 ? { color: '#15803d' } : 
-                streakCount >= 3 ? { color: '#16a34a' } : 
-                { color: '#92400e' }
+                streakCount >= 8 ? { color: '#15803d' } :
+                  streakCount >= 3 ? { color: '#16a34a' } :
+                    { color: '#92400e' }
               ]}>{streakCount}</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -122,8 +115,6 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Title row removed to save space */}
       </View>
 
       <Modal
@@ -146,7 +137,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                   </View>
                   <View>
                     <Text style={styles.dropdownUsername}>{username || 'User'}</Text>
-                    <Text style={styles.dropdownUserRole}>Premium Member</Text>
+                    <Text style={styles.dropdownUserRole}>Leafy Member</Text>
                   </View>
                 </View>
 
@@ -160,14 +151,6 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                   <ChevronRight size={16} color={colors.border} />
                 </TouchableOpacity>
 
-                {/* <TouchableOpacity style={styles.dropdownItem} onPress={() => { setDropdownVisible(false); Alert.alert('App Information', 'Leafy v1.0.0\nSecure Local Finance Manager\nCreated with ❤️'); }}>
-                  <View style={styles.dropdownItemLeft}>
-                    <Info size={18} color={colors.textMuted} />
-                    <Text style={styles.dropdownItemText}>App Information</Text>
-                  </View>
-                  <ChevronRight size={16} color={colors.border} />
-                </TouchableOpacity> */}
-
                 <View style={styles.dropdownItem}>
                   <View style={styles.dropdownItemLeft}>
                     {isDarkMode ? <Moon size={18} color={colors.textMuted} /> : <Sun size={18} color={colors.textMuted} />}
@@ -180,6 +163,20 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                     thumbColor={isDarkMode ? '#ffffff' : '#f4f3f4'}
                   />
                 </View>
+
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    setDropdownVisible(false);
+                    navigation.navigate('StatusCard');
+                  }}
+                >
+                  <View style={styles.dropdownItemLeft}>
+                    <ImageIcon size={18} color={colors.textMuted} />
+                    <Text style={styles.dropdownItemText}>Generate Status Card</Text>
+                  </View>
+                  <ChevronRight size={16} color={colors.border} />
+                </TouchableOpacity>
 
                 <View style={styles.dropdownDivider} />
 
@@ -198,7 +195,6 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* Streak Detail Modal */}
       <Modal
         visible={streakModalVisible}
         transparent
@@ -230,7 +226,6 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                   </View>
                 </View>
 
-                {/* WEEKLY STEPPER */}
                 <View style={styles.stepperContainer}>
                   <View style={styles.stepperLine} />
                   <View style={styles.daysRow}>
@@ -268,10 +263,9 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                   </View>
                 </View>
 
-                {/* GROWTH GUIDE */}
                 <View style={styles.guideContainer}>
                   <Text style={styles.guideTitle}>How Your Forest Grows</Text>
-                  
+
                   <View style={styles.guideRow}>
                     <View style={styles.guideItem}>
                       <View style={[styles.guideIconCircle, { backgroundColor: isDarkMode ? 'rgba(146, 64, 14, 0.1)' : '#fffbeb' }]}>
@@ -303,7 +297,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                   </View>
                 </View>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.closeStreakBtn}
                   onPress={() => setStreakModalVisible(false)}
                 >
@@ -341,31 +335,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  bottomTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: 8,
-  },
-  screenTitle: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 30,
-    color: colors.primary,
-  },
-  addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 14,
-    gap: 10,
-  },
-  addBtnText: {
-    fontFamily: theme.fonts.semiBold,
-    fontSize: 14,
-    color: '#ffffff',
   },
   profileCircle: {
     width: 44,
@@ -410,7 +379,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   dropdownMenu: {
     backgroundColor: colors.card,
-    width: 220,
+    width: 280,
     borderRadius: 20,
     padding: 15,
     shadowColor: '#000',
@@ -460,7 +429,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 5,
+    paddingVertical: 10,
   },
   dropdownItemLeft: {
     flexDirection: 'row',

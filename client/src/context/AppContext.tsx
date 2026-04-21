@@ -11,6 +11,7 @@ export type WalletType = {
   iconType?: 'purpose' | 'preset' | 'custom';
   presetLogo?: string;
   customIcon?: string;
+  color?: string;
 };
 
 export type TransactionType = {
@@ -44,6 +45,7 @@ export type DebtType = {
   taskName: string;
   amount: number;
   date: string;
+  dueDate?: string;
 };
 
 export type GroceryItemType = {
@@ -59,6 +61,7 @@ export type GroceryListType = {
   title: string;
   items: GroceryItemType[];
   date: string;
+  scheduledDays?: number[]; // [0-6] where 0 is Sunday
 };
 
 export type TravelType = {
@@ -76,18 +79,28 @@ export type WithdrawPresetType = {
   iconName: string;
 };
 
+export type RecursionType = {
+  id: string;
+  companyName: string;
+  amount: number;
+  walletId: string;
+  dayOfMonth: number;
+  lastProcessedMonth?: string;
+  date: string;
+};
+
 type AppContextType = {
   isLoaded: boolean;
   username: string | null;
   setUsername: (name: string) => Promise<void>;
   wallets: WalletType[];
-  addWallet: (wallet: Omit<WalletType, 'id' | 'balance'>) => Promise<void>;
+  addWallet: (walletData: Omit<WalletType, 'id' | 'balance'>) => Promise<void>;
+  editWallet: (id: string, walletData: Partial<Omit<WalletType, 'id' | 'balance'>>) => Promise<void>;
   transactions: TransactionType[];
   addTransaction: (tx: Omit<TransactionType, 'id' | 'date'>) => Promise<void>;
   goals: GoalType[];
   addGoal: (goal: Omit<GoalType, 'id'>) => Promise<void>;
   reorderWallets: (newWallets: WalletType[]) => Promise<void>;
-  editWallet: (id: string, updates: Partial<WalletType>) => Promise<void>;
   editGoal: (id: string, updates: Partial<GoalType>) => Promise<void>;
   deleteWallet: (id: string) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
@@ -115,7 +128,7 @@ type AppContextType = {
   toggleTheme: () => Promise<void>;
   colors: typeof lightPalette;
   groceryLists: GroceryListType[];
-  addGroceryList: (title: string) => Promise<void>;
+  addGroceryList: (title: string, scheduledDays?: number[]) => Promise<void>;
   deleteGroceryList: (id: string) => Promise<void>;
   addGroceryItem: (listId: string, item: Omit<GroceryItemType, 'id' | 'completed'>) => Promise<void>;
   deleteGroceryItem: (listId: string, itemId: string) => Promise<void>;
@@ -143,6 +156,10 @@ type AppContextType = {
   withdrawPresets: WithdrawPresetType[];
   addWithdrawPreset: (name: string, iconName: string) => Promise<void>;
   deleteWithdrawPreset: (id: string) => Promise<void>;
+  recursions: RecursionType[];
+  addRecursion: (recursion: Omit<RecursionType, 'id' | 'date'>) => Promise<void>;
+  deleteRecursion: (id: string) => Promise<void>;
+  processRecursion: (id: string) => Promise<void>;
 };
 
 
@@ -159,6 +176,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [groceryLists, setGroceryLists] = useState<GroceryListType[]>([]);
   const [travels, setTravels] = useState<TravelType[]>([]);
   const [withdrawPresets, setWithdrawPresets] = useState<WithdrawPresetType[]>([]);
+  const [recursions, setRecursions] = useState<RecursionType[]>([]);
   const [userImage, setUserImageState] = useState<string | null>(null);
   const [appPin, setAppPinState] = useState<string | null>(null);
   const [isSecurityEnabled, setIsSecurityEnabled] = useState(false);
@@ -201,6 +219,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (storedGoals) setGoals(JSON.parse(storedGoals));
       if (storedReceivables) setReceivables(JSON.parse(storedReceivables));
       if (storedDebts) setDebts(JSON.parse(storedDebts));
+      const storedRecursions = await AsyncStorage.getItem('@recursions');
+      if (storedRecursions) setRecursions(JSON.parse(storedRecursions));
       const storedGrocery = await AsyncStorage.getItem('@groceryLists');
       if (storedGrocery) setGroceryLists(JSON.parse(storedGrocery));
       const storedTravels = await AsyncStorage.getItem('@travels');
@@ -247,6 +267,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error('Failed to load data', e);
     } finally {
       setIsLoaded(true);
+    }
+  };
+
+  useEffect(() => {
+    if (isLoaded && recursions.length > 0) {
+      checkAndProcessRecursions();
+    }
+  }, [isLoaded, recursions.length]);
+
+  const checkAndProcessRecursions = async () => {
+    const today = new Date();
+    const currentDay = today.getDate();
+    const currentMonthYear = `${today.getFullYear()}-${today.getMonth() + 1}`;
+    
+    let hasChanges = false;
+    const newTransactions: TransactionType[] = [];
+    
+    const updatedRecursions = recursions.map((r) => {
+      // If today is >= scheduled day AND it hasn't been processed this month
+      if (currentDay >= r.dayOfMonth && r.lastProcessedMonth !== currentMonthYear) {
+        hasChanges = true;
+        
+        const newTx: TransactionType = {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+          title: `${r.companyName} (Auto-Recurring)`,
+          amount: r.amount,
+          date: today.toISOString(),
+          type: 'deposit',
+          walletId: r.walletId,
+        };
+        
+        newTransactions.push(newTx);
+        return { ...r, lastProcessedMonth: currentMonthYear };
+      }
+      return r;
+    });
+
+    if (hasChanges) {
+      // 1. Update Recursions
+      setRecursions(updatedRecursions);
+      await AsyncStorage.setItem('@recursions', JSON.stringify(updatedRecursions));
+      
+      // 2. Update Transactions
+      const allTx = [...newTransactions, ...transactions];
+      setTransactions(allTx);
+      await AsyncStorage.setItem('@transactions', JSON.stringify(allTx));
+      
+      // 3. Update Wallets
+      const updatedWallets = wallets.map(w => {
+        const matchingTxs = newTransactions.filter(tx => tx.walletId === w.id);
+        const addedAmount = matchingTxs.reduce((sum, tx) => sum + tx.amount, 0);
+        return { ...w, balance: w.balance + addedAmount };
+      });
+      setWallets(updatedWallets);
+      await AsyncStorage.setItem('@wallets', JSON.stringify(updatedWallets));
+      
+      showFeedback('success', `Auto-processed ${newTransactions.length} monthly recursions`);
     }
   };
 
@@ -341,6 +418,71 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await AsyncStorage.setItem('@debts', JSON.stringify(updated));
     setLoading(false);
     showFeedback('success', 'Debt Recorded');
+  };
+  
+  const addRecursion = async (recursionData: Omit<RecursionType, 'id' | 'date'>) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const newRecursion: RecursionType = {
+      ...recursionData,
+      id: Date.now().toString(),
+      date: new Date().toISOString(),
+    };
+    const updated = [...recursions, newRecursion];
+    setRecursions(updated);
+    await AsyncStorage.setItem('@recursions', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('success', 'Recursion Added');
+  };
+
+  const deleteRecursion = async (id: string) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const updated = recursions.filter(r => r.id !== id);
+    setRecursions(updated);
+    await AsyncStorage.setItem('@recursions', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('delete', 'Recursion Removed');
+  };
+
+  const processRecursion = async (id: string) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const recursion = recursions.find(r => r.id === id);
+    if (!recursion) {
+      setLoading(false);
+      return;
+    }
+
+    // Add as a deposit transaction
+    const newTx: TransactionType = {
+      id: Date.now().toString(),
+      title: `${recursion.companyName} (Recurring)`,
+      amount: recursion.amount,
+      date: new Date().toISOString(),
+      type: 'deposit',
+      walletId: recursion.walletId,
+    };
+
+    const updatedTx = [newTx, ...transactions];
+    setTransactions(updatedTx);
+    await AsyncStorage.setItem('@transactions', JSON.stringify(updatedTx));
+
+    // Update wallet balance
+    const updatedWallets = wallets.map(w => {
+      if (w.id === recursion.walletId) {
+        return {
+          ...w,
+          balance: w.balance + recursion.amount
+        };
+      }
+      return w;
+    });
+    setWallets(updatedWallets);
+    await AsyncStorage.setItem('@wallets', JSON.stringify(updatedWallets));
+    
+    setLoading(false);
+    showFeedback('success', 'Processed Successfully');
   };
 
   const setUserImage = async (image: string | null) => {
@@ -460,6 +602,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setGroceryLists([]);
     setTravels([]);
     setWithdrawPresets([]);
+    setRecursions([]);
     setAppPinState(null);
     setIsSecurityEnabled(false);
     setIsBiometricsEnabled(false);
@@ -492,6 +635,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ['@groceryLists', data.groceryLists ? JSON.stringify(data.groceryLists) : '[]'],
         ['@travels', data.travels ? JSON.stringify(data.travels) : '[]'],
         ['@withdrawPresets', data.withdrawPresets ? JSON.stringify(data.withdrawPresets) : '[]'],
+        ['@recursions', data.recursions ? JSON.stringify(data.recursions) : '[]'],
         ['@appPin', data.appPin || null],
         ['@isSecurityEnabled', data.isSecurityEnabled !== undefined ? String(data.isSecurityEnabled) : null],
         ['@isBiometricsEnabled', data.isBiometricsEnabled !== undefined ? String(data.isBiometricsEnabled) : null],
@@ -518,6 +662,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setGroceryLists(data.groceryLists || []);
       setTravels(data.travels || []);
       setWithdrawPresets(data.withdrawPresets || []);
+      setRecursions(data.recursions || []);
       setAppPinState(data.appPin || null);
 
       if (data.isSecurityEnabled !== undefined) {
@@ -560,12 +705,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setConfirmState(prev => ({ ...prev, visible: false }));
   };
 
-  const addGroceryList = async (title: string) => {
+  const addGroceryList = async (title: string, scheduledDays?: number[]) => {
     const newList: GroceryListType = {
       id: Date.now().toString(),
       title,
       items: [],
       date: new Date().toISOString(),
+      scheduledDays,
     };
     const updated = [...groceryLists, newList];
     setGroceryLists(updated);
@@ -890,7 +1036,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         stopTutorial,
         withdrawPresets,
         addWithdrawPreset,
-        deleteWithdrawPreset
+        deleteWithdrawPreset,
+        recursions,
+        addRecursion,
+        deleteRecursion,
+        processRecursion
       }}
     >
       {children}

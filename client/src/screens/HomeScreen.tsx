@@ -5,7 +5,7 @@ import { AudioPlayer, createAudioPlayer } from 'expo-audio';
 
 
 import { theme } from '../theme';
-import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane } from 'lucide-react-native';
+import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane, RefreshCw } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation, useScrollToTop } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
@@ -15,7 +15,7 @@ import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 
 
 export default function HomeScreen() {
-  const { totalBalance, totalReceivables, totalDebts, wallets, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode, isTutorialActive, stopTutorial } = useAppContext();
+  const { totalBalance, totalReceivables, totalDebts, wallets, debts, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode, isTutorialActive, stopTutorial, groceryLists } = useAppContext();
 
   const navigation = useNavigation<any>();
   const { handleScroll } = useScrollHideTabBar();
@@ -195,10 +195,12 @@ export default function HomeScreen() {
   const debtRef = useRef<View>(null);
   const groceryRef = useRef<View>(null);
   const travelRef = useRef<View>(null);
+  const recursionRef = useRef<View>(null);
 
   const tutorialRefs = [
     balanceRef, addSavingsRef, withdrawRef, calculatorRef,
-    calendarRef, pendingRef, debtRef, groceryRef, travelRef
+    calendarRef, pendingRef, debtRef, groceryRef, travelRef,
+    recursionRef
   ];
 
   const tutorialSteps = [
@@ -211,6 +213,7 @@ export default function HomeScreen() {
     { title: 'Debt', description: 'Monitor your outstanding balances and stay organized as you work toward being debt-free.', borderRadius: 16 },
     { title: 'Grocery', description: 'Create and manage shopping lists to streamline your errands and stay within budget.', borderRadius: 16 },
     { title: 'Travel', description: 'Log your trip expenses as you go to keep your vacation spending organized.', borderRadius: 16 },
+    { title: 'Recursion', description: 'Manage your recurring income like monthly salary and easily add it to your wallets.', borderRadius: 16 },
   ];
 
 
@@ -236,6 +239,7 @@ export default function HomeScreen() {
         require('../../assets/sound/Debt.mp3'),
         require('../../assets/sound/Grocery.mp3'),
         require('../../assets/sound/Travel.mp3'),
+        null, // No sound for Recursion yet
       ];
 
       const source = sounds[stepIndex];
@@ -441,6 +445,18 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Debts')}>
             <View ref={debtRef} collapsable={false} style={styles.actionIconBorder}>
               <AlertCircle size={20} color={colors.text} />
+              {(() => {
+                const today = new Date().toISOString().split('T')[0];
+                const count = debts.filter(d => d.dueDate === today).length;
+                if (count > 0) {
+                  return (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{count}</Text>
+                    </View>
+                  );
+                }
+                return null;
+              })()}
             </View>
             <Text style={styles.actionText}>Debt</Text>
           </TouchableOpacity>
@@ -450,6 +466,20 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Grocery')}>
             <View ref={groceryRef} collapsable={false} style={styles.actionIconBorder}>
               <ShoppingCart size={20} color={colors.text} />
+              {(() => {
+                const todayDayIndex = new Date().getDay();
+                const count = groceryLists.filter(list => 
+                  list.scheduledDays && list.scheduledDays.includes(todayDayIndex)
+                ).length;
+                if (count > 0) {
+                  return (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{count}</Text>
+                    </View>
+                  );
+                }
+                return null;
+              })()}
             </View>
             <Text style={styles.actionText}>Grocery</Text>
           </TouchableOpacity>
@@ -461,6 +491,13 @@ export default function HomeScreen() {
               <Plane size={20} color={colors.text} />
             </View>
             <Text style={styles.actionText}>Travel</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Recursion')}>
+            <View ref={recursionRef} collapsable={false} style={styles.actionIconBorder}>
+              <RefreshCw size={20} color={colors.text} />
+            </View>
+            <Text style={styles.actionText}>Recursion</Text>
           </TouchableOpacity>
 
         </View>
@@ -1136,6 +1173,25 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderWidth: 2,
     borderColor: '#ffffff',
     backgroundColor: 'transparent',
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#ef4444',
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: colors.card,
+  },
+  badgeText: {
+    color: '#ffffff',
+    fontSize: 8,
+    fontFamily: theme.fonts.bold,
   },
 
 

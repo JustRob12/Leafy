@@ -15,12 +15,32 @@ export default function GroceryScreen() {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [listTitle, setListTitle] = useState('');
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+
+  const daysOfWeek = [
+    { label: 'M', value: 1 },
+    { label: 'T', value: 2 },
+    { label: 'W', value: 3 },
+    { label: 'Th', value: 4 },
+    { label: 'F', value: 5 },
+    { label: 'S', value: 6 },
+    { label: 'Su', value: 0 },
+  ];
+
+  const toggleDay = (day: number) => {
+    if (selectedDays.includes(day)) {
+      setSelectedDays(selectedDays.filter(d => d !== day));
+    } else {
+      setSelectedDays([...selectedDays, day]);
+    }
+  };
 
   const handleAddList = async () => {
     if (listTitle.trim()) {
-      await addGroceryList(listTitle.trim());
+      await addGroceryList(listTitle.trim(), selectedDays);
       setModalVisible(false);
       setListTitle('');
+      setSelectedDays([]);
     }
   };
 
@@ -36,6 +56,11 @@ export default function GroceryScreen() {
     const d = new Date(isoString);
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   };
+
+  const grandTotal = groceryLists.reduce((acc, list) => 
+    acc + list.items.reduce((sum, item) => sum + (item.price || 0), 0), 
+    0
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -74,16 +99,28 @@ export default function GroceryScreen() {
               <View style={styles.accentLine} />
               <View style={styles.cardContent}>
                 <View style={styles.cardLeft}>
-                  <View style={styles.iconWrapper}>
-                    <List size={20} color={colors.primary} />
-                  </View>
                   <View>
-                    <Text style={styles.listName}>{list.title}</Text>
+                    <View style={styles.titleRow}>
+                      <Text style={styles.listName} numberOfLines={1}>{list.title}</Text>
+                    </View>
                     <View style={styles.detailsRow}>
                       <Text style={styles.dateText}>{formatDate(list.date)}</Text>
+                      {list.scheduledDays && list.scheduledDays.length > 0 && (
+                        <>
+                          <View style={styles.dotSeparator} />
+                          <Text style={styles.scheduledDaysText}>
+                            {list.scheduledDays.map(d => daysOfWeek.find(dow => dow.value === d)?.label).join(', ')}
+                          </Text>
+                        </>
+                      )}
                       <View style={styles.dotSeparator} />
                       <Text style={styles.itemCountTextInline}>{list.items.length} items</Text>
                     </View>
+                    {list.scheduledDays && list.scheduledDays.includes(new Date().getDay()) && (
+                      <View style={[styles.todayBadge, { marginTop: 8, alignSelf: 'flex-start' }]}>
+                        <Text style={styles.todayBadgeText}>TODAY TO BUY</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
               </View>
@@ -99,14 +136,18 @@ export default function GroceryScreen() {
         )}
       </ScrollView>
 
-      {/* Floating Add Button */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setModalVisible(true)}
-        activeOpacity={0.8}
-      >
-        <Plus size={30} color="#ffffff" />
-      </TouchableOpacity>
+
+      {/* TOTAL FOOTER (Persistent) */}
+      <View style={styles.footer}>
+        <View style={styles.footerInfo}>
+          <Text style={styles.footerLabel}>Grand Total</Text>
+          <Text style={styles.footerValue}>₱{grandTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
+        </View>
+        <TouchableOpacity style={styles.mainAddBtn} onPress={() => setModalVisible(true)}>
+          <Plus size={24} color="#ffffff" />
+          <Text style={styles.mainAddBtnText}>Create List</Text>
+        </TouchableOpacity>
+      </View>
 
       <ActionSheet
         visible={modalVisible}
@@ -118,12 +159,33 @@ export default function GroceryScreen() {
           <ShoppingCart size={18} color={colors.textMuted} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="e.g., Saturday Grocery, Party Needs..."
+            placeholder="e.g., Saturday Grocery"
             placeholderTextColor={colors.textMuted}
             value={listTitle}
             onChangeText={setListTitle}
             autoFocus
           />
+        </View>
+
+        <Text style={styles.inputLabel}>Schedule Days (Weekly)</Text>
+        <View style={styles.daysPicker}>
+          {daysOfWeek.map((day) => (
+            <TouchableOpacity
+              key={day.value}
+              style={[
+                styles.dayChip,
+                selectedDays.includes(day.value) && styles.dayChipActive
+              ]}
+              onPress={() => toggleDay(day.value)}
+            >
+              <Text style={[
+                styles.dayChipText,
+                selectedDays.includes(day.value) && styles.dayChipTextActive
+              ]}>
+                {day.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         <TouchableOpacity
@@ -264,7 +326,8 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize: 16,
     color: colors.text,
-    marginBottom: 2,
+    flexShrink: 1, // Allow truncation
+    flex: 1, // Fill available width for better truncation
   },
   dateText: {
     fontFamily: theme.fonts.regular,
@@ -343,6 +406,40 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: 16,
     color: '#ffffff',
   },
+  daysPicker: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  dayChip: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  dayChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  dayChipText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  dayChipTextActive: {
+    color: '#ffffff',
+    fontFamily: theme.fonts.bold,
+  },
+  scheduledDaysText: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 12,
+    color: colors.primary,
+  },
   fab: {
     position: 'absolute',
     bottom: 120,
@@ -359,5 +456,67 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
     zIndex: 10,
+    display: 'none', // Hidden in favor of footer button
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  todayBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  todayBadgeText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 10,
+    color: colors.primary,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.card,
+    padding: 24,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 40,
+  },
+  footerInfo: {
+    flex: 1,
+  },
+  footerLabel: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+  },
+  footerValue: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 22,
+    color: colors.primary,
+  },
+  mainAddBtn: {
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 14,
+    gap: 8,
+  },
+  mainAddBtnText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 15,
+    color: '#ffffff',
   },
 });

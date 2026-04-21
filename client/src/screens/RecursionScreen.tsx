@@ -1,49 +1,28 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme';
-import { Plus, User, FileText, DollarSign, Trash2, Clock, ChevronLeft } from 'lucide-react-native';
+import { Plus, Building2, DollarSign, Trash2, RefreshCw, ChevronLeft, Wallet as WalletIcon, Calendar } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import WalletDropdown from '../components/WalletDropdown';
-import { useNavigation } from '@react-navigation/native';
 
-export default function ReceivablesScreen() {
-  const { receivables, addReceivable, payReceivable, deleteReceivable, showConfirm, colors, isDarkMode } = useAppContext();
+export default function RecursionScreen() {
+  const { recursions, addRecursion, deleteRecursion, processRecursion, wallets, showConfirm, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation<any>();
 
-  // Pay Modal State
-  const [payModalVisible, setPayModalVisible] = useState(false);
-  const [selectedReceivableId, setSelectedReceivableId] = useState<string | null>(null);
-  const [payAmount, setPayAmount] = useState('');
-  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
-
-
-  const handleOpenPayModal = (id: string, currentAmount: number) => {
-    setSelectedReceivableId(id);
-    setPayAmount(currentAmount.toString());
-    setPayModalVisible(true);
-  };
-
-  const handlePayConfirm = async () => {
-    const numericAmount = parseFloat(payAmount);
-    if (selectedReceivableId && selectedWalletId && !isNaN(numericAmount) && numericAmount > 0) {
-      await payReceivable(selectedReceivableId, numericAmount, selectedWalletId);
-      setPayModalVisible(false);
-      setSelectedReceivableId(null);
-      setPayAmount('');
-      setSelectedWalletId(null);
-    }
-  };
-
   const handleDelete = (id: string, name: string) => {
     showConfirm(
-      'Delete Record',
-      `Are you sure you want to delete the pending payment from ${name}? This action cannot be undone.`,
-      () => deleteReceivable(id)
+      'Delete Recursion',
+      `Are you sure you want to delete the recurring income from ${name}? This will not affect previous transactions.`,
+      () => deleteRecursion(id)
     );
+  };
+
+  const handleProcess = async (id: string) => {
+      await processRecursion(id);
   };
 
   const formatDate = (isoString: string) => {
@@ -51,51 +30,55 @@ export default function ReceivablesScreen() {
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const getWalletName = (id: string) => {
+      const wallet = wallets.find(w => w.id === id);
+      return wallet ? wallet.name : 'Unknown Wallet';
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Who hasn't paid yet?</Text>
+        <Text style={styles.headerTitle}>Recursion</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {receivables.length === 0 ? (
+        {recursions.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconWrapper}>
-              <Clock size={32} color={colors.textMuted} />
+              <RefreshCw size={32} color={colors.textMuted} />
             </View>
-            <Text style={styles.emptyTitle}>All clear!</Text>
-            <Text style={styles.emptySubtitle}>No pending payments recorded. Great job keeping track!</Text>
+            <Text style={styles.emptyTitle}>No Recursions yet</Text>
+            <Text style={styles.emptySubtitle}>Add your monthly salary or recurring income here to easily track it.</Text>
             <TouchableOpacity
               style={styles.createBtn}
-              onPress={() => navigation.navigate('AddReceivable')}
+              onPress={() => navigation.navigate('AddRecursion')}
             >
               <Plus size={18} color="#ffffff" />
-              <Text style={styles.createBtnText}>Record Pending Payment</Text>
+              <Text style={styles.createBtnText}>Add New Recursion</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          receivables.map((item) => (
-            <View key={item.id} style={styles.receivableCard}>
+          recursions.map((item) => (
+            <View key={item.id} style={styles.card}>
               <View style={styles.accentLine} />
               <View style={styles.cardTop}>
-                <View style={styles.personInfo}>
-                  <View style={styles.userIconWrapper}>
-                    <User size={18} color={colors.primary} />
+                <View style={styles.infoRow}>
+                  <View style={styles.iconWrapper}>
+                    <Building2 size={18} color={theme.colors.primary} />
                   </View>
                   <View>
-                    <Text style={styles.personName}>{item.personName}</Text>
-                    <Text style={styles.dateText}>{formatDate(item.date)}</Text>
+                    <Text style={styles.companyName}>{item.companyName}</Text>
+                    <Text style={styles.dateText}>Every day {item.dayOfMonth} of the month</Text>
                   </View>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                   <TouchableOpacity
-                    style={styles.trashBtnTop}
-                    onPress={() => handleDelete(item.id, item.personName)}
+                    style={styles.trashBtn}
+                    onPress={() => handleDelete(item.id, item.companyName)}
                   >
                     <Trash2 size={16} color="#ef4444" />
                   </TouchableOpacity>
@@ -106,15 +89,15 @@ export default function ReceivablesScreen() {
               <View style={styles.cardDivider} />
 
               <View style={styles.cardBottom}>
-                <View style={styles.taskInfo}>
-                  <FileText size={14} color={colors.textMuted} />
-                  <Text style={styles.taskName}>{item.taskName}</Text>
+                <View style={styles.walletInfo}>
+                  <WalletIcon size={14} color={colors.textMuted} />
+                  <Text style={styles.walletName}>{getWalletName(item.walletId)}</Text>
                 </View>
                 <TouchableOpacity
-                  style={styles.paidBtn}
-                  onPress={() => handleOpenPayModal(item.id, item.amount)}
+                  style={styles.processBtn}
+                  onPress={() => handleProcess(item.id)}
                 >
-                  <Text style={styles.paidBtnText}>Mark Paid</Text>
+                  <Text style={styles.processBtnText}>Add to Wallet</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -125,70 +108,11 @@ export default function ReceivablesScreen() {
       {/* Floating Add Button */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => navigation.navigate('AddReceivable')}
+        onPress={() => navigation.navigate('AddRecursion')}
         activeOpacity={0.8}
       >
         <Plus size={30} color="#ffffff" />
       </TouchableOpacity>
-
-
-      <ActionSheet
-        visible={payModalVisible}
-        onClose={() => { setPayModalVisible(false); setSelectedReceivableId(null); }}
-        title="Process Payment"
-      >
-        {(() => {
-          const item = receivables.find(r => r.id === selectedReceivableId);
-          if (!item) return null;
-
-          return (
-            <>
-              <View style={styles.payInfoRow}>
-                <View>
-                  <Text style={styles.payLabel}>From</Text>
-                  <Text style={styles.payValue}>{item.personName}</Text>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.payLabel}>Total Due</Text>
-                  <Text style={styles.payValue}>₱{item.amount.toLocaleString()}</Text>
-                </View>
-              </View>
-
-              <Text style={styles.inputLabel}>Select Wallet to Receive Funds</Text>
-              <WalletDropdown
-                selectedWalletId={selectedWalletId}
-                onSelectWallet={setSelectedWalletId}
-              />
-
-              <Text style={styles.inputLabel}>Payment Amount (₱)</Text>
-              <View style={styles.inputWrapper}>
-                <DollarSign size={18} color={colors.textMuted} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="numeric"
-                  value={payAmount}
-                  onChangeText={setPayAmount}
-                />
-              </View>
-
-              <TouchableOpacity
-                style={[
-                  styles.saveBtn,
-                  (!selectedWalletId || !payAmount || parseFloat(payAmount) <= 0) && styles.saveBtnDisabled
-                ]}
-                onPress={handlePayConfirm}
-                disabled={!selectedWalletId || !payAmount || parseFloat(payAmount) <= 0}
-              >
-                <Text style={styles.saveBtnText}>
-                  {parseFloat(payAmount) >= item.amount ? 'Mark Fully Paid' : 'Record Partial Payment'}
-                </Text>
-              </TouchableOpacity>
-            </>
-          );
-        })()}
-      </ActionSheet>
     </SafeAreaView>
   );
 }
@@ -216,14 +140,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize: 18,
     color: colors.text,
-  },
-  addBtnHeader: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   scrollContent: {
     padding: theme.spacing.lg,
@@ -271,15 +187,15 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: 15,
     color: '#ffffff',
   },
-  receivableCard: {
+  card: {
     backgroundColor: colors.card,
     borderRadius: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: isDarkMode ? colors.border : colors.primary + '22',
+    borderColor: isDarkMode ? colors.border : theme.colors.primary + '22',
     padding: 16,
     paddingLeft: 22,
-    shadowColor: colors.primary,
+    shadowColor: theme.colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: isDarkMode ? 0.2 : 0.04,
     shadowRadius: 8,
@@ -292,19 +208,19 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 5,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.colors.primary,
   },
   cardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  personInfo: {
+  infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  userIconWrapper: {
+  iconWrapper: {
     width: 40,
     height: 40,
     borderRadius: 12,
@@ -314,7 +230,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderWidth: 1,
     borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.1)',
   },
-  personName: {
+  companyName: {
     fontFamily: theme.fonts.bold,
     fontSize: 16,
     color: colors.text,
@@ -327,7 +243,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   amountText: {
     fontFamily: theme.fonts.bold,
     fontSize: 20,
-    color: colors.primary,
+    color: theme.colors.primary,
   },
   cardDivider: {
     height: 1,
@@ -339,19 +255,19 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  taskInfo: {
+  walletInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     flex: 1,
   },
-  taskName: {
+  walletName: {
     fontFamily: theme.fonts.medium,
     fontSize: 14,
     color: colors.text,
     flex: 1,
   },
-  paidBtn: {
+  processBtn: {
     backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc',
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -359,12 +275,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  paidBtnText: {
+  processBtnText: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 12,
-    color: colors.primary,
+    color: theme.colors.primary,
   },
-  trashBtnTop: {
+  trashBtn: {
     marginBottom: 4,
     padding: 2,
   },
@@ -411,30 +327,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: 16,
     color: '#ffffff',
   },
-  payInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  payLabel: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 12,
-    color: colors.textMuted,
-    marginBottom: 4,
-  },
-  payValue: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 16,
-    color: colors.text,
-  },
   fab: {
     position: 'absolute',
-    bottom: 120,
+    bottom: 40,
     right: 24,
     width: 60,
     height: 60,

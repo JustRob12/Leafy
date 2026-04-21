@@ -58,11 +58,32 @@ export default function StatusCardScreen() {
       .filter(tx => tx.type === 'withdrawal')
       .reduce((acc, tx) => acc + tx.amount, 0);
 
-    // 2. Individual Withdrawal Breakdown (Latest from History)
-    const withdrawalHistory = monthlyTransactions
+    // 2. CATEGORIZATION LOGIC
+    const categoryTotals: { [key: string]: number } = {
+      Food: 0,
+      Transport: 0,
+      Fun: 0,
+      Other: 0
+    };
+
+    monthlyTransactions
       .filter(tx => tx.type === 'withdrawal')
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 5); // Show latest 5 withdrawals
+      .forEach(tx => {
+        const title = tx.title.toLowerCase();
+        let categorized = false;
+        
+        for (const [cat, keywords] of Object.entries(CAT_KEYWORDS)) {
+          if (keywords.some(k => title.includes(k))) {
+            categoryTotals[cat] += tx.amount;
+            categorized = true;
+            break;
+          }
+        }
+        
+        if (!categorized) {
+          categoryTotals.Other += tx.amount;
+        }
+      });
 
     const totalSpent = expenses || 1;
     
@@ -71,19 +92,28 @@ export default function StatusCardScreen() {
     const savedPercent = income > 0 ? Math.round((saved / income) * 100) : 0;
     const expenseRatio = income > 0 ? Math.round((expenses / income) * 100) : (expenses > 0 ? 100 : 0);
 
+    // Map categories to breakdown items
+    const breakdown = [
+      { name: 'Food & Dining', key: 'Food', icon: Utensils },
+      { name: 'Transport & Fuel', key: 'Transport', icon: Car },
+      { name: 'Lifestyle & Fun', key: 'Fun', icon: ShoppingBag },
+      { name: 'Other Expenses', key: 'Other', icon: LayoutGrid },
+    ]
+    .map(cat => ({
+      ...cat,
+      amount: categoryTotals[cat.key],
+      percent: Math.round((categoryTotals[cat.key] / totalSpent) * 100)
+    }))
+    .filter(cat => cat.amount > 0) // Only show categories with spending
+    .sort((a, b) => b.amount - a.amount); // Show highest spending first
+
     return {
       income,
       expenses,
       saved,
       savedPercent,
       expenseRatio,
-      breakdown: withdrawalHistory.map(tx => ({
-        name: tx.title,
-        amount: tx.amount,
-        icon: LayoutGrid,
-        percent: income > 0 ? Math.round((tx.amount / income) * 100) : 0
-      }))
-
+      breakdown
     };
   }, [transactions]);
 
@@ -123,19 +153,6 @@ export default function StatusCardScreen() {
     }
   };
 
-  const LinearProgressBar = ({ percent }: any) => {
-    return (
-      <View style={styles.paceContainer}>
-        <View style={styles.paceHeader}>
-          <Text style={[styles.paceTitle, { color: textColor }]}>MONTHLY PACE</Text>
-          <Text style={[styles.paceSubtitle, { color: textColor + 'aa' }]}>{percent}% SPENT</Text>
-        </View>
-        <View style={[styles.progressTrack, { backgroundColor: textColor + '22', height: 10, borderRadius: 5 }]}>
-          <View style={[styles.progressFill, { width: `${Math.min(percent, 100)}%`, backgroundColor: textColor, height: 10, borderRadius: 5 }]} />
-        </View>
-      </View>
-    );
-  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -162,21 +179,13 @@ export default function StatusCardScreen() {
           <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }} style={styles.viewShot}>
             <View style={styles.premiumCard}>
               <View style={styles.cardContent}>
-                {/* BRAND HEADER: Using Leaf icon instead of Image */}
-                <View style={styles.brandHeader}>
-                    <Leaf size={24} color={textColor} fill={textColor + '22'} />
-                    <Text style={[styles.brandName, { color: textColor }]}>Leafy</Text>
-                </View>
-
-
-                {/* TOP SECTION: Graph */}
-                <View style={styles.topSection}>
-                  <LinearProgressBar percent={stats.expenseRatio} />
-                </View>
-
 
                 {/* GREETING & HERO SECTION */}
                 <View style={styles.heroSection}>
+                  <View style={[styles.brandHeader, { justifyContent: 'flex-start', marginBottom: 10 }]}>
+                      <Leaf size={20} color={textColor} fill={textColor + '22'} />
+                      <Text style={[styles.brandName, { color: textColor, fontSize: 16 }]}>Leafy</Text>
+                  </View>
                   <View>
                     <Text style={[styles.greeting, { color: textColor }]}>Hello {username || 'Buddy'},</Text>
                     <Text style={[styles.dateLabel, { color: textColor + '88' }]}>{dateStr}</Text>
@@ -201,25 +210,14 @@ export default function StatusCardScreen() {
 
                 {/* BREAKDOWN SECTION */}
                 <View style={styles.breakdownSection}>
-                  <Text style={[styles.sectionTitle, { color: textColor }]}>Expense breakdown</Text>
-                  {stats.breakdown.length === 0 ? (
-                    <Text style={[styles.motivation, { color: textColor + '66' }]}>No withdrawals recorded this month.</Text>
-                  ) : (
-                    stats.breakdown.map((item, idx) => (
-                      <View key={idx} style={styles.breakdownItem}>
-                        <View style={styles.breakdownLabelRow}>
-                          <View style={styles.breakdownLabelLeft}>
-                            <item.icon size={16} color={textColor + '99'} />
-                            <Text style={[styles.breakdownName, { color: textColor }]} numberOfLines={1}>{item.name}</Text>
-                          </View>
-                          <Text style={[styles.breakdownPercentText, { color: textColor + '99' }]}>{item.percent}%</Text>
-                        </View>
-                        <View style={[styles.progressTrack, { backgroundColor: textColor + '22' }]}>
-                          <View style={[styles.progressFill, { width: `${item.percent}%`, backgroundColor: textColor }]} />
-                        </View>
-                      </View>
-                    ))
-                  )}
+                  <Text style={[styles.sectionTitle, { color: textColor }]}>Monthly Expenses</Text>
+                  <View style={styles.totalExpenseCard}>
+                    <Text style={[styles.totalExpensePercent, { color: textColor }]}>{stats.expenseRatio}%</Text>
+                    <Text style={[styles.totalExpenseSub, { color: textColor + '99' }]}>TOTAL SPENT THIS MONTH</Text>
+                    <View style={[styles.progressTrack, { backgroundColor: textColor + '22', height: 8, borderRadius: 4, marginTop: 12 }]}>
+                      <View style={[styles.progressFill, { width: `${Math.min(stats.expenseRatio, 100)}%`, backgroundColor: textColor, height: 8, borderRadius: 4 }]} />
+                    </View>
+                  </View>
                 </View>
 
                 {/* FOOTER: Empty or can be used for extra padding */}
@@ -344,10 +342,6 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 20,
   },
-  topSection: {
-    marginTop: 0,
-    marginBottom: 20,
-  },
 
   heroSection: {
     marginBottom: 25,
@@ -412,28 +406,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.medium,
     fontSize: 14,
     lineHeight: 20,
-  },
-  paceContainer: {
-    width: '100%',
-    backgroundColor: 'rgba(0,0,0,0.03)',
-    padding: 15,
-    borderRadius: 20,
-  },
-  paceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  paceTitle: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 11,
-    letterSpacing: 1.5,
-  },
-  paceSubtitle: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 11,
-    opacity: 0.6,
   },
   breakdownSection: {
     flex: 1,
@@ -552,5 +524,21 @@ const styles = StyleSheet.create({
   exportBtnText: {
     fontFamily: theme.fonts.bold,
     fontSize: 15,
+  },
+  totalExpenseCard: {
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    padding: 20,
+    borderRadius: 24,
+    alignItems: 'center',
+  },
+  totalExpensePercent: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 48,
+  },
+  totalExpenseSub: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 10,
+    letterSpacing: 1.5,
+    marginTop: -5,
   },
 });

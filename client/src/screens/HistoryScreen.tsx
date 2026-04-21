@@ -26,6 +26,7 @@ export default function HistoryScreen() {
 
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [typeFilter, setTypeFilter] = useState<'all' | 'deposit' | 'withdrawal'>('all');
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -48,9 +49,11 @@ export default function HistoryScreen() {
   const filteredTransactions = useMemo(() => {
     return transactions.filter(tx => {
       const txDate = new Date(tx.date);
-      return txDate.getMonth() === selectedMonth && txDate.getFullYear() === selectedYear;
+      const matchesMonthYear = txDate.getMonth() === selectedMonth && txDate.getFullYear() === selectedYear;
+      const matchesType = typeFilter === 'all' || tx.type === typeFilter;
+      return matchesMonthYear && matchesType;
     });
-  }, [transactions, selectedMonth, selectedYear]);
+  }, [transactions, selectedMonth, selectedYear, typeFilter]);
 
   const formatTxDate = (dateString: string) => {
     const d = new Date(dateString);
@@ -77,6 +80,32 @@ export default function HistoryScreen() {
 
         <TouchableOpacity style={styles.filterNavBtn} onPress={() => changeMonth(1)}>
           <ArrowLeft size={20} color={colors.textMuted} style={{ transform: [{ rotate: '180deg' }] }} />
+        </TouchableOpacity>
+      </View>
+
+      {/* TYPE FILTER CHIPS */}
+      <View style={styles.typeFilterRow}>
+        <TouchableOpacity 
+          style={[styles.typeChip, typeFilter === 'all' && styles.typeChipActiveAll]}
+          onPress={() => setTypeFilter('all')}
+        >
+          <Text style={[styles.typeChipText, typeFilter === 'all' && styles.typeChipTextActive]}>All</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.typeChip, typeFilter === 'deposit' && styles.typeChipActiveDeposit]}
+          onPress={() => setTypeFilter('deposit')}
+        >
+          <ArrowDownRight size={14} color={typeFilter === 'deposit' ? '#ffffff' : colors.success} style={{ marginRight: 4 }} />
+          <Text style={[styles.typeChipText, typeFilter === 'deposit' && styles.typeChipTextActive]}>Deposits</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.typeChip, typeFilter === 'withdrawal' && styles.typeChipActiveWithdraw]}
+          onPress={() => setTypeFilter('withdrawal')}
+        >
+          <ArrowUpRight size={14} color={typeFilter === 'withdrawal' ? '#ffffff' : colors.danger} style={{ marginRight: 4 }} />
+          <Text style={[styles.typeChipText, typeFilter === 'withdrawal' && styles.typeChipTextActive]}>Withdrawals</Text>
         </TouchableOpacity>
       </View>
 
@@ -222,5 +251,42 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize: 16,
     color: colors.danger,
+  },
+  typeFilterRow: {
+    flexDirection: 'row',
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+    gap: 8,
+  },
+  typeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  typeChipActiveAll: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  typeChipActiveDeposit: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  typeChipActiveWithdraw: {
+    backgroundColor: colors.danger,
+    borderColor: colors.danger,
+  },
+  typeChipText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  typeChipTextActive: {
+    color: '#ffffff',
+    fontFamily: theme.fonts.bold,
   },
 });

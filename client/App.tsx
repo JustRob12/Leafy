@@ -26,6 +26,12 @@ import TravelScreen from './src/screens/TravelScreen';
 import StatusCardScreen from './src/screens/StatusCardScreen';
 import WithdrawScreen from './src/screens/WithdrawScreen';
 import DepositScreen from './src/screens/DepositScreen';
+import RecursionScreen from './src/screens/RecursionScreen';
+import AddWalletScreen from './src/screens/AddWalletScreen';
+import AddGoalScreen from './src/screens/AddGoalScreen';
+import AddRecursionScreen from './src/screens/AddRecursionScreen';
+import AddReceivableScreen from './src/screens/AddReceivableScreen';
+import AddDebtScreen from './src/screens/AddDebtScreen';
 import MainHeader from './src/components/MainHeader';
 import FeedbackModal from './src/components/FeedbackModal';
 import ConfirmModal from './src/components/ConfirmModal';
@@ -84,6 +90,12 @@ function MainNavigation() {
             <Stack.Screen name="StatusCard" component={StatusCardScreen} />
             <Stack.Screen name="Withdraw" component={WithdrawScreen} />
             <Stack.Screen name="Deposit" component={DepositScreen} />
+            <Stack.Screen name="Recursion" component={RecursionScreen} />
+            <Stack.Screen name="AddWallet" component={AddWalletScreen} />
+            <Stack.Screen name="AddGoal" component={AddGoalScreen} />
+            <Stack.Screen name="AddRecursion" component={AddRecursionScreen} />
+            <Stack.Screen name="AddReceivable" component={AddReceivableScreen} />
+            <Stack.Screen name="AddDebt" component={AddDebtScreen} />
           </Stack.Group>
         )}
       </Stack.Navigator>

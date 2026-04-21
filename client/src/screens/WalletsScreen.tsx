@@ -1,17 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image as RNImage, Modal, Dimensions } from 'react-native';
 import { theme } from '../theme';
-import { Plane, Plus, Wallet as WalletIcon, ShoppingBag, AlertTriangle, User, MoreHorizontal, Leaf, QrCode, Image as ImageIcon, X, ChevronRight, Search, ChevronUp, ChevronDown } from 'lucide-react-native';
+import { Plus, Wallet as WalletIcon, MoreHorizontal, QrCode, X, ChevronUp, ChevronDown, User, AlertTriangle, ShoppingBag, Plane, Eye, EyeOff } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
-import ActionSheet from '../components/ActionSheet';
 import { useNavigation, useRoute, useScrollToTop } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 
 export default function WalletsScreen() {
   const [viewingQrCode, setViewingQrCode] = useState<string | null>(null);
-  const [isReordering, setIsReordering] = useState(false);
-  const { wallets, addWallet, editWallet, deleteWallet, reorderWallets, showFeedback, showConfirm, colors, isDarkMode } = useAppContext();
+  const [showBalances, setShowBalances] = useState(true);
+  const { wallets, addWallet, editWallet, deleteWallet, showFeedback, showConfirm, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const { handleScroll } = useScrollHideTabBar();
 
@@ -23,25 +21,6 @@ export default function WalletsScreen() {
     'maribank.png': require('../../public/walletimages/maribank.png'),
   };
 
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingWalletId, setEditingWalletId] = useState<string | null>(null);
-  const [walletName, setWalletName] = useState('');
-  const [purpose, setPurpose] = useState('Personal');
-  const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
-  const [iconType, setIconType] = useState<'purpose' | 'preset' | 'custom'>('purpose');
-  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
-  const [customIcon, setCustomIcon] = useState<string | null>(null);
-  const [logoModalVisible, setLogoModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const presetLogos = [
-    { name: 'GCash', file: 'gcash.png' },
-    { name: 'Maya', file: 'maya.png' },
-    { name: 'PayPal', file: 'paypal.png' },
-    { name: 'Wise', file: 'wise.png' },
-    { name: 'MariBank', file: 'maribank.png' },
-  ];
-
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const scrollViewRef = React.useRef<ScrollView>(null);
@@ -49,10 +28,11 @@ export default function WalletsScreen() {
 
   React.useEffect(() => {
     if (route.params?.openAddModal) {
-      setModalVisible(true);
+      navigation.navigate('AddWallet');
       navigation.setParams({ openAddModal: undefined });
     }
   }, [route.params?.openAddModal, navigation]);
+
   const purposes = [
     { label: 'Personal', icon: User },
     { label: 'Emergency', icon: AlertTriangle },
@@ -60,108 +40,9 @@ export default function WalletsScreen() {
     { label: 'Travel', icon: Plane },
   ];
 
-  const pickCustomIcon = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      setCustomIcon(result.assets[0].uri);
-      setIconType('custom');
-    }
-  };
-
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      setQrCodeImage(result.assets[0].uri);
-    }
-  };
-
-  const handleAddWallet = async () => {
-    if (walletName.trim()) {
-      setModalVisible(false);
-      if (editingWalletId) {
-        await editWallet(editingWalletId, {
-          name: walletName.trim(),
-          purpose: purpose,
-          qrCodeImage: qrCodeImage || undefined,
-          iconType,
-          presetLogo: selectedPreset || undefined,
-          customIcon: customIcon || undefined
-        });
-      } else {
-        await addWallet({
-          name: walletName.trim(),
-          purpose: purpose,
-          qrCodeImage: qrCodeImage || undefined,
-          iconType,
-          presetLogo: selectedPreset || undefined,
-          customIcon: customIcon || undefined
-        });
-      }
-
-      setWalletName('');
-      setPurpose('Personal');
-      setQrCodeImage(null);
-      setEditingWalletId(null);
-      setIconType('purpose');
-      setSelectedPreset(null);
-      setCustomIcon(null);
-    }
-  };
-
-  const openEditModal = (wallet: any) => {
-    setEditingWalletId(wallet.id);
-    setWalletName(wallet.name);
-    setPurpose(wallet.purpose);
-    setQrCodeImage(wallet.qrCodeImage || null);
-    setIconType(wallet.iconType || 'purpose');
-    setSelectedPreset(wallet.presetLogo || null);
-    setCustomIcon(wallet.customIcon || null);
-    setModalVisible(true);
-  };
-
-  const closeAndResetModal = () => {
-    setModalVisible(false);
-    setEditingWalletId(null);
-    setWalletName('');
-    setPurpose('Personal');
-    setQrCodeImage(null);
-    setIconType('purpose');
-    setSelectedPreset(null);
-    setCustomIcon(null);
-  };
-
-  const handleDeleteWallet = (id: string, name: string) => {
-    showConfirm(
-      "Delete Wallet",
-      `Are you sure you want to delete "${name}"?`,
-      () => {
-        deleteWallet(id);
-      }
-    );
-  };
-
-  const moveWallet = (index: number, direction: 'up' | 'down') => {
-    const newWallets = [...wallets];
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex >= 0 && newIndex < wallets.length) {
-      const temp = newWallets[index];
-      newWallets[index] = newWallets[newIndex];
-      newWallets[newIndex] = temp;
-      reorderWallets(newWallets);
-    }
-  };
+  const sortedWallets = useMemo(() => {
+    return [...wallets].sort((a, b) => b.balance - a.balance);
+  }, [wallets]);
 
   return (
     <View style={styles.container}>
@@ -172,13 +53,14 @@ export default function WalletsScreen() {
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-        {wallets.length > 1 && (
+        {wallets.length > 0 && (
           <TouchableOpacity
-            style={[styles.reorderToggle, isReordering && styles.reorderToggleActive]}
-            onPress={() => setIsReordering(!isReordering)}
+            style={[styles.visibilityToggle, !showBalances && styles.visibilityToggleActive]}
+            onPress={() => setShowBalances(!showBalances)}
           >
-            <Text style={[styles.reorderToggleText, isReordering && { color: '#ffffff' }]}>
-              {isReordering ? 'Done Reordering' : 'Customize Order'}
+            {showBalances ? <Eye size={18} color={colors.textMuted} /> : <EyeOff size={18} color={colors.primary} />}
+            <Text style={[styles.visibilityToggleText, !showBalances && { color: colors.primary }]}>
+              {showBalances ? 'Hide Balances' : 'Balances Hidden'}
             </Text>
           </TouchableOpacity>
         )}
@@ -190,84 +72,70 @@ export default function WalletsScreen() {
             </View>
             <Text style={styles.emptyTitle}>No wallets yet</Text>
             <Text style={styles.emptySubtitle}>Create your first wallet to start tracking your finances.</Text>
-            <TouchableOpacity
+            <TouchableOpacity 
               style={styles.emptyBtn}
-              onPress={() => setModalVisible(true)}
+              onPress={() => navigation.navigate('AddWallet')}
             >
               <Plus size={20} color="#ffffff" />
               <Text style={styles.emptyBtnText}>Create Wallet</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          wallets.map((wallet, index) => (
-            <View
-              key={wallet.id}
-              style={[styles.premiumCard, isReordering && { borderColor: colors.primary, borderStyle: 'dashed', borderWidth: 2 }]}
-            >
-              <View style={styles.cardHeader}>
-                <View style={styles.cardHeaderLeft}>
-                  <View style={styles.cardIconBox}>
-                    {(() => {
-                      if (wallet.iconType === 'custom' && wallet.customIcon) {
-                        return <RNImage source={{ uri: wallet.customIcon }} style={styles.cardIconImage} />;
-                      }
-                      if (wallet.iconType === 'preset' && wallet.presetLogo) {
-                        return <RNImage source={brandLogos[wallet.presetLogo]} style={[styles.cardIconImage, { resizeMode: 'contain' }]} />;
-                      }
-                      const PurposeIcon = purposes.find(p => p.label === wallet.purpose)?.icon || WalletIcon;
-                      return <PurposeIcon size={28} color={colors.primary} />;
-                    })()}
-                  </View>
-                  <Text style={styles.cardName} numberOfLines={1}>{wallet.name}</Text>
-                </View>
-
-                <View style={styles.cardHeaderRight}>
-                  {isReordering ? (
-                    <View style={styles.reorderActionsVertical}>
-                      <TouchableOpacity
-                        onPress={() => moveWallet(index, 'up')}
-                        disabled={index === 0}
-                        style={[styles.reorderBtnSmall, index === 0 && { opacity: 0.3 }]}
-                      >
-                        <ChevronUp size={16} color={colors.text} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => moveWallet(index, 'down')}
-                        disabled={index === wallets.length - 1}
-                        style={[styles.reorderBtnSmall, index === wallets.length - 1 && { opacity: 0.3 }]}
-                      >
-                        <ChevronDown size={16} color={colors.text} />
-                      </TouchableOpacity>
+          sortedWallets.map((wallet, index) => (
+            <View key={wallet.id} style={styles.premiumCardWrapper}>
+              <View style={styles.premiumCard}>
+                <View style={[styles.cardHeader, { backgroundColor: wallet.color || colors.primary }]}>
+                  <View style={styles.cardHeaderLeft}>
+                    <View style={styles.cardIconBox}>
+                      <View style={styles.headerGlow} />
+                      {(() => {
+                        if (wallet.iconType === 'custom' && wallet.customIcon) {
+                          return <RNImage source={{ uri: wallet.customIcon }} style={styles.cardIconImage as any} />;
+                        }
+                        if (wallet.iconType === 'preset' && wallet.presetLogo) {
+                          return <RNImage source={brandLogos[wallet.presetLogo]} style={[styles.cardIconImage as any, { resizeMode: 'contain' }]} />;
+                        }
+                        const PurposeIcon = purposes.find(p => p.label === wallet.purpose)?.icon || WalletIcon;
+                        return <PurposeIcon size={24} color="#ffffff" />;
+                      })()}
                     </View>
-                  ) : (
+                    <Text style={[styles.cardName, { color: '#ffffff' }]} numberOfLines={1}>{wallet.name}</Text>
+                  </View>
+
+                  <View style={styles.cardHeaderRight}>
                     <TouchableOpacity
-                      onPress={() => openEditModal(wallet)}
+                      onPress={() => navigation.navigate('AddWallet', { wallet })}
                       style={styles.moreActionBtn}
                     >
-                      <MoreHorizontal size={20} color={colors.textMuted} />
+                      <MoreHorizontal size={20} color="rgba(255, 255, 255, 0.7)" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.cardBody}>
+                  <Text style={styles.cardBalanceText}>
+                    {showBalances 
+                      ? `₱${wallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+                      : '₱*****'
+                    }
+                  </Text>
+                </View>
+
+                <View style={[styles.cardFooter, { backgroundColor: wallet.color || colors.primary, borderTopWidth: 0 }]}>
+                  <View style={[styles.purposePill, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
+                    <Text style={[styles.purposePillText, { color: '#ffffff' }]}>{wallet.purpose}</Text>
+                  </View>
+
+                  {wallet.qrCodeImage && (
+                    <TouchableOpacity
+                      onPress={(e) => { e.stopPropagation(); setViewingQrCode(wallet.qrCodeImage || null); }}
+                      style={[styles.qrActionBtn, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
+                    >
+                      <QrCode size={18} color="#ffffff" />
+                      <Text style={[styles.qrActionText, { color: '#ffffff' }]}>QR</Text>
                     </TouchableOpacity>
                   )}
                 </View>
-              </View>
-
-              <View style={styles.cardBody}>
-                <Text style={styles.cardBalanceText}>₱{wallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
-              </View>
-
-              <View style={styles.cardFooter}>
-                <View style={styles.purposePill}>
-                  <Text style={styles.purposePillText}>{wallet.purpose}</Text>
-                </View>
-
-                {wallet.qrCodeImage && (
-                  <TouchableOpacity
-                    onPress={(e) => { e.stopPropagation(); setViewingQrCode(wallet.qrCodeImage || null); }}
-                    style={styles.qrActionBtn}
-                  >
-                    <QrCode size={18} color={colors.primary} />
-                    <Text style={styles.qrActionText}>QR</Text>
-                  </TouchableOpacity>
-                )}
               </View>
             </View>
           ))
@@ -277,143 +145,11 @@ export default function WalletsScreen() {
       {/* Floating Add Button */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => setModalVisible(true)}
+        onPress={() => navigation.navigate('AddWallet')}
         activeOpacity={0.8}
       >
         <Plus size={28} color="#ffffff" />
       </TouchableOpacity>
-
-      {/* Add Wallet Modal */}
-      <ActionSheet
-        visible={modalVisible}
-        onClose={closeAndResetModal}
-        title={editingWalletId ? "Edit Wallet" : "Add New Wallet"}
-      >
-        <Text style={styles.inputLabel}>Wallet Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g., GCash, Maya..."
-          placeholderTextColor={colors.textMuted}
-          value={walletName}
-          onChangeText={setWalletName}
-        />
-
-        <Text style={styles.inputLabel}>Wallet Icon</Text>
-        <View style={styles.iconTypeRow}>
-          <TouchableOpacity
-            style={[styles.iconTypeChip, iconType === 'purpose' && styles.iconTypeChipActive]}
-            onPress={() => setIconType('purpose')}
-          >
-            <Text style={[styles.iconTypeChipText, iconType === 'purpose' && styles.iconTypeChipTextActive]}>Default</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.iconTypeChip, iconType === 'preset' && styles.iconTypeChipActive]}
-            onPress={() => setLogoModalVisible(true)}
-          >
-            <Text style={[styles.iconTypeChipText, iconType === 'preset' && styles.iconTypeChipTextActive]}>Brand Logo</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.iconTypeChip, iconType === 'custom' && styles.iconTypeChipActive]}
-            onPress={pickCustomIcon}
-          >
-            <Text style={[styles.iconTypeChipText, iconType === 'custom' && styles.iconTypeChipTextActive]}>Custom Photo</Text>
-          </TouchableOpacity>
-        </View>
-
-        {iconType === 'purpose' && (
-          <View style={styles.purposeRow}>
-            {purposes.map((p) => {
-              const Icon = p.icon;
-              const isSelected = purpose === p.label;
-              return (
-                <TouchableOpacity
-                  key={p.label}
-                  style={[styles.purposeChip, isSelected && styles.purposeChipSelected]}
-                  onPress={() => setPurpose(p.label)}
-                >
-                  <Icon size={16} color={isSelected ? '#ffffff' : colors.textMuted} />
-                  <Text style={[styles.purposeChipText, isSelected && styles.purposeChipTextSelected]}>
-                    {p.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-
-        {iconType === 'preset' && selectedPreset && (
-          <TouchableOpacity style={styles.selectedIconPreview} onPress={() => setLogoModalVisible(true)}>
-            <RNImage source={brandLogos[selectedPreset]} style={styles.previewLogo} />
-            <Text style={styles.previewLogoName}>{presetLogos.find(l => l.file === selectedPreset)?.name}</Text>
-            <ChevronRight size={16} color={colors.textMuted} />
-          </TouchableOpacity>
-        )}
-
-        {iconType === 'custom' && customIcon && (
-          <TouchableOpacity style={styles.selectedIconPreview} onPress={pickCustomIcon}>
-            <RNImage source={{ uri: customIcon }} style={styles.previewLogo} />
-            <Text style={styles.previewLogoName}>Custom Icon</Text>
-            <ChevronRight size={16} color={colors.textMuted} />
-          </TouchableOpacity>
-        )}
-
-        <Text style={styles.inputLabel}>QR Code Image (Optional)</Text>
-        <TouchableOpacity
-          style={[styles.imagePicker, qrCodeImage && styles.imagePickerActive]}
-          onPress={pickImage}
-        >
-          {qrCodeImage ? (
-            <View style={styles.pickerContent}>
-              <RNImage source={{ uri: qrCodeImage }} style={styles.pickerPreview} />
-              <View style={styles.pickerTextContainer}>
-                <Text style={styles.pickerTitle}>QR Code Selected</Text>
-                <Text style={styles.pickerSubtitle}>Tap to change image</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.removeImageBtn}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  setQrCodeImage(null);
-                }}
-              >
-                <X size={16} color={colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.pickerContent}>
-              <View style={styles.pickerIconContainer}>
-                <ImageIcon size={24} color={colors.textMuted} />
-              </View>
-              <View style={styles.pickerTextContainer}>
-                <Text style={styles.pickerTitle}>Add QR Code</Text>
-                <Text style={styles.pickerSubtitle}>For easy scanning of this wallet</Text>
-              </View>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.saveBtn, !walletName.trim() && styles.saveBtnDisabled]}
-          onPress={handleAddWallet}
-          disabled={!walletName.trim()}
-        >
-          <Text style={styles.saveBtnText}>{editingWalletId ? "Update Wallet" : "Create Wallet"}</Text>
-        </TouchableOpacity>
-
-        {editingWalletId && (
-          <TouchableOpacity
-            style={[styles.saveBtn, { backgroundColor: '#fef2f2', borderColor: '#ef4444', borderWidth: 1, marginTop: 12 }]}
-            onPress={() => {
-              const idToDelete = editingWalletId;
-              const nameToDelete = walletName;
-              closeAndResetModal();
-              handleDeleteWallet(idToDelete, nameToDelete);
-            }}
-          >
-            <Text style={[styles.saveBtnText, { color: '#ef4444' }]}>Delete Wallet</Text>
-          </TouchableOpacity>
-        )}
-      </ActionSheet>
 
       <Modal
         visible={!!viewingQrCode}
@@ -436,7 +172,7 @@ export default function WalletsScreen() {
             {viewingQrCode && (
               <RNImage
                 source={{ uri: viewingQrCode }}
-                style={styles.qrModalImage}
+                style={styles.qrModalImage as any}
                 resizeMode="contain"
               />
             )}
@@ -448,59 +184,6 @@ export default function WalletsScreen() {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
-      </Modal>
-
-      {/* Logo Picker Modal */}
-      <Modal
-        visible={logoModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setLogoModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.logoModalContent}>
-            <View style={styles.logoModalHeader}>
-              <Text style={styles.logoModalTitle}>Select Brand Logo</Text>
-              <TouchableOpacity onPress={() => setLogoModalVisible(false)} style={styles.logoModalClose}>
-                <X size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.searchBar}>
-              <Search size={20} color={colors.textMuted} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search brands (e.g. GCash)..."
-                placeholderTextColor={colors.textMuted}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-            </View>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.logoGrid}
-            >
-              {presetLogos.filter(l => l.name.toLowerCase().includes(searchQuery.toLowerCase())).map((logo) => (
-                <TouchableOpacity
-                  key={logo.file}
-                  style={styles.logoItem}
-                  onPress={() => {
-                    setSelectedPreset(logo.file);
-                    setIconType('preset');
-                    setLogoModalVisible(false);
-                    setSearchQuery('');
-                  }}
-                >
-                  <View style={styles.logoIconBox}>
-                    <RNImage source={brandLogos[logo.file]} style={styles.logoImageGrid} />
-                  </View>
-                  <Text style={styles.logoItemName}>{logo.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
       </Modal>
     </View>
   );
@@ -561,30 +244,42 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       fontSize: 16,
       color: '#ffffff',
     },
-    premiumCard: {
-      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : '#ffffff',
-      borderRadius: 24,
+    premiumCardWrapper: {
       marginBottom: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.1,
+      shadowRadius: 16,
+      elevation: 5,
+    },
+    premiumCard: {
+      backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+      borderRadius: 24,
       borderWidth: 1,
       borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#f1f5f9',
-      padding: 20,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.05,
-      shadowRadius: 20,
-      elevation: 4,
       overflow: 'hidden',
     },
     cardHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 16,
+      padding: 16,
+      paddingHorizontal: 20,
     },
     cardHeaderLeft: {
       flexDirection: 'row',
       alignItems: 'center',
       flex: 1,
+      position: 'relative',
+    },
+    headerGlow: {
+      position: 'absolute',
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      left: -38,
+      top: -38,
     },
     cardHeaderRight: {
       flexDirection: 'row',
@@ -606,7 +301,8 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     cardBody: {
       alignItems: 'center',
-      paddingVertical: 12,
+      paddingVertical: 24,
+      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : '#ffffff',
     },
     cardBalanceText: {
       fontFamily: theme.fonts.bold,
@@ -618,10 +314,8 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginTop: 8,
-      paddingTop: 12,
-      borderTopWidth: 1,
-      borderTopColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+      padding: 16,
+      paddingHorizontal: 20,
     },
     purposePill: {
       backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.05)',
@@ -670,6 +364,31 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       width: '100%',
       height: '100%',
       borderRadius: 5,
+    },
+    colorRow: {
+      flexDirection: 'row',
+      paddingBottom: 16,
+      gap: 12,
+    },
+    colorOption: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      borderWidth: 3,
+      borderColor: 'transparent',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    colorOptionSelected: {
+      borderColor: isDarkMode ? '#ffffff' : colors.primary,
+    },
+    colorSelectedIndicator: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: '#ffffff',
+      borderWidth: 2,
+      borderColor: 'rgba(0,0,0,0.1)',
     },
     iconTypeRow: {
       flexDirection: 'row',
@@ -795,22 +514,28 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       color: colors.text,
       textAlign: 'center',
     },
-    reorderToggle: {
-      alignSelf: 'flex-end',
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: 12,
-      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
-      marginBottom: 16,
-    },
-    reorderToggleActive: {
-      backgroundColor: colors.primary,
-    },
-    reorderToggleText: {
-      fontFamily: theme.fonts.semiBold,
-      fontSize: 12,
-      color: colors.textMuted,
-    },
+  visibilityToggle: {
+    alignSelf: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  visibilityToggleActive: {
+    borderColor: colors.primary + '33',
+    backgroundColor: colors.primary + '08',
+  },
+  visibilityToggleText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 12,
+    color: colors.textMuted,
+  },
     inputLabel: {
       fontFamily: theme.fonts.medium,
       fontSize: 14,

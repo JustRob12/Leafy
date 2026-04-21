@@ -70,9 +70,7 @@ export default function GroceryDetailScreen() {
           <Text style={styles.headerTitle}>{currentList.title}</Text>
           <Text style={styles.headerSubtitle}>{completedCount} of {currentList.items.length} items collected</Text>
         </View>
-        <TouchableOpacity style={styles.addBtnHeader} onPress={() => setModalVisible(true)}>
-          <Plus size={20} color="#ffffff" />
-        </TouchableOpacity>
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -99,7 +97,7 @@ export default function GroceryDetailScreen() {
                     <Circle size={24} color={colors.textMuted} />
                   )}
                   <View style={styles.itemTextContent}>
-                    <Text style={[styles.itemName, item.completed && styles.textStrikethrough]}>
+                    <Text style={[styles.itemName, item.completed && styles.textStrikethrough]} numberOfLines={1}>
                       {item.name}
                     </Text>
                     <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
@@ -126,18 +124,16 @@ export default function GroceryDetailScreen() {
       </ScrollView>
 
       {/* TOTAL FOOTER */}
-      {currentList.items.length > 0 && (
-        <View style={styles.footer}>
-          <View style={styles.footerInfo}>
-            <Text style={styles.footerLabel}>Estimated Total</Text>
-            <Text style={styles.footerValue}>₱{totalCost.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
-          </View>
-          <TouchableOpacity style={styles.mainAddBtn} onPress={() => setModalVisible(true)}>
-            <Plus size={24} color="#ffffff" />
-            <Text style={styles.mainAddBtnText}>Add Item</Text>
-          </TouchableOpacity>
+      <View style={styles.footer}>
+        <View style={styles.footerInfo}>
+          <Text style={styles.footerLabel}>Estimated Total</Text>
+          <Text style={styles.footerValue}>₱{totalCost.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
         </View>
-      )}
+        <TouchableOpacity style={styles.mainAddBtn} onPress={() => setModalVisible(true)}>
+          <Plus size={24} color="#ffffff" />
+          <Text style={styles.mainAddBtnText}>Add Item</Text>
+        </TouchableOpacity>
+      </View>
 
       <ActionSheet
         visible={modalVisible}
@@ -232,14 +228,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.medium,
     fontSize: 12,
     color: colors.textMuted,
-  },
-  addBtnHeader: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   scrollContent: {
     padding: theme.spacing.lg,

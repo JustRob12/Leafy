@@ -1,113 +1,30 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { theme } from '../theme';
-import { Target, Plus, Flag, ImagePlus, Camera, Image as ImageIcon, Wallet } from 'lucide-react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { Target, Plus, Wallet } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import { useNavigation, useRoute, useScrollToTop } from '@react-navigation/native';
-import WalletDropdown from '../components/WalletDropdown';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 
 export default function GoalsScreen() {
   const { goals, addGoal, editGoal, deleteGoal, wallets, showFeedback, showConfirm, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const scrollViewRef = React.useRef<ScrollView>(null);
   useScrollToTop(scrollViewRef);
   const { handleScroll } = useScrollHideTabBar();
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   
-  const [title, setTitle] = useState('');
-  const [targetAmount, setTargetAmount] = useState('');
-  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
-  const [imageSourceVisible, setImageSourceVisible] = useState(false);
   const [filterWalletId, setFilterWalletId] = useState<string | 'all'>('all');
-  
   const [selectedGoal, setSelectedGoal] = useState<any>(null);
-
-  const route = useRoute<any>();
 
   React.useEffect(() => {
     if (route.params?.openAddModal) {
-      setModalVisible(true);
+      navigation.navigate('AddGoal');
       navigation.setParams({ openAddModal: undefined });
     }
   }, [route.params?.openAddModal, navigation]);
-
-  const handleSelectImage = async () => {
-    setImageSourceVisible(false);
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-    });
-
-    if (!result.canceled) {
-      setImageUrl(result.assets[0].uri);
-    }
-  };
-
-  const handleTakePhoto = async () => {
-    setImageSourceVisible(false);
-    
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      showFeedback('error', 'Camera permission is required to take photos.');
-      return;
-    }
-
-    let result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-    });
-
-    if (!result.canceled) {
-      setImageUrl(result.assets[0].uri);
-    }
-  };
-
-  const handleAddGoal = async () => {
-    const amount = parseFloat(targetAmount);
-    if (title.trim() && !isNaN(amount) && amount > 0 && selectedWalletId) {
-      setModalVisible(false);
-      if (editingGoalId) {
-        await editGoal(editingGoalId, {
-          title: title.trim(),
-          targetAmount: amount,
-          walletId: selectedWalletId,
-          imageUrl
-        });
-      } else {
-        await addGoal({
-          title: title.trim(),
-          targetAmount: amount,
-          walletId: selectedWalletId,
-          imageUrl
-        });
-      }
-      
-      setTitle('');
-      setTargetAmount('');
-      setSelectedWalletId(null);
-      setImageUrl(undefined);
-      setEditingGoalId(null);
-    }
-  };
-
-  const closeAndResetModal = () => {
-    setModalVisible(false);
-    setEditingGoalId(null);
-    setTitle('');
-    setTargetAmount('');
-    setSelectedWalletId(null);
-    setImageUrl(undefined);
-  };
 
   const filteredGoals = filterWalletId === 'all' 
     ? goals 
@@ -155,7 +72,7 @@ export default function GoalsScreen() {
             <Text style={styles.emptySubtitle}>Plan for the things you want to achieve or buy by setting up a goal.</Text>
             <TouchableOpacity 
               style={styles.emptyBtn}
-              onPress={() => setModalVisible(true)}
+              onPress={() => navigation.navigate('AddGoal')}
             >
               <Plus size={20} color="#ffffff" />
               <Text style={styles.emptyBtnText}>Create Goal</Text>
@@ -186,7 +103,7 @@ export default function GoalsScreen() {
               >
                 <View style={styles.goalIconLayer}>
                   {goal.imageUrl ? (
-                    <Image source={{ uri: goal.imageUrl }} style={styles.goalImage} />
+                    <Image source={{ uri: goal.imageUrl }} style={styles.goalImage as any} />
                   ) : (
                     <Target size={24} color={colors.primary} />
                   )}
@@ -222,65 +139,14 @@ export default function GoalsScreen() {
         )}
       </ScrollView>
       
-      {/* Floating Add Button */}
       <TouchableOpacity 
         style={styles.fab} 
-        onPress={() => setModalVisible(true)}
+        onPress={() => navigation.navigate('AddGoal')}
         activeOpacity={0.8}
       >
         <Plus size={28} color="#ffffff" />
       </TouchableOpacity>
 
-      {/* Add Goal Modal */}
-      <ActionSheet 
-        visible={modalVisible} 
-        onClose={closeAndResetModal}
-        title={editingGoalId ? "Edit Goal" : "Create New Goal"}
-      >
-        <TouchableOpacity style={styles.imagePickerBtn} onPress={() => setImageSourceVisible(true)}>
-          {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={styles.previewImage} resizeMode="contain" />
-          ) : (
-            <View style={styles.imagePlaceholder}>
-              <ImagePlus size={32} color={colors.textMuted} />
-              <Text style={styles.imagePlaceholderText}>Add Cover Image</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        <Text style={styles.inputLabel}>Goal Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g., New Laptop, Car, Wedding..."
-          placeholderTextColor={colors.textMuted}
-          value={title}
-          onChangeText={setTitle}
-        />
-
-        <Text style={styles.inputLabel}>Target Amount (₱)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g., 50000"
-          placeholderTextColor={colors.textMuted}
-          value={targetAmount}
-          onChangeText={setTargetAmount}
-          keyboardType="numeric"
-        />
-
-        <Text style={styles.inputLabel}>Linked Wallet</Text>
-        <WalletDropdown
-          selectedWalletId={selectedWalletId}
-          onSelectWallet={setSelectedWalletId}
-        />
-
-        <TouchableOpacity
-          style={[styles.saveBtn, (!title.trim() || !targetAmount || !selectedWalletId) && styles.saveBtnDisabled]}
-          onPress={handleAddGoal}
-          disabled={!title.trim() || !targetAmount || !selectedWalletId}
-        >
-          <Text style={styles.saveBtnText}>{editingGoalId ? "Update Goal" : "Save Goal"}</Text>
-        </TouchableOpacity>
-      </ActionSheet>
 
       {/* View Goal Modal */}
       <ActionSheet
@@ -297,7 +163,7 @@ export default function GoalsScreen() {
             <View style={{ alignItems: 'center', paddingBottom: 20 }}>
               {selectedGoal.imageUrl ? (
                 <View style={styles.modalImageContainer}>
-                  <Image source={{ uri: selectedGoal.imageUrl }} style={styles.modalImage} resizeMode="contain" />
+                  <Image source={{ uri: selectedGoal.imageUrl }} style={styles.modalImage as any} resizeMode="contain" />
                 </View>
               ) : (
                 <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
@@ -323,28 +189,24 @@ export default function GoalsScreen() {
               <TouchableOpacity
                 style={{ backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, width: '100%', alignItems: 'center' }}
                 onPress={() => {
-                  setEditingGoalId(selectedGoal.id);
-                  setTitle(selectedGoal.title);
-                  setTargetAmount(selectedGoal.targetAmount.toString());
-                  setSelectedWalletId(selectedGoal.walletId);
-                  setImageUrl(selectedGoal.imageUrl);
+                  const goalToEdit = { ...selectedGoal };
                   setSelectedGoal(null);
-                  setTimeout(() => setModalVisible(true), 300);
+                  navigation.navigate('AddGoal', { goal: goalToEdit });
                 }}
               >
                 <Text style={{ fontFamily: theme.fonts.semiBold, color: colors.text, fontSize: 16 }}>Edit Goal</Text>
               </TouchableOpacity>
-
+              
               <TouchableOpacity
-                style={{ backgroundColor: '#fef2f2', borderColor: '#ef4444', borderWidth: 1, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, width: '100%', alignItems: 'center', marginTop: 12 }}
+                style={{ marginTop: 12, paddingVertical: 12, width: '100%', alignItems: 'center' }}
                 onPress={() => {
-                  const idToDelete = selectedGoal.id;
-                  const titleToDelete = selectedGoal.title;
+                  const goalId = selectedGoal.id;
+                  const goalTitle = selectedGoal.title;
                   setSelectedGoal(null);
                   showConfirm(
                     "Delete Goal",
-                    `Are you sure you want to delete "${titleToDelete}"?`,
-                    () => deleteGoal(idToDelete)
+                    `Are you sure you want to delete "${goalTitle}"?`,
+                    () => deleteGoal(goalId)
                   );
                 }}
               >
@@ -354,38 +216,9 @@ export default function GoalsScreen() {
           );
         })()}
       </ActionSheet>
-
-      {/* Image Source Selection */}
-      <ActionSheet
-        visible={imageSourceVisible}
-        onClose={() => setImageSourceVisible(false)}
-        title="Select Image Source"
-      >
-        <TouchableOpacity style={styles.sourceOption} onPress={handleTakePhoto}>
-          <View style={[styles.sourceIcon, { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5' }]}>
-            <Camera size={24} color={colors.primary} />
-          </View>
-          <View>
-            <Text style={styles.sourceTitle}>Take Photo</Text>
-            <Text style={styles.sourceSubtitle}>Use your camera to capture an image</Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.sourceOption} onPress={handleSelectImage}>
-          <View style={[styles.sourceIcon, { backgroundColor: '#eff6ff' }]}>
-            <ImageIcon size={24} color="#3b82f6" />
-          </View>
-          <View>
-            <Text style={styles.sourceTitle}>Choose from Library</Text>
-            <Text style={styles.sourceSubtitle}>Pick an image from your gallery</Text>
-          </View>
-        </TouchableOpacity>
-      </ActionSheet>
-
     </View>
   );
 }
-
 
 const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
@@ -566,16 +399,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
   },
-  imagePickerBtn: {
-    width: '100%',
-    height: 160,
-    borderRadius: 20,
-    marginBottom: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-  },
   previewImage: {
     width: '100%',
     height: '100%',
@@ -606,66 +429,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: 14,
     color: colors.textMuted,
     marginTop: 8,
-  },
-  inputLabel: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 14,
-    color: colors.text,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: 14,
-    fontFamily: theme.fonts.regular,
-    fontSize: 16,
-    color: colors.text,
-    marginBottom: 20,
-  },
-  saveBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  saveBtnDisabled: {
-    backgroundColor: colors.border,
-  },
-  saveBtnText: {
-    fontFamily: theme.fonts.semiBold,
-    fontSize: 16,
-    color: '#ffffff',
-  },
-  sourceOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 16,
-  },
-  sourceIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sourceTitle: {
-    fontFamily: theme.fonts.semiBold,
-    fontSize: 16,
-    color: colors.text,
-  },
-  sourceSubtitle: {
-    fontFamily: theme.fonts.regular,
-    fontSize: 12,
-    color: colors.textMuted,
   },
   fab: {
     position: 'absolute',

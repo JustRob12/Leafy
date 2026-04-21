@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { theme } from '../theme';
-import { Plus, User, FileText, DollarSign, Trash2, AlertCircle, ChevronLeft } from 'lucide-react-native';
+import { Plus, User, FileText, DollarSign, Trash2, AlertCircle, ChevronLeft, Calendar } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import { useNavigation } from '@react-navigation/native';
@@ -11,37 +11,13 @@ import { useNavigation } from '@react-navigation/native';
 export default function DebtsScreen() {
   const { debts, addDebt, payDebt, deleteDebt, showConfirm, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
-  const navigation = useNavigation();
-
-  // New Debt Modal State
-  const [modalVisible, setModalVisible] = useState(false);
-  const [personName, setPersonName] = useState('');
-  const [taskName, setTaskName] = useState('');
-  const [amount, setAmount] = useState('');
+  const navigation = useNavigation<any>();
 
   // Settlement Modal State
   const [payModalVisible, setPayModalVisible] = useState(false);
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const [payAmount, setPayAmount] = useState('');
 
-  const handleAddDebt = async () => {
-    const numericAmount = parseFloat(amount);
-    if (personName.trim() && taskName.trim() && !isNaN(numericAmount) && numericAmount > 0) {
-      await addDebt({
-        personName: personName.trim(),
-        taskName: taskName.trim(),
-        amount: numericAmount,
-      });
-      setModalVisible(false);
-      resetForm();
-    }
-  };
-
-  const resetForm = () => {
-    setPersonName('');
-    setTaskName('');
-    setAmount('');
-  };
 
   const handleOpenPayModal = (id: string, currentAmount: number) => {
     setSelectedDebtId(id);
@@ -95,7 +71,7 @@ export default function DebtsScreen() {
             <Text style={styles.emptySubtitle}>You don't owe anyone right now. Keep it up!</Text>
             <TouchableOpacity
               style={styles.createBtn}
-              onPress={() => setModalVisible(true)}
+              onPress={() => navigation.navigate('AddDebt')}
             >
               <Plus size={18} color="#ffffff" />
               <Text style={styles.createBtnText}>Record a Debt</Text>
@@ -107,39 +83,48 @@ export default function DebtsScreen() {
               <View style={styles.accentLine} />
               <View style={styles.cardTop}>
                 <View style={styles.personInfo}>
-                  <View style={styles.userIconWrapper}>
-                    <User size={18} color={statusRed} />
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <Text style={styles.personName}>{item.personName}</Text>
+                      <View style={styles.taskInfoSmall}>
+                        <FileText size={12} color={colors.textMuted} />
+                        <Text style={styles.taskNameSmall} numberOfLines={1}>{item.taskName}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.dateText}>{formatDate(item.date)}{item.dueDate ? ` • Due: ${item.dueDate}` : ''}</Text>
                   </View>
-                  <View>
-                    <Text style={styles.personName}>{item.personName}</Text>
-                    <Text style={styles.dateText}>{formatDate(item.date)}</Text>
-                  </View>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <TouchableOpacity
-                    style={styles.trashBtnTop}
-                    onPress={() => handleDelete(item.id, item.personName)}
-                  >
-                    <Trash2 size={16} color={statusRed} />
-                  </TouchableOpacity>
-                  <Text style={styles.amountText}>₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
                 </View>
               </View>
 
               <View style={styles.cardDivider} />
 
-              <View style={styles.cardBottom}>
-                <View style={styles.taskInfo}>
-                  <FileText size={14} color={colors.textMuted} />
-                  <Text style={styles.taskName}>{item.taskName}</Text>
-                </View>
+              <View style={styles.amountContainer}>
+                <Text style={styles.amountLabel}>Pending Balance</Text>
+                <Text style={styles.amountText}>₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
+              </View>
+              
+              <View style={styles.cardActions}>
                 <TouchableOpacity
-                  style={styles.paidBtn}
+                  style={styles.trashBtnBottom}
+                  onPress={() => handleDelete(item.id, item.personName)}
+                >
+                  <Trash2 size={18} color={statusRed} />
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.settleBtn}
                   onPress={() => handleOpenPayModal(item.id, item.amount)}
                 >
-                  <Text style={styles.paidBtnText}>Mark Settled</Text>
+                  <Text style={styles.settleBtnText}>Mark Settled</Text>
                 </TouchableOpacity>
               </View>
+              
+              {item.dueDate === new Date().toISOString().split('T')[0] && (
+                <View style={styles.dueTodayBadge}>
+                  <AlertCircle size={10} color="#ffffff" />
+                  <Text style={styles.dueTodayText}>DUE TODAY</Text>
+                </View>
+              )}
             </View>
           ))
         )}
@@ -148,62 +133,12 @@ export default function DebtsScreen() {
       {/* Floating Add Button */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => setModalVisible(true)}
+        onPress={() => navigation.navigate('AddDebt')}
         activeOpacity={0.8}
       >
         <Plus size={30} color="#ffffff" />
       </TouchableOpacity>
 
-      <ActionSheet
-        visible={modalVisible}
-        onClose={() => { setModalVisible(false); resetForm(); }}
-        title="Record New Debt"
-      >
-        <Text style={styles.inputLabel}>Who do you owe?</Text>
-        <View style={styles.inputWrapper}>
-          <User size={18} color={colors.textMuted} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Person's name"
-            placeholderTextColor={colors.textMuted}
-            value={personName}
-            onChangeText={setPersonName}
-          />
-        </View>
-
-        <Text style={styles.inputLabel}>What for?</Text>
-        <View style={styles.inputWrapper}>
-          <FileText size={18} color={colors.textMuted} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Task or reason"
-            placeholderTextColor={colors.textMuted}
-            value={taskName}
-            onChangeText={setTaskName}
-          />
-        </View>
-
-        <Text style={styles.inputLabel}>How much?</Text>
-        <View style={styles.inputWrapper}>
-          <DollarSign size={18} color={colors.textMuted} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="0.00"
-            placeholderTextColor={colors.textMuted}
-            keyboardType="numeric"
-            value={amount}
-            onChangeText={setAmount}
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[styles.saveBtn, (!personName.trim() || !taskName.trim() || !amount) && styles.saveBtnDisabled]}
-          onPress={handleAddDebt}
-          disabled={!personName.trim() || !taskName.trim() || !amount}
-        >
-          <Text style={styles.saveBtnText}>Record Debt</Text>
-        </TouchableOpacity>
-      </ActionSheet>
 
       <ActionSheet
         visible={payModalVisible}
@@ -379,16 +314,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       alignItems: 'center',
       gap: 12,
     },
-    userIconWrapper: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
-      backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
-    },
     personName: {
       fontFamily: theme.fonts.bold,
       fontSize: 16,
@@ -410,9 +335,11 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       marginVertical: 12,
     },
     cardBottom: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      flexDirection: 'column',
+      alignItems: 'stretch',
+    },
+    amountContainer: {
+      marginBottom: 12,
     },
     taskInfo: {
       flexDirection: 'row',
@@ -439,9 +366,55 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       fontSize: 12,
       color: statusRed,
     },
-    trashBtnTop: {
-      marginBottom: 4,
-      padding: 2,
+    trashBtnBottom: {
+      padding: 12,
+      backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2',
+      borderRadius: 12,
+      marginRight: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    cardActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+    },
+    settleBtn: {
+      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc',
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    settleBtnText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: 13,
+      color: statusRed,
+    },
+    amountLabel: {
+      fontFamily: theme.fonts.medium,
+      fontSize: 10,
+      color: colors.textMuted,
+      marginBottom: 2,
+      textTransform: 'uppercase',
+    },
+    taskNameSmall: {
+      fontFamily: theme.fonts.medium,
+      fontSize: 12,
+      color: colors.textMuted,
+      maxWidth: 120,
+    },
+    taskInfoSmall: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc',
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
     },
     inputLabel: {
       fontFamily: theme.fonts.medium,
@@ -538,6 +511,34 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       shadowRadius: 8,
       elevation: 6,
       zIndex: 10,
+    },
+    dateInputRow: {
+      flexDirection: 'row',
+      gap: 10,
+      marginBottom: 4,
+    },
+    helperText: {
+      fontFamily: theme.fonts.regular,
+      fontSize: 11,
+      color: colors.textMuted,
+      marginTop: 4,
+    },
+    dueTodayBadge: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      backgroundColor: statusRed,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderBottomLeftRadius: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    dueTodayText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: 8,
+      color: '#ffffff',
     },
   });
 };

@@ -70,6 +70,12 @@ export type TravelType = {
   endDate: string;
 };
 
+export type WithdrawPresetType = {
+  id: string;
+  name: string;
+  iconName: string;
+};
+
 type AppContextType = {
   isLoaded: boolean;
   username: string | null;
@@ -134,6 +140,9 @@ type AppContextType = {
   isTutorialActive: boolean;
   startTutorial: () => void;
   stopTutorial: () => void;
+  withdrawPresets: WithdrawPresetType[];
+  addWithdrawPreset: (name: string, iconName: string) => Promise<void>;
+  deleteWithdrawPreset: (id: string) => Promise<void>;
 };
 
 
@@ -149,6 +158,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [debts, setDebts] = useState<DebtType[]>([]);
   const [groceryLists, setGroceryLists] = useState<GroceryListType[]>([]);
   const [travels, setTravels] = useState<TravelType[]>([]);
+  const [withdrawPresets, setWithdrawPresets] = useState<WithdrawPresetType[]>([]);
   const [userImage, setUserImageState] = useState<string | null>(null);
   const [appPin, setAppPinState] = useState<string | null>(null);
   const [isSecurityEnabled, setIsSecurityEnabled] = useState(false);
@@ -195,6 +205,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (storedGrocery) setGroceryLists(JSON.parse(storedGrocery));
       const storedTravels = await AsyncStorage.getItem('@travels');
       if (storedTravels) setTravels(JSON.parse(storedTravels));
+      const storedPresets = await AsyncStorage.getItem('@withdrawPresets');
+      if (storedPresets) {
+        setWithdrawPresets(JSON.parse(storedPresets));
+      } else {
+        const defaultPresets: WithdrawPresetType[] = [
+          { id: '1', name: 'Food', iconName: 'Utensils' },
+          { id: '2', name: 'Fare', iconName: 'Car' },
+          { id: '3', name: 'Bills', iconName: 'Receipt' },
+          { id: '4', name: 'Health', iconName: 'Heart' },
+          { id: '5', name: 'Shopping', iconName: 'ShoppingBag' },
+          { id: '6', name: 'Others', iconName: 'MoreHorizontal' },
+        ];
+        setWithdrawPresets(defaultPresets);
+        await AsyncStorage.setItem('@withdrawPresets', JSON.stringify(defaultPresets));
+      }
       if (storedImage) setUserImageState(storedImage);
       const storedStatusBg = await AsyncStorage.getItem('@statusCardBg');
       if (storedStatusBg) setStatusCardBgState(storedStatusBg);
@@ -434,6 +459,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDebts([]);
     setGroceryLists([]);
     setTravels([]);
+    setWithdrawPresets([]);
     setAppPinState(null);
     setIsSecurityEnabled(false);
     setIsBiometricsEnabled(false);
@@ -465,6 +491,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ['@debts', data.debts ? JSON.stringify(data.debts) : '[]'],
         ['@groceryLists', data.groceryLists ? JSON.stringify(data.groceryLists) : '[]'],
         ['@travels', data.travels ? JSON.stringify(data.travels) : '[]'],
+        ['@withdrawPresets', data.withdrawPresets ? JSON.stringify(data.withdrawPresets) : '[]'],
         ['@appPin', data.appPin || null],
         ['@isSecurityEnabled', data.isSecurityEnabled !== undefined ? String(data.isSecurityEnabled) : null],
         ['@isBiometricsEnabled', data.isBiometricsEnabled !== undefined ? String(data.isBiometricsEnabled) : null],
@@ -490,6 +517,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setDebts(data.debts || []);
       setGroceryLists(data.groceryLists || []);
       setTravels(data.travels || []);
+      setWithdrawPresets(data.withdrawPresets || []);
       setAppPinState(data.appPin || null);
 
       if (data.isSecurityEnabled !== undefined) {
@@ -775,6 +803,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsTutorialActive(false);
   };
 
+  const addWithdrawPreset = async (name: string, iconName: string) => {
+    const newPreset: WithdrawPresetType = {
+      id: Date.now().toString(),
+      name,
+      iconName,
+    };
+    const updated = [...withdrawPresets, newPreset];
+    setWithdrawPresets(updated);
+    await AsyncStorage.setItem('@withdrawPresets', JSON.stringify(updated));
+    showFeedback('success', 'Preset Added');
+  };
+
+  const deleteWithdrawPreset = async (id: string) => {
+    const updated = withdrawPresets.filter(p => p.id !== id);
+    setWithdrawPresets(updated);
+    await AsyncStorage.setItem('@withdrawPresets', JSON.stringify(updated));
+    showFeedback('delete', 'Preset Removed');
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -840,7 +887,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setStatusCardBg,
         isTutorialActive,
         startTutorial,
-        stopTutorial
+        stopTutorial,
+        withdrawPresets,
+        addWithdrawPreset,
+        deleteWithdrawPreset
       }}
     >
       {children}

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Animated, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Dimensions, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Animated, Platform, TouchableWithoutFeedback, Keyboard, Dimensions, ScrollView, KeyboardAvoidingView } from 'react-native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 
@@ -13,13 +13,13 @@ interface ActionSheetProps {
 const { height } = Dimensions.get('window');
 
 export default function ActionSheet({ visible, onClose, title, children }: ActionSheetProps) {
-  const { colors } = useAppContext();
-  const styles = getStyles(colors);
+  const { colors, isDarkMode } = useAppContext();
+  const styles = getStyles(colors, isDarkMode);
   const slideAnim = useRef(new Animated.Value(height)).current;
 
   useEffect(() => {
     if (visible) {
-      slideAnim.setValue(height); // Start off-screen
+      slideAnim.setValue(height);
       Animated.spring(slideAnim, {
         toValue: 0,
         useNativeDriver: true,
@@ -30,11 +30,22 @@ export default function ActionSheet({ visible, onClose, title, children }: Actio
   }, [visible]);
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.overlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
-            <Animated.View style={[styles.content, { transform: [{ translateY: slideAnim }] }]}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.container}
+            keyboardVerticalOffset={0}
+          >
+            <Animated.View 
+              style={[
+                styles.content, 
+                { 
+                  transform: [{ translateY: slideAnim }]
+                }
+              ]}
+            >
               <View style={styles.header}>
                 <Text style={styles.title}>{title}</Text>
                 <TouchableOpacity onPress={onClose} style={styles.cancelBtn}>
@@ -59,22 +70,27 @@ export default function ActionSheet({ visible, onClose, title, children }: Actio
 }
 
 
-const getStyles = (colors: any) => StyleSheet.create({
+const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(15, 23, 42, 0.7)',
   },
-  keyboardView: {
+  container: {
+    flex: 1,
     justifyContent: 'flex-end',
   },
   content: {
     backgroundColor: colors.background,
-    borderTopLeftRadius: theme.borderRadius.xl,
-    borderTopRightRadius: theme.borderRadius.xl,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     paddingTop: theme.spacing.xl,
     paddingHorizontal: theme.spacing.xl,
-    maxHeight: height * 0.9,
+    maxHeight: height * 0.85,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 20,
   },
   scrollArea: {
     width: '100%',
@@ -86,19 +102,26 @@ const getStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
+    paddingBottom: 4,
   },
   title: {
     fontFamily: theme.fonts.bold,
-    fontSize: 20,
+    fontSize: 22,
     color: colors.text,
   },
   cancelBtn: {
-    padding: 4,
+    padding: 8,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+    borderRadius: 12,
   },
   cancelBtnText: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 16,
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 14,
     color: colors.textMuted,
   }
 });
+
+
+
+

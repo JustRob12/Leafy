@@ -332,44 +332,6 @@ export default function HomeScreen() {
   };
 
 
-  const [savingsModalVisible, setSavingsModalVisible] = useState(false);
-  const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
-
-  const [amount, setAmount] = useState('');
-  const [reason, setReason] = useState('');
-  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
-
-
-  const handleTransaction = async (type: 'deposit' | 'withdrawal') => {
-    const numericAmount = parseFloat(amount);
-    if (!isNaN(numericAmount) && numericAmount > 0 && selectedWalletId) {
-      if (type === 'withdrawal') {
-        const wallet = wallets.find(w => w.id === selectedWalletId);
-        if (wallet && numericAmount > wallet.balance) {
-          showFeedback('delete', 'Insufficient balance in selected wallet!');
-          return;
-        }
-      }
-
-      let txTitle = type === 'deposit' ? 'Added Savings' : 'Withdrawal';
-      if (type === 'withdrawal' && reason.trim().length > 0) {
-        txTitle = reason.trim();
-      }
-
-      setSavingsModalVisible(false);
-      setWithdrawModalVisible(false);
-
-      await addTransaction({
-        title: txTitle,
-        amount: numericAmount,
-        type: type,
-        walletId: selectedWalletId
-      });
-      setAmount('');
-      setReason('');
-      setSelectedWalletId(null);
-    }
-  };
 
   const getTxIcon = (type: string) => {
     if (type === 'deposit') return <ArrowDownRight size={18} color={theme.colors.primary} />;
@@ -431,7 +393,7 @@ export default function HomeScreen() {
 
         {/* QUICK ACTIONS */}
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.actionItem} onPress={() => setSavingsModalVisible(true)}>
+          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Deposit')}>
             <View ref={addSavingsRef} collapsable={false} style={styles.actionIconBorder}>
               <Plus size={20} color={colors.text} />
             </View>
@@ -440,7 +402,7 @@ export default function HomeScreen() {
 
 
 
-          <TouchableOpacity style={styles.actionItem} onPress={() => setWithdrawModalVisible(true)}>
+          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Withdraw')}>
             <View ref={withdrawRef} collapsable={false} style={styles.actionIconBorder}>
               <ArrowUpRight size={20} color={colors.text} />
             </View>
@@ -686,81 +648,6 @@ export default function HomeScreen() {
         <View style={{ height: 20 }} />
       </ScrollView>
 
-      <ActionSheet
-        visible={savingsModalVisible || withdrawModalVisible}
-        onClose={() => { setSavingsModalVisible(false); setWithdrawModalVisible(false); }}
-        title={savingsModalVisible ? 'Add Savings' : 'Withdraw Funds'}
-      >
-        {(() => {
-          const selectedWallet = wallets.find(w => w.id === selectedWalletId);
-          const isInsufficient = withdrawModalVisible && selectedWallet && parseFloat(amount) > selectedWallet.balance;
-          const isInvalidAmount = isNaN(parseFloat(amount)) || parseFloat(amount) <= 0;
-
-          return wallets.length === 0 ? (
-            <View style={{ alignItems: 'center', marginVertical: 20 }}>
-              <Text style={{ fontFamily: theme.fonts.medium, color: theme.colors.textMuted }}>You need a wallet to {savingsModalVisible ? 'add savings' : 'withdraw funds'}.</Text>
-              <TouchableOpacity style={styles.saveBtn} onPress={() => { setSavingsModalVisible(false); setWithdrawModalVisible(false); navigation.navigate('Wallets'); }}>
-                <Text style={styles.saveBtnText}>Go Create Wallet</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm }}>
-                <Text style={styles.inputLabel}>Select Wallet</Text>
-                {selectedWallet && (
-                  <Text style={{ fontFamily: theme.fonts.medium, fontSize: 13, color: theme.colors.textMuted }}>
-                    Available: ₱{selectedWallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 0 })}
-                  </Text>
-                )}
-              </View>
-              <WalletDropdown
-                selectedWalletId={selectedWalletId}
-                onSelectWallet={setSelectedWalletId}
-              />
-
-              <Text style={styles.inputLabel}>Amount (₱)</Text>
-              <TextInput
-                style={[styles.input, isInsufficient && { borderColor: '#ef4444', color: '#ef4444' }]}
-                placeholder="e.g., 500"
-                placeholderTextColor={theme.colors.textMuted}
-                keyboardType="numeric"
-                value={amount}
-                onChangeText={setAmount}
-              />
-              {isInsufficient && (
-                <Text style={{ color: '#ef4444', fontSize: 12, fontFamily: theme.fonts.medium, marginTop: -12, marginBottom: 12 }}>
-                  * Amount exceeds wallet balance
-                </Text>
-              )}
-
-              {withdrawModalVisible && (
-                <>
-                  <Text style={styles.inputLabel}>Reason</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g., Groceries, Rent, Bills..."
-                    placeholderTextColor={theme.colors.textMuted}
-                    value={reason}
-                    onChangeText={setReason}
-                  />
-                </>
-              )}
-
-              <TouchableOpacity
-                style={[
-                  styles.saveBtn,
-                  (!selectedWalletId || isInvalidAmount || isInsufficient) && styles.saveBtnDisabled,
-                  withdrawModalVisible && !(!selectedWalletId || isInvalidAmount || isInsufficient) && { backgroundColor: '#ef4444' } // Red for withdraw
-                ]}
-                onPress={() => handleTransaction(savingsModalVisible ? 'deposit' : 'withdrawal')}
-                disabled={!selectedWalletId || isInvalidAmount || isInsufficient}
-              >
-                <Text style={styles.saveBtnText}>{savingsModalVisible ? 'Deposit to Wallet' : 'Withdraw from Wallet'}</Text>
-              </TouchableOpacity>
-            </>
-          );
-        })()}
-      </ActionSheet>
 
       {/* TUTORIAL OVERLAY */}
       <Modal visible={isTutorialActive} transparent animationType="fade" statusBarTranslucent={true}>

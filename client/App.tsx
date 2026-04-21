@@ -24,6 +24,8 @@ import GroceryScreen from './src/screens/GroceryScreen';
 import GroceryDetailScreen from './src/screens/GroceryDetailScreen';
 import TravelScreen from './src/screens/TravelScreen';
 import StatusCardScreen from './src/screens/StatusCardScreen';
+import WithdrawScreen from './src/screens/WithdrawScreen';
+import DepositScreen from './src/screens/DepositScreen';
 import MainHeader from './src/components/MainHeader';
 import FeedbackModal from './src/components/FeedbackModal';
 import ConfirmModal from './src/components/ConfirmModal';
@@ -63,10 +65,10 @@ function MainNavigation() {
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         ) : (
           <Stack.Group>
-            <Stack.Screen 
-              name="Main" 
-              component={BottomTabNavigator} 
-              options={{ headerShown: true, header: () => <MainHeader /> }} 
+            <Stack.Screen
+              name="Main"
+              component={BottomTabNavigator}
+              options={{ headerShown: true, header: () => <MainHeader /> }}
             />
             <Stack.Screen name="Calculator" component={CalculatorScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
@@ -80,6 +82,8 @@ function MainNavigation() {
             <Stack.Screen name="Travel" component={TravelScreen} />
             <Stack.Screen name="Security" component={SecurityScreen} />
             <Stack.Screen name="StatusCard" component={StatusCardScreen} />
+            <Stack.Screen name="Withdraw" component={WithdrawScreen} />
+            <Stack.Screen name="Deposit" component={DepositScreen} />
           </Stack.Group>
         )}
       </Stack.Navigator>

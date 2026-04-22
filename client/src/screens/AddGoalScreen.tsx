@@ -24,6 +24,7 @@ export default function AddGoalScreen() {
   const [targetAmount, setTargetAmount] = useState(editingGoal?.targetAmount?.toString() || '');
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(editingGoal?.walletId || null);
   const [imageUrl, setImageUrl] = useState<string | undefined>(editingGoal?.imageUrl);
+  const [description, setDescription] = useState(editingGoal?.description || '');
   const [imageSourceVisible, setImageSourceVisible] = useState(false);
 
   const handleSelectImage = async () => {
@@ -69,14 +70,16 @@ export default function AddGoalScreen() {
           title: title.trim(),
           targetAmount: amount,
           walletId: selectedWalletId,
-          imageUrl
+          imageUrl,
+          description: description.trim()
         });
       } else {
         await addGoal({
           title: title.trim(),
           targetAmount: amount,
           walletId: selectedWalletId,
-          imageUrl
+          imageUrl,
+          description: description.trim()
         });
       }
       navigation.goBack();
@@ -141,6 +144,17 @@ export default function AddGoalScreen() {
         <WalletDropdown
           selectedWalletId={selectedWalletId}
           onSelectWallet={setSelectedWalletId}
+        />
+
+        <Text style={styles.inputLabel}>About this Goal (Optional)</Text>
+        <TextInput
+          style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
+          placeholder="Why are you saving for this? Add some details..."
+          placeholderTextColor={colors.textMuted}
+          value={description}
+          onChangeText={setDescription}
+          multiline={true}
+          numberOfLines={4}
         />
 
         {isEditing && (

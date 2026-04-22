@@ -80,18 +80,18 @@ export default function DebtsScreen() {
         ) : (
           debts.map((item) => (
             <View key={item.id} style={styles.debtCard}>
-              <View style={styles.accentLine} />
               <View style={styles.cardTop}>
                 <View style={styles.personInfo}>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <Text style={styles.personName}>{item.personName}</Text>
-                      <View style={styles.taskInfoSmall}>
-                        <FileText size={12} color={colors.textMuted} />
-                        <Text style={styles.taskNameSmall} numberOfLines={1}>{item.taskName}</Text>
-                      </View>
                     </View>
                     <Text style={styles.dateText}>{formatDate(item.date)}{item.dueDate ? ` • Due: ${item.dueDate}` : ''}</Text>
+                    
+                    <View style={[styles.taskInfoSmall, { marginTop: 6, alignSelf: 'flex-start' }]}>
+                      <FileText size={12} color={colors.textMuted} />
+                      <Text style={styles.taskNameSmall} numberOfLines={1}>{item.taskName}</Text>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -288,21 +288,13 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       borderWidth: 1,
       borderColor: isDarkMode ? colors.border : statusRed + '22',
       padding: 16,
-      paddingLeft: 22,
+      paddingHorizontal: 20,
       shadowColor: statusRed,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: isDarkMode ? 0.2 : 0.04,
       shadowRadius: 8,
       elevation: 3,
       overflow: 'hidden',
-    },
-    accentLine: {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: 5,
-      backgroundColor: statusRed,
     },
     cardTop: {
       flexDirection: 'row',
@@ -405,7 +397,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       fontFamily: theme.fonts.medium,
       fontSize: 12,
       color: colors.textMuted,
-      maxWidth: 120,
     },
     taskInfoSmall: {
       flexDirection: 'row',

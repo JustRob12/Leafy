@@ -27,14 +27,43 @@ export default function HomeScreen() {
   const SCREEN_WIDTH = Dimensions.get('window').width;
   const WALLET_ITEM_WIDTH = 100; // Tighter ticker
 
-  // Carousel logic
-  const carouselData = goals.length > 0 ? [...goals, ...goals, ...goals] : []; // Tripled for infinite
-  const [activeGoalIndex, setActiveGoalIndex] = useState(goals.length);
-  const flatListRef = useRef<FlatList>(null);
-  const scrollXAnim = useRef(new Animated.Value(0)).current;
-  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isDragging = useRef(false);
+  // Goal Fade Carousel Logic
+  const [activeGoalIndex, setActiveGoalIndex] = useState(0);
+  const goalFadeAnim = useRef(new Animated.Value(1)).current;
+  const fadeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (goals.length <= 1) return;
+
+    const startFadeTransition = () => {
+      fadeTimerRef.current = setTimeout(() => {
+        // 1. Fade out current
+        Animated.timing(goalFadeAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }).start(() => {
+          // 2. Change index
+          setActiveGoalIndex((prev) => (prev + 1) % goals.length);
+          // 3. Fade in new
+          Animated.timing(goalFadeAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }).start(() => {
+            startFadeTransition();
+          });
+        });
+      }, 5000); // 5 seconds per goal
+    };
+
+    startFadeTransition();
+
+    return () => {
+      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+    };
+  }, [goals.length]);
+
 
   // News Ticker Logic
   const tickerAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
@@ -60,123 +89,6 @@ export default function HomeScreen() {
       tickerAnim.stopAnimation();
     };
   }, []);
-
-
-
-  // Function to run snappy, timed step animation
-  const runAnimation = (startOffset: number) => {
-    if (goals.length <= 1) return;
-
-    // Clear any existing timer/animation
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    if (animationRef.current) animationRef.current.stop();
-
-    const setWidth = goals.length * SCREEN_WIDTH;
-    const currentOffset = startOffset;
-
-    // Calculate how many more card widths we can go before needing to loop
-    // Since we are going left, we want to stay above 0.
-    const nextOffset = currentOffset - SCREEN_WIDTH;
-
-    // Continuous smooth slide (Left-to-Right)
-    animationRef.current = Animated.timing(scrollXAnim, {
-      toValue: nextOffset,
-      duration: 12000, // Very slow continuous move
-      easing: Easing.linear,
-      useNativeDriver: false,
-    });
-
-    animationRef.current.start(({ finished }) => {
-      if (finished) {
-        let finalizedOffset = nextOffset;
-
-        // Loop logic: When we reach the start, jump back to the middle
-        if (nextOffset <= 0) {
-          finalizedOffset = setWidth;
-          scrollXAnim.setValue(finalizedOffset);
-          flatListRef.current?.scrollToOffset({ offset: finalizedOffset, animated: false });
-        }
-
-        runAnimation(finalizedOffset);
-      }
-    });
-  };
-
-
-  useEffect(() => {
-    if (goals.length > 1) {
-      const setWidth = goals.length * SCREEN_WIDTH;
-      // Initial state
-      scrollXAnim.setValue(setWidth);
-
-      // Local timer to ensure FlatList is ready before initial jump
-      const initialJump = setTimeout(() => {
-        flatListRef.current?.scrollToOffset({ offset: setWidth, animated: false });
-      }, 100);
-
-      // Listener to drive the FlatList scroll position
-      const listenerId = scrollXAnim.addListener(({ value }) => {
-        if (!isDragging.current) {
-          flatListRef.current?.scrollToOffset({ offset: value, animated: false });
-          // Update active index for pagination dots occasionally
-          const index = Math.round(value / SCREEN_WIDTH);
-          if (index !== activeGoalIndex) {
-            setActiveGoalIndex(index);
-          }
-        }
-      });
-
-      runAnimation(setWidth);
-
-      return () => {
-        clearTimeout(initialJump);
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        scrollXAnim.removeListener(listenerId);
-        animationRef.current?.stop();
-      };
-    }
-  }, [goals.length]);
-
-
-
-
-
-  const handleScrollBegin = () => {
-    isDragging.current = true;
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    animationRef.current?.stop();
-  };
-
-  const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    isDragging.current = false;
-    const currentOffset = event.nativeEvent.contentOffset.x;
-    const setWidth = goals.length * SCREEN_WIDTH;
-
-    // seamless infinite loop logic
-    let nextOffset = currentOffset;
-    if (currentOffset < setWidth) {
-      nextOffset = currentOffset + setWidth;
-    } else if (currentOffset >= setWidth * 2) {
-      nextOffset = currentOffset - setWidth;
-    }
-
-    scrollXAnim.setValue(nextOffset);
-    flatListRef.current?.scrollToOffset({ offset: nextOffset, animated: false });
-
-    const index = Math.round(nextOffset / SCREEN_WIDTH);
-    setActiveGoalIndex(index);
-
-    // Resume slow slide from new position
-    runAnimation(nextOffset);
-  };
-
-  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (isDragging.current) {
-      const contentOffset = event.nativeEvent.contentOffset.x;
-      const index = Math.round(contentOffset / SCREEN_WIDTH);
-      setActiveGoalIndex(index);
-    }
-  };
 
 
 
@@ -377,6 +289,7 @@ export default function HomeScreen() {
           <AnimatedCounter
             value={totalBalance}
             style={styles.premiumAmount}
+            shouldAnimate={totalBalance < 1000000}
           />
 
 
@@ -536,106 +449,50 @@ export default function HomeScreen() {
           </View>
         ) : (
           <View style={styles.carouselContainer}>
-            <FlatList
-              ref={flatListRef}
-              data={carouselData}
-              keyExtractor={(item, index) => `${item.id}-${index}`}
-              horizontal
-              snapToAlignment="center"
-              snapToInterval={SCREEN_WIDTH}
-              decelerationRate="normal"
-              showsHorizontalScrollIndicator={false}
-              onScroll={onScroll}
-              onMomentumScrollEnd={handleScrollEnd}
-              scrollEventThrottle={16}
-              onScrollBeginDrag={handleScrollBegin}
-              onScrollEndDrag={handleScrollEnd}
-              getItemLayout={(_, index) => ({
-                length: SCREEN_WIDTH,
-                offset: SCREEN_WIDTH * index,
-                index,
-              })}
-              renderItem={({ item: goal, index }) => {
-                const linkedWallet = wallets.find(w => w.id === goal.walletId);
-                const currentAmount = linkedWallet ? linkedWallet.balance : 0;
-                const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
+            {(() => {
+              const goal = goals[activeGoalIndex];
+              if (!goal) return null;
 
-                // Position-based interpolation for fade and scale
-                const inputRange = [
-                  (index - 1) * SCREEN_WIDTH,
-                  index * SCREEN_WIDTH,
-                  (index + 1) * SCREEN_WIDTH,
-                ];
+              const linkedWallet = wallets.find(w => w.id === goal.walletId);
+              const currentAmount = linkedWallet ? linkedWallet.balance : 0;
+              const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
 
-                const opacity = scrollXAnim.interpolate({
-                  inputRange,
-                  outputRange: [0.3, 1, 0.3],
-                  extrapolate: 'clamp',
-                });
-
-                const scale = scrollXAnim.interpolate({
-                  inputRange,
-                  outputRange: [0.9, 1, 0.9],
-                  extrapolate: 'clamp',
-                });
-
-                return (
-                  <View style={[styles.goalSlide, { width: SCREEN_WIDTH }]}>
-                    <Animated.View
-                      style={[
-                        styles.goalCard,
-                        {
-                          opacity,
-                          transform: [{ scale }]
-                        }
-                      ]}
-                    >
-                      <TouchableOpacity
-                        activeOpacity={0.9}
-                        onPress={() => navigation.navigate('Goals')}
-                      >
-                        <View style={styles.goalRow}>
-                          <View style={styles.goalLeft}>
-                            <View style={styles.goalIconWrapper}>
-                              {goal.imageUrl ? (
-                                <Image source={{ uri: goal.imageUrl }} style={{ width: '100%', height: '100%', borderRadius: 14 }} />
-                              ) : (
-                                <Target size={20} color={theme.colors.primary} />
-                              )}
-                            </View>
-                            <View>
-                              <Text style={styles.goalTitle}>{goal.title}</Text>
-                              <Text style={styles.goalAmountText}>₱{currentAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })} / ₱{goal.targetAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
-                            </View>
-                          </View>
+              return (
+                <Animated.View
+                  style={[
+                    styles.goalCard,
+                    {
+                      opacity: goalFadeAnim,
+                    }
+                  ]}
+                >
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={() => navigation.navigate('GoalDetail', { goal })}
+                  >
+                    <View style={styles.goalRow}>
+                      <View style={styles.goalLeft}>
+                        <View style={styles.goalIconWrapper}>
+                          {goal.imageUrl ? (
+                            <Image source={{ uri: goal.imageUrl }} style={{ width: '100%', height: '100%', borderRadius: 14 }} />
+                          ) : (
+                            <Target size={20} color={theme.colors.primary} />
+                          )}
                         </View>
-
-                        <View style={styles.progressBarBg}>
-                          <View style={[styles.progressBarFill, { width: `${Math.max(0, Math.min(progress, 100))}%` }]} />
+                        <View>
+                          <Text style={styles.goalTitle}>{goal.title}</Text>
+                          <Text style={styles.goalAmountText}>₱{currentAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })} / ₱{goal.targetAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
                         </View>
-                      </TouchableOpacity>
-                    </Animated.View>
-                  </View>
-                );
-              }}
-            />
+                      </View>
+                    </View>
 
-            {goals.length > 1 && (
-              <View style={styles.pagination}>
-                {goals.slice(0, 5).map((_, i) => {
-                  const isActive = (activeGoalIndex % goals.length) === i;
-                  return (
-                    <View
-                      key={i}
-                      style={[
-                        styles.dot,
-                        isActive ? styles.activeDot : styles.inactiveDot
-                      ]}
-                    />
-                  );
-                })}
-              </View>
-            )}
+                    <View style={styles.progressBarBg}>
+                      <View style={[styles.progressBarFill, { width: `${Math.max(0, Math.min(progress, 100))}%` }]} />
+                    </View>
+                  </TouchableOpacity>
+                </Animated.View>
+              );
+            })()}
           </View>
         )}
 
@@ -905,7 +762,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   carouselContainer: {
     marginBottom: theme.spacing.xl,
-    marginHorizontal: -theme.spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },

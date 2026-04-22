@@ -8,6 +8,7 @@ interface AnimatedCounterProps {
   prefix?: string;
   minimumFractionDigits?: number;
   maximumFractionDigits?: number;
+  shouldAnimate?: boolean;
 }
 
 export default function AnimatedCounter({ 
@@ -16,12 +17,18 @@ export default function AnimatedCounter({
   style, 
   prefix = '₱',
   minimumFractionDigits = 2,
-  maximumFractionDigits = 2
+  maximumFractionDigits = 2,
+  shouldAnimate = true
 }: AnimatedCounterProps) {
-  const [displayValue, setDisplayValue] = useState(0);
-  const animatedValue = useRef(new Animated.Value(0)).current;
+  const [displayValue, setDisplayValue] = useState(shouldAnimate ? 0 : value);
+  const animatedValue = useRef(new Animated.Value(shouldAnimate ? 0 : value)).current;
 
   useEffect(() => {
+    if (!shouldAnimate) {
+        setDisplayValue(value);
+        return;
+    }
+
     // Reset to 0 when component mounts to trigger count-up
     animatedValue.setValue(0);
     
@@ -32,15 +39,14 @@ export default function AnimatedCounter({
     Animated.timing(animatedValue, {
       toValue: value,
       duration: duration,
-      useNativeDriver: false, // Must be false for text/non-style animations using listeners
-      // Premium easing: Starts fast and slows down
+      useNativeDriver: false,
     }).start();
 
     return () => {
       animatedValue.removeListener(listenerId);
       animatedValue.stopAnimation();
     };
-  }, [value, duration]);
+  }, [value, duration, shouldAnimate]);
 
   const formattedValue = displayValue.toLocaleString('en-PH', {
     minimumFractionDigits,

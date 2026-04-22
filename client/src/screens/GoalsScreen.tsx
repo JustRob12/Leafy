@@ -17,7 +17,6 @@ export default function GoalsScreen() {
   const { handleScroll } = useScrollHideTabBar();
   
   const [filterWalletId, setFilterWalletId] = useState<string | 'all'>('all');
-  const [selectedGoal, setSelectedGoal] = useState<any>(null);
 
   React.useEffect(() => {
     if (route.params?.openAddModal) {
@@ -98,39 +97,31 @@ export default function GoalsScreen() {
             return (
               <TouchableOpacity 
                 key={goal.id} 
-                style={styles.goalCard}
-                onPress={() => setSelectedGoal(goal)}
+                style={styles.shopeeCard}
+                onPress={() => navigation.navigate('GoalDetail', { goal })}
               >
-                <View style={styles.goalIconLayer}>
+                <View style={styles.shopeeImageWrapper}>
                   {goal.imageUrl ? (
-                    <Image source={{ uri: goal.imageUrl }} style={styles.goalImage as any} />
+                    <Image source={{ uri: goal.imageUrl }} style={styles.shopeeImage as any} />
                   ) : (
                     <Target size={24} color={colors.primary} />
                   )}
                 </View>
                 
-                <View style={styles.goalContent}>
-                  <View style={styles.goalTitleRow}>
-                    <Text style={styles.goalTitle} numberOfLines={1}>{goal.title}</Text>
-                    <Text style={styles.goalProgressText}>{Math.round(Math.min(progress, 100))}%</Text>
+                <View style={styles.shopeeContent}>
+                  <View style={styles.shopeeTitleRow}>
+                    <Text style={styles.shopeeTitle} numberOfLines={1}>{goal.title}</Text>
+                    <Text style={styles.shopeeProgressText}>{Math.round(Math.min(progress, 100))}%</Text>
                   </View>
                   
-                  <View style={styles.goalStatsRow}>
-                    <Text style={styles.goalStatLabel}>Total Saved</Text>
-                    <Text style={styles.goalStatValue}>₱{currentAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
-                  </View>
-
-                   <View style={styles.walletBadge}>
+                  <View style={styles.shopeeMetaRow}>
                     <Wallet size={12} color={colors.textMuted} />
-                    <Text style={styles.walletBadgeText}>{linkedWallet?.name || 'Unknown Wallet'}</Text>
+                    <Text style={styles.shopeeWalletName} numberOfLines={1}>{linkedWallet?.name}</Text>
                   </View>
 
-                  <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { width: `${Math.max(0, Math.min(progress, 100))}%` }]} />
-                  </View>
-                  
-                  <View style={styles.goalFooter}>
-                    <Text style={styles.goalTargetText}>Target: ₱{goal.targetAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
+                  <View style={styles.shopeeStatsRow}>
+                    <Text style={styles.shopeeStatValue}>₱{currentAmount.toLocaleString()}</Text>
+                    <Text style={styles.shopeeStatTotal}> / ₱{goal.targetAmount.toLocaleString()}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -148,74 +139,7 @@ export default function GoalsScreen() {
       </TouchableOpacity>
 
 
-      {/* View Goal Modal */}
-      <ActionSheet
-        visible={!!selectedGoal}
-        onClose={() => setSelectedGoal(null)}
-        title="Goal Details"
-      >
-        {selectedGoal && (() => {
-          const linkedWallet = wallets.find(w => w.id === selectedGoal.walletId);
-          const currentAmount = linkedWallet ? linkedWallet.balance : 0;
-          const progress = selectedGoal.targetAmount > 0 ? (currentAmount / selectedGoal.targetAmount) * 100 : 0;
-
-          return (
-            <View style={{ alignItems: 'center', paddingBottom: 20 }}>
-              {selectedGoal.imageUrl ? (
-                <View style={styles.modalImageContainer}>
-                  <Image source={{ uri: selectedGoal.imageUrl }} style={styles.modalImage as any} resizeMode="contain" />
-                </View>
-              ) : (
-                <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-                  <Target size={40} color={colors.primary} />
-                </View>
-              )}
-              
-              <Text style={{ fontFamily: theme.fonts.bold, fontSize: 24, color: colors.text, marginBottom: 8, textAlign: 'center' }}>{selectedGoal.title}</Text>
-              
-              <Text style={{ fontFamily: theme.fonts.medium, fontSize: 16, color: colors.textMuted, marginBottom: 4 }}>
-                ₱{currentAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })} / ₱{selectedGoal.targetAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}
-              </Text>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#f8fafc', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginBottom: 20, gap: 6 }}>
-                <Wallet size={14} color={colors.primary} />
-                <Text style={{ fontFamily: theme.fonts.semiBold, fontSize: 13, color: colors.text }}>{linkedWallet?.name}</Text>
-              </View>
-
-              <View style={[styles.progressBarBg, { height: 12, borderRadius: 6, marginBottom: 24 }]}>
-                <View style={[styles.progressBarFill, { width: `${Math.max(0, Math.min(progress, 100))}%` }]} />
-              </View>
-              
-              <TouchableOpacity
-                style={{ backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, width: '100%', alignItems: 'center' }}
-                onPress={() => {
-                  const goalToEdit = { ...selectedGoal };
-                  setSelectedGoal(null);
-                  navigation.navigate('AddGoal', { goal: goalToEdit });
-                }}
-              >
-                <Text style={{ fontFamily: theme.fonts.semiBold, color: colors.text, fontSize: 16 }}>Edit Goal</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={{ marginTop: 12, paddingVertical: 12, width: '100%', alignItems: 'center' }}
-                onPress={() => {
-                  const goalId = selectedGoal.id;
-                  const goalTitle = selectedGoal.title;
-                  setSelectedGoal(null);
-                  showConfirm(
-                    "Delete Goal",
-                    `Are you sure you want to delete "${goalTitle}"?`,
-                    () => deleteGoal(goalId)
-                  );
-                }}
-              >
-                <Text style={{ fontFamily: theme.fonts.semiBold, color: '#ef4444', fontSize: 16 }}>Delete Goal</Text>
-              </TouchableOpacity>
-            </View>
-          );
-        })()}
-      </ActionSheet>
+      {/* Legacy Modal Removed */}
     </View>
   );
 }
@@ -303,100 +227,74 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: 16,
     color: '#ffffff',
   },
-  goalCard: {
+  shopeeCard: {
     flexDirection: 'row',
     backgroundColor: colors.card,
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 20,
+    padding: 12,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
-    gap: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: isDarkMode ? 0.3 : 0.05,
-    shadowRadius: 10,
-    elevation: 3,
+    gap: 12,
   },
-  goalIconLayer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
+  shopeeImageWrapper: {
+    width: 64,
+    height: 64,
+    borderRadius: 14,
     backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  goalImage: {
+  shopeeImage: {
     width: '100%',
     height: '100%',
   },
-  goalContent: {
+  shopeeContent: {
     flex: 1,
   },
-  goalTitleRow: {
+  shopeeTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 4,
   },
-  goalTitle: {
+  shopeeTitle: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 16,
+    fontSize: 15,
     color: colors.text,
     flex: 1,
     marginRight: 8,
   },
-  goalProgressText: {
+  shopeeProgressText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 16,
+    fontSize: 14,
     color: colors.primary,
   },
-  goalStatsRow: {
+  shopeeMetaRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
   },
-  goalStatLabel: {
-    fontFamily: theme.fonts.regular,
-    fontSize: 12,
+  shopeeWalletName: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 11,
     color: colors.textMuted,
   },
-  goalStatValue: {
-    fontFamily: theme.fonts.semiBold,
+  shopeeStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  shopeeStatValue: {
+    fontFamily: theme.fonts.bold,
     fontSize: 13,
     color: colors.text,
   },
-  progressBarBg: {
-    height: 6,
-    backgroundColor: isDarkMode ? '#334155' : '#f1f5f9',
-    borderRadius: 3,
-    marginBottom: 10,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-  },
-  walletBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 10,
-  },
-  walletBadgeText: {
+  shopeeStatTotal: {
     fontFamily: theme.fonts.medium,
-    fontSize: 12,
-    color: colors.textMuted,
-  },
-  goalFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-  },
-  goalTargetText: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textMuted,
   },
   previewImage: {

@@ -64,27 +64,18 @@ export default function RecursionScreen() {
         ) : (
           recursions.map((item) => (
             <View key={item.id} style={styles.card}>
-              <View style={styles.accentLine} />
               <View style={styles.cardTop}>
                 <View style={styles.infoRow}>
                   <View style={styles.iconWrapper}>
                     <Building2 size={18} color={theme.colors.primary} />
                   </View>
-                  <View>
-                    <Text style={styles.companyName}>{item.companyName}</Text>
-                    <Text style={styles.dateText}>Every day {item.dayOfMonth} of the month</Text>
-                  </View>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <TouchableOpacity
-                    style={styles.trashBtn}
-                    onPress={() => handleDelete(item.id, item.companyName)}
-                  >
-                    <Trash2 size={16} color="#ef4444" />
-                  </TouchableOpacity>
-                  <Text style={styles.amountText}>₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.companyName}>{item.companyName}</Text>
+                  <Text style={styles.dateText}>Every day {item.dayOfMonth} of the month</Text>
+                  <Text style={[styles.amountText, { marginTop: 4 }]}>₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
                 </View>
               </View>
+            </View>
 
               <View style={styles.cardDivider} />
 
@@ -93,12 +84,20 @@ export default function RecursionScreen() {
                   <WalletIcon size={14} color={colors.textMuted} />
                   <Text style={styles.walletName}>{getWalletName(item.walletId)}</Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.processBtn}
-                  onPress={() => handleProcess(item.id)}
-                >
-                  <Text style={styles.processBtnText}>Add to Wallet</Text>
-                </TouchableOpacity>
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity
+                    style={styles.actionBtn}
+                    onPress={() => navigation.navigate('AddRecursion', { recursion: item })}
+                  >
+                    <Text style={styles.actionBtnText}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, { borderColor: '#ef4444' }]}
+                    onPress={() => handleDelete(item.id, item.companyName)}
+                  >
+                    <Text style={[styles.actionBtnText, { color: '#ef4444' }]}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           ))
@@ -194,21 +193,13 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderWidth: 1,
     borderColor: isDarkMode ? colors.border : theme.colors.primary + '22',
     padding: 16,
-    paddingLeft: 22,
+    paddingHorizontal: 20,
     shadowColor: theme.colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: isDarkMode ? 0.2 : 0.04,
     shadowRadius: 8,
     elevation: 3,
     overflow: 'hidden',
-  },
-  accentLine: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 5,
-    backgroundColor: theme.colors.primary,
   },
   cardTop: {
     flexDirection: 'row',
@@ -267,7 +258,11 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     color: colors.text,
     flex: 1,
   },
-  processBtn: {
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionBtn: {
     backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc',
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -275,14 +270,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  processBtnText: {
+  actionBtnText: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 12,
     color: theme.colors.primary,
-  },
-  trashBtn: {
-    marginBottom: 4,
-    padding: 2,
   },
   inputLabel: {
     fontFamily: theme.fonts.medium,

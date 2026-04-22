@@ -81,12 +81,8 @@ export default function ReceivablesScreen() {
         ) : (
           receivables.map((item) => (
             <View key={item.id} style={styles.receivableCard}>
-              <View style={styles.accentLine} />
               <View style={styles.cardTop}>
                 <View style={styles.personInfo}>
-                  <View style={styles.userIconWrapper}>
-                    <User size={18} color={colors.primary} />
-                  </View>
                   <View>
                     <Text style={styles.personName}>{item.personName}</Text>
                     <Text style={styles.dateText}>{formatDate(item.date)}</Text>
@@ -278,21 +274,13 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderWidth: 1,
     borderColor: isDarkMode ? colors.border : colors.primary + '22',
     padding: 16,
-    paddingLeft: 22,
+    paddingHorizontal: 20,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: isDarkMode ? 0.2 : 0.04,
     shadowRadius: 8,
     elevation: 3,
     overflow: 'hidden',
-  },
-  accentLine: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 5,
-    backgroundColor: colors.primary,
   },
   cardTop: {
     flexDirection: 'row',

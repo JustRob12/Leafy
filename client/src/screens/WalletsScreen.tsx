@@ -81,64 +81,72 @@ export default function WalletsScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          sortedWallets.map((wallet, index) => (
-            <View key={wallet.id} style={styles.premiumCardWrapper}>
-              <View style={styles.premiumCard}>
-                <View style={[styles.cardHeader, { backgroundColor: wallet.color || colors.primary }]}>
-                  <View style={styles.cardHeaderLeft}>
-                    <View style={styles.cardIconBox}>
-                      <View style={styles.headerGlow} />
-                      {(() => {
-                        if (wallet.iconType === 'custom' && wallet.customIcon) {
-                          return <RNImage source={{ uri: wallet.customIcon }} style={styles.cardIconImage as any} />;
-                        }
-                        if (wallet.iconType === 'preset' && wallet.presetLogo) {
-                          return <RNImage source={brandLogos[wallet.presetLogo]} style={[styles.cardIconImage as any, { resizeMode: 'contain' }]} />;
-                        }
-                        const PurposeIcon = purposes.find(p => p.label === wallet.purpose)?.icon || WalletIcon;
-                        return <PurposeIcon size={24} color="#ffffff" />;
-                      })()}
+          <View style={styles.gridContainer}>
+            {sortedWallets.map((wallet, index) => (
+              <View key={wallet.id} style={styles.premiumCardWrapper}>
+                <View style={[styles.premiumCard, { backgroundColor: wallet.color || colors.primary }]}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.cardHeaderLeft}>
+                      <View style={styles.cardIconBox}>
+                        <View style={styles.headerGlow} />
+                        {(() => {
+                          if (wallet.iconType === 'custom' && wallet.customIcon) {
+                            return <RNImage source={{ uri: wallet.customIcon }} style={styles.cardIconImage as any} />;
+                          }
+                          if (wallet.iconType === 'preset' && wallet.presetLogo) {
+                            return <RNImage source={brandLogos[wallet.presetLogo]} style={[styles.cardIconImage as any, { resizeMode: 'contain' }]} />;
+                          }
+                          const PurposeIcon = purposes.find(p => p.label === wallet.purpose)?.icon || WalletIcon;
+                          return <PurposeIcon size={16} color="#ffffff" />;
+                        })()}
+                      </View>
+                      <Text style={[styles.cardName, { color: '#ffffff' }]} numberOfLines={1}>{wallet.name}</Text>
                     </View>
-                    <Text style={[styles.cardName, { color: '#ffffff' }]} numberOfLines={1}>{wallet.name}</Text>
+
+                    <View style={styles.cardHeaderRight}>
+                      <TouchableOpacity
+                        onPress={() => navigation.navigate('AddWallet', { wallet })}
+                        style={styles.moreActionBtn}
+                      >
+                        <MoreHorizontal size={14} color="rgba(255, 255, 255, 0.7)" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
-                  <View style={styles.cardHeaderRight}>
-                    <TouchableOpacity
-                      onPress={() => navigation.navigate('AddWallet', { wallet })}
-                      style={styles.moreActionBtn}
+                  <View style={styles.cardBody}>
+                    <Text 
+                      style={[
+                        styles.cardBalanceText, 
+                        wallet.balance >= 1000000 ? { fontSize: 13 } : wallet.balance >= 100000 ? { fontSize: 15 } : {}
+                      ]} 
+                      numberOfLines={1} 
+                      adjustsFontSizeToFit
                     >
-                      <MoreHorizontal size={20} color="rgba(255, 255, 255, 0.7)" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={styles.cardBody}>
-                  <Text style={styles.cardBalanceText}>
-                    {showBalances 
-                      ? `₱${wallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
-                      : '₱*****'
-                    }
-                  </Text>
-                </View>
-
-                <View style={[styles.cardFooter, { backgroundColor: wallet.color || colors.primary, borderTopWidth: 0 }]}>
-                  <View style={[styles.purposePill, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
-                    <Text style={[styles.purposePillText, { color: '#ffffff' }]}>{wallet.purpose}</Text>
+                      {showBalances 
+                        ? `₱${wallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : '₱*****'
+                      }
+                    </Text>
                   </View>
 
-                  {wallet.qrCodeImage && (
-                    <TouchableOpacity
-                      onPress={(e) => { e.stopPropagation(); setViewingQrCode(wallet.qrCodeImage || null); }}
-                      style={[styles.qrActionBtn, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
-                    >
-                      <QrCode size={18} color="#ffffff" />
-                      <Text style={[styles.qrActionText, { color: '#ffffff' }]}>QR</Text>
-                    </TouchableOpacity>
-                  )}
+                  <View style={styles.cardFooter}>
+                    <View style={[styles.purposePill, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
+                      <Text style={[styles.purposePillText, { color: '#ffffff' }]}>{wallet.purpose}</Text>
+                    </View>
+
+                    {wallet.qrCodeImage && (
+                      <TouchableOpacity
+                        onPress={(e) => { e.stopPropagation(); setViewingQrCode(wallet.qrCodeImage || null); }}
+                        style={[styles.qrActionBtn, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
+                      >
+                        <QrCode size={14} color="#ffffff" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               </View>
-            </View>
-          ))
+            ))}
+          </View>
         )}
       </ScrollView>
 
@@ -244,17 +252,23 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       fontSize: 16,
       color: '#ffffff',
     },
+    gridContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+    },
     premiumCardWrapper: {
-      marginBottom: 20,
+      width: (Dimensions.get('window').width - theme.spacing.lg * 2 - 12) / 2,
+      marginBottom: 12,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 8 },
+      shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.1,
-      shadowRadius: 16,
-      elevation: 5,
+      shadowRadius: 10,
+      elevation: 4,
     },
     premiumCard: {
       backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
-      borderRadius: 24,
+      borderRadius: 18,
       borderWidth: 1,
       borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#f1f5f9',
       overflow: 'hidden',
@@ -263,8 +277,8 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: 16,
-      paddingHorizontal: 20,
+      padding: 8,
+      paddingHorizontal: 10,
     },
     cardHeaderLeft: {
       flexDirection: 'row',
@@ -274,73 +288,73 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     headerGlow: {
       position: 'absolute',
-      width: 120,
-      height: 120,
-      borderRadius: 60,
+      width: 70,
+      height: 70,
+      borderRadius: 35,
       backgroundColor: 'rgba(255, 255, 255, 0.1)',
-      left: -38,
-      top: -38,
+      left: -20,
+      top: -20,
     },
     cardHeaderRight: {
       flexDirection: 'row',
       alignItems: 'center',
     },
     cardIconBox: {
-      width: 44,
-      height: 44,
+      width: 24,
+      height: 24,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: 12,
+      marginRight: 6,
       backgroundColor: 'transparent',
     },
     cardName: {
-      fontFamily: theme.fonts.semiBold,
-      fontSize: 16,
-      color: colors.text,
+      fontFamily: theme.fonts.bold,
+      fontSize: 12,
+      color: '#ffffff',
       flex: 1,
     },
     cardBody: {
       alignItems: 'center',
-      paddingVertical: 24,
-      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : '#ffffff',
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      backgroundColor: 'transparent',
     },
     cardBalanceText: {
       fontFamily: theme.fonts.bold,
-      fontSize: 34,
-      color: colors.text,
+      fontSize: 18,
+      color: '#ffffff',
       textAlign: 'center',
     },
     cardFooter: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: 16,
-      paddingHorizontal: 20,
+      padding: 8,
+      paddingHorizontal: 10,
     },
     purposePill: {
       backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.05)',
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 8,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: 6,
     },
     purposePillText: {
       fontFamily: theme.fonts.semiBold,
-      fontSize: 11,
+      fontSize: 9,
       color: colors.primary,
       textTransform: 'uppercase',
     },
     qrActionBtn: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
       backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)',
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 10,
+      paddingHorizontal: 6,
+      paddingVertical: 4,
+      borderRadius: 6,
     },
     qrActionText: {
       fontFamily: theme.fonts.bold,
-      fontSize: 12,
+      fontSize: 10,
       color: colors.primary,
     },
     reorderActionsVertical: {

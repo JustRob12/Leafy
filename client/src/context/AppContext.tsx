@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightPalette, darkPalette } from '../theme';
+import { requestNotificationPermissions, syncAllNotifications } from '../services/NotificationService';
 
 export type WalletType = {
   id: string;
@@ -29,6 +30,7 @@ export type GoalType = {
   targetAmount: number;
   walletId: string;
   imageUrl?: string;
+  description?: string;
 };
 
 export type ReceivableType = {
@@ -158,6 +160,7 @@ type AppContextType = {
   deleteWithdrawPreset: (id: string) => Promise<void>;
   recursions: RecursionType[];
   addRecursion: (recursion: Omit<RecursionType, 'id' | 'date'>) => Promise<void>;
+  editRecursion: (id: string, updates: Partial<Omit<RecursionType, 'id' | 'date'>>) => Promise<void>;
   deleteRecursion: (id: string) => Promise<void>;
   processRecursion: (id: string) => Promise<void>;
 };
@@ -271,10 +274,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   useEffect(() => {
-    if (isLoaded && recursions.length > 0) {
-      checkAndProcessRecursions();
+    if (isLoaded) {
+      if (recursions.length > 0) {
+        checkAndProcessRecursions();
+      }
+      
+      // Initialize notifications
+      const setupNotifications = async () => {
+        const hasPermission = await requestNotificationPermissions();
+        if (hasPermission) {
+          syncAllNotifications(debts, groceryLists);
+        }
+      };
+      setupNotifications();
     }
   }, [isLoaded, recursions.length]);
+
+  // Sync notifications whenever debts or grocery lists change
+  useEffect(() => {
+    if (isLoaded) {
+      syncAllNotifications(debts, groceryLists);
+    }
+  }, [debts, groceryLists]);
 
   const checkAndProcessRecursions = async () => {
     const today = new Date();
@@ -433,6 +454,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await AsyncStorage.setItem('@recursions', JSON.stringify(updated));
     setLoading(false);
     showFeedback('success', 'Recursion Added');
+  };
+
+  const editRecursion = async (id: string, updates: Partial<Omit<RecursionType, 'id' | 'date'>>) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const updated = recursions.map(r => r.id === id ? { ...r, ...updates } : r);
+    setRecursions(updated);
+    await AsyncStorage.setItem('@recursions', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('success', 'Recursion Updated');
   };
 
   const deleteRecursion = async (id: string) => {
@@ -1039,6 +1070,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteWithdrawPreset,
         recursions,
         addRecursion,
+        editRecursion,
         deleteRecursion,
         processRecursion
       }}

@@ -38,7 +38,8 @@
           "photosPermission": "The app accesses your photos to let you set goal cover images.",
           "cameraPermission": "The app accesses your camera to let you take goal cover images."
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "extra": {
       "eas": {

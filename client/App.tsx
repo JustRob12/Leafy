@@ -4,14 +4,31 @@ import { navigationRef } from './src/navigation/navigationUtils';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import * as Notifications from 'expo-notifications';
 import { View, StyleSheet } from 'react-native';
 
 import { AppProvider, useAppContext } from './src/context/AppContext';
 import LoadingScreen from './src/screens/LoadingScreen';
+
+// Set up foreground notification behavior
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+} catch (e) {
+  console.log('Foreground notifications not supported:', e);
+}
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import WalletsScreen from './src/screens/WalletsScreen';
 import GoalsScreen from './src/screens/GoalsScreen';
+import GoalDetailScreen from './src/screens/GoalDetailScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import SecurityScreen from './src/screens/SecurityScreen';
 import CalculatorScreen from './src/screens/CalculatorScreen';
@@ -93,6 +110,7 @@ function MainNavigation() {
             <Stack.Screen name="Recursion" component={RecursionScreen} />
             <Stack.Screen name="AddWallet" component={AddWalletScreen} />
             <Stack.Screen name="AddGoal" component={AddGoalScreen} />
+            <Stack.Screen name="GoalDetail" component={GoalDetailScreen} />
             <Stack.Screen name="AddRecursion" component={AddRecursionScreen} />
             <Stack.Screen name="AddReceivable" component={AddReceivableScreen} />
             <Stack.Screen name="AddDebt" component={AddDebtScreen} />

@@ -96,7 +96,6 @@ export default function GroceryScreen() {
               style={styles.listCard}
               onPress={() => navigation.navigate('GroceryDetail', { listId: list.id })}
             >
-              <View style={styles.accentLine} />
               <View style={styles.cardContent}>
                 <View style={styles.cardLeft}>
                   <View>
@@ -292,20 +291,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
   },
-  accentLine: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 6,
-    backgroundColor: colors.primary,
-  },
   cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 20,
-    paddingLeft: 26,
+    paddingHorizontal: 20,
   },
   cardLeft: {
     flexDirection: 'row',

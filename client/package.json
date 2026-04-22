@@ -22,6 +22,7 @@
     "expo-image-picker": "~17.0.10",
     "expo-local-authentication": "~17.0.8",
     "expo-media-library": "~18.2.1",
+    "expo-notifications": "~0.32.16",
     "expo-sharing": "~13.0.1",
     "expo-status-bar": "~3.0.9",
     "install": "^0.13.0",

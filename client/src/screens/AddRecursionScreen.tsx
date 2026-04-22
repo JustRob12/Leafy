@@ -4,29 +4,42 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { ChevronLeft, Building2, DollarSign, Calendar } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import WalletDropdown from '../components/WalletDropdown';
 
 export default function AddRecursionScreen() {
-  const { addRecursion, colors, isDarkMode } = useAppContext();
+  const { addRecursion, editRecursion, colors, isDarkMode } = useAppContext();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const styles = getStyles(colors, isDarkMode);
 
-  const [companyName, setCompanyName] = useState('');
-  const [amount, setAmount] = useState('');
-  const [dayOfMonth, setDayOfMonth] = useState('1');
-  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
+  const editingRecursion = route.params?.recursion;
+  const isEditing = !!editingRecursion;
+
+  const [companyName, setCompanyName] = useState(editingRecursion?.companyName || '');
+  const [amount, setAmount] = useState(editingRecursion?.amount?.toString() || '');
+  const [dayOfMonth, setDayOfMonth] = useState(editingRecursion?.dayOfMonth?.toString() || '1');
+  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(editingRecursion?.walletId || null);
 
   const handleSave = async () => {
     const numericAmount = parseFloat(amount);
     const dayNumeric = parseInt(dayOfMonth);
     if (companyName.trim() && !isNaN(numericAmount) && numericAmount > 0 && selectedWalletId && !isNaN(dayNumeric) && dayNumeric >= 1 && dayNumeric <= 31) {
-      await addRecursion({
-        companyName: companyName.trim(),
-        amount: numericAmount,
-        walletId: selectedWalletId,
-        dayOfMonth: dayNumeric,
-      });
+      if (isEditing) {
+        await editRecursion(editingRecursion.id, {
+          companyName: companyName.trim(),
+          amount: numericAmount,
+          walletId: selectedWalletId,
+          dayOfMonth: dayNumeric,
+        });
+      } else {
+        await addRecursion({
+          companyName: companyName.trim(),
+          amount: numericAmount,
+          walletId: selectedWalletId,
+          dayOfMonth: dayNumeric,
+        });
+      }
       navigation.goBack();
     }
   };
@@ -40,7 +53,7 @@ export default function AddRecursionScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Recursion</Text>
+        <Text style={styles.headerTitle}>{isEditing ? 'Edit Recursion' : 'New Recursion'}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -98,7 +111,7 @@ export default function AddRecursionScreen() {
           onPress={handleSave}
           disabled={!isFormValid}
         >
-          <Text style={styles.saveBtnText}>Save Recursion</Text>
+          <Text style={styles.saveBtnText}>{isEditing ? 'Update Recursion' : 'Save Recursion'}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

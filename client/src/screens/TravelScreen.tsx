@@ -105,7 +105,6 @@ export default function TravelScreen() {
         ) : (
           travels.map((trip) => (
             <View key={trip.id} style={styles.travelCard}>
-              <View style={styles.accentLine} />
               
               <View style={styles.cardHeader}>
                 <View style={styles.titleSection}>
@@ -130,7 +129,10 @@ export default function TravelScreen() {
               <View style={styles.cardFooter}>
                 <View style={styles.dateInfo}>
                    <Calendar size={14} color={colors.textMuted} />
-                   <Text style={styles.dateText}>{trip.startDate} – {trip.endDate}</Text>
+                   <View>
+                     <Text style={styles.dateText}>{trip.startDate}</Text>
+                     <Text style={styles.dateText}>{trip.endDate}</Text>
+                   </View>
                 </View>
                 <View style={styles.expenseInfo}>
                    <Text style={styles.expenseLabel}>Expenses</Text>
@@ -327,7 +329,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderWidth: 1,
     borderColor: isDarkMode ? colors.border : colors.primary + '22',
     padding: 20,
-    paddingLeft: 24,
+    paddingHorizontal: 20,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: isDarkMode ? 0.2 : 0.04,
@@ -335,14 +337,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     elevation: 3,
     overflow: 'hidden',
     position: 'relative',
-  },
-  accentLine: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 6,
-    backgroundColor: colors.primary,
   },
   cardHeader: {
     flexDirection: 'row',

@@ -86,8 +86,10 @@ export type RecursionType = {
   companyName: string;
   amount: number;
   walletId: string;
-  dayOfMonth: number;
-  lastProcessedMonth?: string;
+  frequency: 'monthly' | 'weekly' | 'bi-monthly';
+  dayOfMonth?: number; // 1-31
+  dayOfWeek?: number; // 0-6
+  lastProcessedDate?: string; // e.g. "2024-04-22"
   date: string;
 };
 
@@ -299,20 +301,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const checkAndProcessRecursions = async () => {
     const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
     const currentDay = today.getDate();
+    const currentDayOfWeek = today.getDay();
     const currentMonthYear = `${today.getFullYear()}-${today.getMonth() + 1}`;
     
     let hasChanges = false;
     const newTransactions: TransactionType[] = [];
     
+    // Helper to get last day of month
+    const getLastDayOfMonth = (y: number, m: number) => new Date(y, m, 0).getDate();
+    
     const updatedRecursions = recursions.map((r) => {
-      // If today is >= scheduled day AND it hasn't been processed this month
-      if (currentDay >= r.dayOfMonth && r.lastProcessedMonth !== currentMonthYear) {
+      // Skip if already processed today
+      if (r.lastProcessedDate === todayStr) return r;
+
+      let shouldProcess = false;
+
+      if (r.frequency === 'weekly') {
+        if (currentDayOfWeek === r.dayOfWeek) {
+          shouldProcess = true;
+        }
+      } else if (r.frequency === 'monthly') {
+        // If day of month matched, and not processed this month
+        const lastMonthProcessed = r.lastProcessedDate ? r.lastProcessedDate.substring(0, 7) : '';
+        const currentMonthStr = todayStr.substring(0, 7);
+        if (currentDay >= (r.dayOfMonth || 1) && lastMonthProcessed !== currentMonthStr) {
+          shouldProcess = true;
+        }
+      } else if (r.frequency === 'bi-monthly') {
+        // 15th and 30th (or last day)
+        const lastDay = getLastDayOfMonth(today.getFullYear(), today.getMonth() + 1);
+        const targetDate1 = 15;
+        const targetDate2 = Math.min(30, lastDay);
+        
+        // We need to know which "half" we processed last
+        // If today is >= 15 and we haven't processed the 15th cycle yet
+        const lastProcessedDay = r.lastProcessedDate ? parseInt(r.lastProcessedDate.split('-')[2]) : 0;
+        const lastMonthProcessed = r.lastProcessedDate ? r.lastProcessedDate.substring(0, 7) : '';
+        const currentMonthStr = todayStr.substring(0, 7);
+
+        if (currentDay >= targetDate1 && currentDay < targetDate2) {
+          // First half check: processed in a different month OR processed in this month but before the 15th
+          if (lastMonthProcessed !== currentMonthStr || lastProcessedDay < targetDate1) {
+            shouldProcess = true;
+          }
+        } else if (currentDay >= targetDate2) {
+          // Second half check: processed in a different month OR processed in this month but before the 30th
+          if (lastMonthProcessed !== currentMonthStr || lastProcessedDay < targetDate2) {
+            shouldProcess = true;
+          }
+        }
+      }
+
+      if (shouldProcess) {
         hasChanges = true;
         
         const newTx: TransactionType = {
           id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
-          title: `${r.companyName} (Auto-Recurring)`,
+          title: `${r.companyName} (${r.frequency === 'bi-monthly' ? '15-Day' : r.frequency.charAt(0).toUpperCase() + r.frequency.slice(1)} Auto-Recurring)`,
           amount: r.amount,
           date: today.toISOString(),
           type: 'deposit',
@@ -320,7 +367,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
         
         newTransactions.push(newTx);
-        return { ...r, lastProcessedMonth: currentMonthYear };
+        return { ...r, lastProcessedDate: todayStr };
       }
       return r;
     });
@@ -344,7 +391,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setWallets(updatedWallets);
       await AsyncStorage.setItem('@wallets', JSON.stringify(updatedWallets));
       
-      showFeedback('success', `Auto-processed ${newTransactions.length} monthly recursions`);
+      showFeedback('success', `Auto-processed ${newTransactions.length} recurring incomes`);
     }
   };
 

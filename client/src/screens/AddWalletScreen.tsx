@@ -34,6 +34,7 @@ export default function AddWalletScreen() {
     'paypal.png': require('../../public/walletimages/paypal.png'),
     'wise.png': require('../../public/walletimages/wise.png'),
     'maribank.png': require('../../public/walletimages/maribank.png'),
+    'gotyme.png': require('../../public/walletimages/gotyme.png'),
   };
 
   const presetLogos = [
@@ -42,6 +43,7 @@ export default function AddWalletScreen() {
     { name: 'PayPal', file: 'paypal.png' },
     { name: 'Wise', file: 'wise.png' },
     { name: 'MariBank', file: 'maribank.png' },
+    { name: 'GoTyme', file: 'gotyme.png' },
   ];
 
   const walletPresets = [
@@ -61,9 +63,11 @@ export default function AddWalletScreen() {
     { name: 'Gold', color: '#d97706' },
     { name: 'Slate', color: '#475569' },
     { name: 'Midnight', color: '#1e1b4b' },
+    { name: 'Black', color: '#000000' },
+    { name: 'White', color: '#ffffff' },
   ];
 
-  const purposes = [
+  const tags = [
     { label: 'Personal', icon: User },
     { label: 'Emergency', icon: AlertTriangle },
     { label: 'Shopping', icon: ShoppingBag },
@@ -198,27 +202,6 @@ export default function AddWalletScreen() {
           </TouchableOpacity>
         </View>
 
-        {iconType === 'purpose' && (
-          <View style={styles.purposeRow}>
-            {purposes.map((p) => {
-              const Icon = p.icon;
-              const isSelected = purpose === p.label;
-              return (
-                <TouchableOpacity
-                  key={p.label}
-                  style={[styles.purposeChip, isSelected && styles.purposeChipSelected]}
-                  onPress={() => setPurpose(p.label)}
-                >
-                  <Icon size={16} color={isSelected ? '#ffffff' : colors.textMuted} />
-                  <Text style={[styles.purposeChipText, isSelected && styles.purposeChipTextSelected]}>
-                    {p.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-
         {iconType === 'preset' && selectedPreset && (
           <TouchableOpacity style={styles.selectedIconPreview} onPress={() => setLogoModalVisible(true)}>
             <RNImage source={brandLogos[selectedPreset]} style={styles.previewLogo as any} />
@@ -234,6 +217,38 @@ export default function AddWalletScreen() {
             <ChevronRight size={16} color={colors.textMuted} />
           </TouchableOpacity>
         )}
+
+        {iconType === 'purpose' && (
+          <View style={styles.selectedIconPreview}>
+             <View style={styles.defaultIconBox}>
+                {(() => {
+                  const CurrentIcon = tags.find(t => t.label === purpose)?.icon || WalletIcon;
+                  return <CurrentIcon size={24} color={walletColor} />;
+                })()}
+             </View>
+             <Text style={styles.previewLogoName}>Default ({purpose})</Text>
+          </View>
+        )}
+
+        <Text style={styles.inputLabel}>Tag</Text>
+        <View style={styles.purposeRow}>
+          {tags.map((p) => {
+            const Icon = p.icon;
+            const isSelected = purpose === p.label;
+            return (
+              <TouchableOpacity
+                key={p.label}
+                style={[styles.purposeChip, isSelected && styles.purposeChipSelected]}
+                onPress={() => setPurpose(p.label)}
+              >
+                <Icon size={16} color={isSelected ? '#ffffff' : colors.textMuted} />
+                <Text style={[styles.purposeChipText, isSelected && styles.purposeChipTextSelected]}>
+                  {p.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
         <Text style={styles.inputLabel}>QR Code Image (Optional)</Text>
         <TouchableOpacity
@@ -482,6 +497,15 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     marginBottom: 24,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  defaultIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   previewLogo: {
     width: 40,

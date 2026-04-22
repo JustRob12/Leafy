@@ -65,30 +65,7 @@ export default function HomeScreen() {
   }, [goals.length]);
 
 
-  // News Ticker Logic
-  const tickerAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
 
-  useEffect(() => {
-    let isActive = true;
-    const runTicker = () => {
-      if (!isActive) return;
-      tickerAnim.setValue(0);
-      Animated.timing(tickerAnim, {
-        toValue: -1400, // Exactly the width of one block
-        duration: 40000, // Adjust speed proportionate to the new width
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }).start(({ finished }) => {
-        if (finished && isActive) runTicker();
-      });
-    };
-    runTicker();
-
-    return () => {
-      isActive = false;
-      tickerAnim.stopAnimation();
-    };
-  }, []);
 
 
 
@@ -309,6 +286,9 @@ export default function HomeScreen() {
 
 
         {/* QUICK ACTIONS */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Explore</Text>
+        </View>
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Deposit')}>
             <View ref={addSavingsRef} collapsable={false} style={styles.actionIconBorder}>
@@ -416,21 +396,7 @@ export default function HomeScreen() {
         </View>
 
 
-        {/* SCROLLING NEWS TICKER */}
-        <View style={styles.tickerContainer}>
-          <Animated.View style={{ transform: [{ translateX: tickerAnim }], flexDirection: 'row', width: 2800 }}>
-            <View style={{ width: 1400 }}>
-              <Text style={styles.tickerText} numberOfLines={1}>
-                Welcome to Leafy! Track your wallets, set ambitious goals, manage your debts, and log your daily expenses. Let's build your financial future together!
-              </Text>
-            </View>
-            <View style={{ width: 1400 }}>
-              <Text style={styles.tickerText} numberOfLines={1}>
-                Welcome to Leafy! Track your wallets, set ambitious goals, manage your debts, and log your daily expenses. Let's build your financial future together!
-              </Text>
-            </View>
-          </Animated.View>
-        </View>
+
 
         {/* ACTIVE GOALS */}
         <View style={styles.sectionHeader}>
@@ -623,7 +589,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
-    marginBottom: theme.spacing.sm,
+    marginBottom: 24, // More space from balance card
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.3,
@@ -686,7 +652,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
-    paddingTop: theme.spacing.md,
+    paddingTop: 8, // Very close to the Explore label
     justifyContent: 'flex-start',
     flexWrap: 'wrap',
     columnGap: '1.3%',
@@ -718,7 +684,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: 4, // Tighten gap with buttons below
   },
   sectionTitle: {
     fontFamily: theme.fonts.semiBold,
@@ -924,19 +890,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   saveBtnText: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 16,
-    color: '#ffffff',
-  },
-  tickerContainer: {
-    backgroundColor: '#10B981',
-    overflow: 'hidden',
-    paddingVertical: 10,
-    marginBottom: theme.spacing.md,
-    marginTop: -theme.spacing.xs,
-    marginHorizontal: -theme.spacing.lg, // Make it span full width
-  },
-  tickerText: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 14,
     color: '#ffffff',
   },
   walletSlide: {

@@ -5,6 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "scheme": "leafy",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -39,7 +40,8 @@
           "cameraPermission": "The app accesses your camera to let you take goal cover images."
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      "expo-quick-actions"
     ],
     "extra": {
       "eas": {

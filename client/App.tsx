@@ -5,7 +5,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import * as Notifications from 'expo-notifications';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
+import * as QuickActions from 'expo-quick-actions';
 
 import { AppProvider, useAppContext } from './src/context/AppContext';
 import LoadingScreen from './src/screens/LoadingScreen';
@@ -142,6 +143,22 @@ const styles = StyleSheet.create({
   },
 });
 
+const linking = {
+  prefixes: ['leafy://'],
+  config: {
+    screens: {
+      Main: {
+        screens: {
+          HomeTab: 'home',
+        },
+      },
+      Deposit: 'deposit',
+      Withdraw: 'withdraw',
+      AddSavings: 'deposit', // Alias
+    },
+  },
+};
+
 export default function App() {
   let [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -150,13 +167,63 @@ export default function App() {
     Inter_700Bold,
   });
 
+  useEffect(() => {
+    // 1. Set up the shortcuts
+    const setupShortcuts = async () => {
+      try {
+        await QuickActions.setItems([
+          {
+            id: 'deposit',
+            title: 'Add Savings',
+            icon: Platform.OS === 'ios' ? 'add' : 'shortcut_add', // System icons
+            params: { href: 'leafy://deposit' }
+          },
+          {
+            id: 'withdraw',
+            title: 'Withdraw',
+            icon: Platform.OS === 'ios' ? 'share' : 'shortcut_withdraw',
+            params: { href: 'leafy://withdraw' }
+          }
+        ]);
+      } catch (e) {
+        console.warn('QuickActions not supported on this platform/environment');
+      }
+    };
+
+    setupShortcuts();
+
+    // 2. Listen for shortcut interactions
+    const deviceSubscription = QuickActions.addListener((action) => {
+      if (action.id === 'deposit') {
+        navigationRef.navigate('Deposit' as never);
+      } else if (action.id === 'withdraw') {
+        navigationRef.navigate('Withdraw' as never);
+      }
+    });
+
+    // 3. Check for initial launch action
+    const action = QuickActions.initial as any;
+    if (action) {
+      // Short delay to ensure navigation is ready
+      setTimeout(() => {
+        if (action.id === 'deposit') {
+          navigationRef.navigate('Deposit' as never);
+        } else if (action.id === 'withdraw') {
+          navigationRef.navigate('Withdraw' as never);
+        }
+      }, 500);
+    }
+
+    return () => deviceSubscription.remove();
+  }, []);
+
   if (!fontsLoaded) {
     return <View style={{ flex: 1, backgroundColor: '#10b981' }} />;
   }
 
   return (
     <AppProvider>
-      <NavigationContainer ref={navigationRef}>
+      <NavigationContainer ref={navigationRef} linking={linking}>
         <MainNavigation />
         <FeedbackModal />
         <ConfirmModal />

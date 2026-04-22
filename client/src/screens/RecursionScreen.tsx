@@ -71,7 +71,12 @@ export default function RecursionScreen() {
                   </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.companyName}>{item.companyName}</Text>
-                  <Text style={styles.dateText}>Every day {item.dayOfMonth} of the month</Text>
+                  <Text style={styles.dateText}>
+                    {item.frequency === 'weekly' && `Every ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][item.dayOfWeek ?? 1]}`}
+                    {item.frequency === 'monthly' && `Every day ${item.dayOfMonth} of the month`}
+                    {item.frequency === 'bi-monthly' && 'Every 15th and 30th (15-Day Cycle)'}
+                    {!item.frequency && `Every day ${item.dayOfMonth} of the month`}
+                  </Text>
                   <Text style={[styles.amountText, { marginTop: 4 }]}>₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
                 </View>
               </View>

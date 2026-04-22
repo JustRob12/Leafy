@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, TouchableWithoutFeedback, KeyboardAvoidingView, Platform } from 'react-native';
 import { AlertTriangle, X } from 'lucide-react-native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
@@ -14,36 +14,41 @@ export default function ConfirmModal() {
     <Modal transparent animationType="fade" visible={confirmState.visible}>
       <TouchableWithoutFeedback onPress={closeConfirm}>
         <View style={styles.overlay}>
-          <TouchableWithoutFeedback>
-            <View style={styles.content}>
-              <View style={styles.header}>
-                <View style={[styles.iconWrapper, confirmState.isDestructive ? { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2' } : { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5' }]}>
-                  <AlertTriangle size={24} color={confirmState.isDestructive ? colors.danger : colors.primary} />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+            style={{ width: '100%', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <TouchableWithoutFeedback>
+              <View style={styles.content}>
+                <View style={styles.header}>
+                  <View style={[styles.iconWrapper, confirmState.isDestructive ? { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2' } : { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5' }]}>
+                    <AlertTriangle size={24} color={confirmState.isDestructive ? colors.danger : colors.primary} />
+                  </View>
+                  <TouchableOpacity onPress={closeConfirm} style={styles.closeBtn}>
+                    <X size={20} color={colors.textMuted} />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={closeConfirm} style={styles.closeBtn}>
-                  <X size={20} color={colors.textMuted} />
-                </TouchableOpacity>
+                
+                <Text style={styles.title}>{confirmState.title}</Text>
+                <Text style={styles.message}>{confirmState.message}</Text>
+                
+                <View style={styles.actions}>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={closeConfirm}>
+                    <Text style={styles.cancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.confirmBtn, confirmState.isDestructive ? { backgroundColor: colors.danger } : { backgroundColor: colors.primary }]} 
+                    onPress={() => {
+                      if (confirmState.onConfirm) confirmState.onConfirm();
+                      closeConfirm();
+                    }}
+                  >
+                    <Text style={styles.confirmText}>{confirmState.isDestructive ? 'Delete' : 'Confirm'}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-              
-              <Text style={styles.title}>{confirmState.title}</Text>
-              <Text style={styles.message}>{confirmState.message}</Text>
-              
-              <View style={styles.actions}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={closeConfirm}>
-                  <Text style={styles.cancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.confirmBtn, confirmState.isDestructive ? { backgroundColor: colors.danger } : { backgroundColor: colors.primary }]} 
-                  onPress={() => {
-                    if (confirmState.onConfirm) confirmState.onConfirm();
-                    closeConfirm();
-                  }}
-                >
-                  <Text style={styles.confirmText}>{confirmState.isDestructive ? 'Delete' : 'Confirm'}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
         </View>
       </TouchableWithoutFeedback>
     </Modal>

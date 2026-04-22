@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { theme } from '../theme';
-import { Plus, Trash2, ChevronLeft, Calendar, Plane, MapPin, DollarSign, Wallet } from 'lucide-react-native';
+import { Plus, Trash2, ChevronLeft, Calendar, Plane, MapPin, Wallet } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import LeafyDatePicker from '../components/LeafyDatePicker';
@@ -185,7 +185,7 @@ export default function TravelScreen() {
 
         <Text style={styles.inputLabel}>Expenses (₱)</Text>
         <View style={styles.inputWrapper}>
-          <Wallet size={18} color={colors.textMuted} style={styles.inputIcon} />
+          <Text style={{ fontSize: 18, color: colors.textMuted, fontFamily: theme.fonts.bold, marginRight: 10 }}>₱</Text>
           <TextInput
             style={styles.input}
             placeholder="0.00"

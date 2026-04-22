@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Animated, Platform, TouchableWithoutFeedback, Keyboard, Dimensions, ScrollView, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Animated, Platform, TouchableWithoutFeedback, Keyboard, useWindowDimensions, ScrollView, KeyboardAvoidingView } from 'react-native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 
@@ -10,11 +10,10 @@ interface ActionSheetProps {
   children: React.ReactNode;
 }
 
-const { height } = Dimensions.get('window');
-
 export default function ActionSheet({ visible, onClose, title, children }: ActionSheetProps) {
+  const { height } = useWindowDimensions();
   const { colors, isDarkMode } = useAppContext();
-  const styles = getStyles(colors, isDarkMode);
+  const styles = getStyles(colors, isDarkMode, height);
   const slideAnim = useRef(new Animated.Value(height)).current;
 
   useEffect(() => {
@@ -27,16 +26,16 @@ export default function ActionSheet({ visible, onClose, title, children }: Actio
         friction: 11
       }).start();
     }
-  }, [visible]);
+  }, [visible, height]);
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.overlay}>
           <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.container}
-            keyboardVerticalOffset={0}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 25}
           >
             <Animated.View 
               style={[
@@ -70,7 +69,7 @@ export default function ActionSheet({ visible, onClose, title, children }: Actio
 }
 
 
-const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
+const getStyles = (colors: any, isDarkMode: boolean, height: number) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.7)',

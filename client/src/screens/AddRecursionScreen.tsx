@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
-import { ChevronLeft, Building2, DollarSign, Calendar } from 'lucide-react-native';
+import { ChevronLeft, Building2, Calendar } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import WalletDropdown from '../components/WalletDropdown';
@@ -95,7 +95,7 @@ export default function AddRecursionScreen() {
 
         <Text style={styles.inputLabel}>Amount (Salary)</Text>
         <View style={styles.inputWrapper}>
-          <DollarSign size={18} color={colors.textMuted} style={styles.inputIcon} />
+          <Text style={{ fontSize: 18, color: colors.textMuted, fontFamily: theme.fonts.bold, marginRight: 12 }}>₱</Text>
           <TextInput
             style={styles.input}
             placeholder="0.00"

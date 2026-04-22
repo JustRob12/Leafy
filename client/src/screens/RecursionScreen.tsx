@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme';
-import { Plus, Building2, DollarSign, Trash2, RefreshCw, ChevronLeft, Wallet as WalletIcon, Calendar } from 'lucide-react-native';
+import { Plus, Building2, Trash2, RefreshCw, ChevronLeft, Wallet as WalletIcon, Calendar } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import WalletDropdown from '../components/WalletDropdown';

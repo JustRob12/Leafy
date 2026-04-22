@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { theme } from '../theme';
-import { Plus, Trash2, ChevronLeft, CheckCircle2, Circle, DollarSign, Package, ShoppingBag } from 'lucide-react-native';
+import { Plus, Trash2, ChevronLeft, CheckCircle2, Circle, Package, ShoppingBag } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -171,7 +171,7 @@ export default function GroceryDetailScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.inputLabel}>Price (Optional)</Text>
             <View style={styles.inputWrapper}>
-              <DollarSign size={18} color={colors.textMuted} style={styles.inputIcon} />
+              <Text style={{ fontSize: 18, color: colors.textMuted, fontFamily: theme.fonts.bold, marginRight: 10 }}>₱</Text>
               <TextInput
                 style={styles.input}
                 placeholder="0.00"

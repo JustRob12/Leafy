@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, TouchableWithoutFeedback, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, TouchableWithoutFeedback, Dimensions, KeyboardAvoidingView, Platform } from 'react-native';
 import { theme } from '../theme';
 import { X, Wallet as WalletIcon } from 'lucide-react-native';
 
@@ -25,7 +25,11 @@ export default function WalletPickerModal({ visible, onClose, wallets, selectedW
           <View style={styles.dismissArea} />
         </TouchableWithoutFeedback>
         
-        <View style={styles.content}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+          style={{ width: '100%' }}
+        >
+          <View style={styles.content}>
           <View style={styles.header}>
             <Text style={styles.title}>Select Wallet</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -63,7 +67,8 @@ export default function WalletPickerModal({ visible, onClose, wallets, selectedW
               }}
             />
           </View>
-        </View>
+          </View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );

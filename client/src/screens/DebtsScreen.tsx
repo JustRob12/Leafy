@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { theme } from '../theme';
-import { Plus, User, FileText, DollarSign, Trash2, AlertCircle, ChevronLeft, Calendar } from 'lucide-react-native';
+import { Plus, User, FileText, Trash2, AlertCircle, ChevronLeft, Calendar } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import { useNavigation } from '@react-navigation/native';
@@ -164,7 +164,7 @@ export default function DebtsScreen() {
 
               <Text style={styles.inputLabel}>Amount Paid (₱)</Text>
               <View style={styles.inputWrapper}>
-                <DollarSign size={18} color={colors.textMuted} style={styles.inputIcon} />
+                <Text style={{ fontSize: 18, color: colors.textMuted, fontFamily: theme.fonts.bold, marginRight: 10 }}>₱</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="0.00"

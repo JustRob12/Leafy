@@ -4,7 +4,7 @@ import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
 import { 
-  ChevronLeft, Plus, Search
+  ChevronLeft, Plus, Search, Check
 } from 'lucide-react-native';
 import MainHeader from '../components/MainHeader';
 
@@ -116,14 +116,20 @@ export default function DepositScreen() {
                 <TouchableOpacity 
                   style={[
                     styles.miniWalletItem,
+                    { backgroundColor: wallet.color || (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)') },
                     selectedWalletId === wallet.id && styles.miniWalletItemSelected
                   ]}
                   onPress={() => setSelectedWalletId(wallet.id)}
                 >
-                  <Text style={[styles.miniWalletName, selectedWalletId === wallet.id && { color: '#fff' }]} numberOfLines={1}>
+                  {selectedWalletId === wallet.id && (
+                    <View style={styles.selectedIndicator}>
+                      <Check size={10} color="#ffffff" strokeWidth={3} />
+                    </View>
+                  )}
+                  <Text style={[styles.miniWalletName, { color: '#ffffff' }]} numberOfLines={1}>
                     {wallet.name}
                   </Text>
-                  <Text style={[styles.miniWalletBalance, selectedWalletId === wallet.id && { color: '#fff' }]} numberOfLines={1}>
+                  <Text style={[styles.miniWalletBalance, { color: 'rgba(255, 255, 255, 0.8)' }]} numberOfLines={1}>
                     ₱{Math.floor(wallet.balance).toLocaleString()}
                   </Text>
                 </TouchableOpacity>
@@ -257,8 +263,8 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     padding: 8,
   },
   miniWalletItemSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    borderWidth: 2,
+    borderColor: '#ffffff',
   },
   miniWalletName: {
     fontFamily: theme.fonts.bold,
@@ -340,5 +346,16 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.semiBold,
     fontSize: 16,
     color: '#fff',
+  },
+  selectedIndicator: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

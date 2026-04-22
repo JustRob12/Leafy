@@ -1,13 +1,23 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { Animated, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 // Global animated value representing the Y offset of the tab bar
 // 0 = fully visible, ~100 = fully hidden below screen
 export const globalTabBarTranslateY = new Animated.Value(0);
 
 export function useScrollHideTabBar() {
+  const navigation = useNavigation();
   const lastOffsetY = useRef(0);
   const isHidden = useRef(false);
+
+  // Automatically show TabBar when screen is focused/entered
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      showTabBar();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const currentOffsetY = event.nativeEvent.contentOffset.y;

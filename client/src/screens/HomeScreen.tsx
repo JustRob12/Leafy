@@ -5,7 +5,7 @@ import { AudioPlayer, createAudioPlayer } from 'expo-audio';
 
 
 import { theme } from '../theme';
-import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane, RefreshCw } from 'lucide-react-native';
+import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane, RefreshCw, Leaf, Eye, EyeOff } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation, useScrollToTop } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
@@ -71,6 +71,7 @@ export default function HomeScreen() {
 
   // Tutorial Logic
   const [currentStep, setCurrentStep] = useState(0);
+  const [isBalanceHidden, setIsBalanceHidden] = useState(false);
   const [targetLayout, setTargetLayout] = useState<{ x: number, y: number, w: number, h: number } | null>(null);
   const soundRef = useRef<AudioPlayer | null>(null);
 
@@ -136,7 +137,7 @@ export default function HomeScreen() {
 
       // 3. Create the new sound player
       const player = createAudioPlayer(source);
-      
+
       // 4. Final check before playing - user might have skipped during loading
       if (!isTutorialActive) {
         player.pause();
@@ -196,7 +197,7 @@ export default function HomeScreen() {
         }
       }
     };
-    
+
     handleTutorialState();
   }, [currentStep, isTutorialActive]);
 
@@ -248,9 +249,9 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView 
+      <ScrollView
         ref={scrollViewRef}
-        contentContainerStyle={styles.scrollContent} 
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
@@ -259,15 +260,32 @@ export default function HomeScreen() {
         {/* PREMIUM BALANCE CARD (Glass Green Palette) */}
         <View ref={balanceRef} collapsable={false} style={styles.premiumCard}>
 
-          <View style={styles.glowEffect} />
+          <View style={styles.decorLeaf1}><Leaf size={50} color="#ffffff" opacity={0.3} style={{ transform: [{ rotate: '45deg' }] }} /></View>
+          <View style={styles.decorLeaf2}><Leaf size={80} color="#ffffff" opacity={0.3} style={{ transform: [{ rotate: '-20deg' }] }} /></View>
+          <View style={styles.decorLeaf3}><Leaf size={40} color="#ffffff" opacity={0.3} style={{ transform: [{ rotate: '15deg' }] }} /></View>
+          <View style={styles.decorLeaf4}><Leaf size={60} color="#ffffff" opacity={0.3} style={{ transform: [{ rotate: '70deg' }] }} /></View>
+          <View style={styles.decorLeaf5}><Leaf size={30} color="#ffffff" opacity={0.3} style={{ transform: [{ rotate: '-45deg' }] }} /></View>
+
           <View style={styles.premiumCardTop}>
             <Text style={styles.premiumLabel}>Total Balance</Text>
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={() => setIsBalanceHidden(!isBalanceHidden)}
+              activeOpacity={0.7}
+            >
+              {isBalanceHidden ? <EyeOff size={18} color="#d1fae5" /> : <Eye size={18} color="#d1fae5" />}
+            </TouchableOpacity>
           </View>
-          <AnimatedCounter
-            value={totalBalance}
-            style={styles.premiumAmount}
-            shouldAnimate={totalBalance < 1000000}
-          />
+
+          {isBalanceHidden ? (
+            <Text style={styles.premiumAmount}>₱ ******</Text>
+          ) : (
+            <AnimatedCounter
+              value={totalBalance}
+              style={styles.premiumAmount}
+              shouldAnimate={totalBalance < 1000000}
+            />
+          )}
 
 
           <View style={styles.dividerLight} />
@@ -275,11 +293,15 @@ export default function HomeScreen() {
           <View style={styles.cardFooter}>
             <View>
               <Text style={styles.cardFooterLabel}>Monthly Spent</Text>
-              <Text style={styles.cardFooterValue}>₱{monthlySpent.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+              <Text style={styles.cardFooterValue}>
+                {isBalanceHidden ? "₱ ******" : `₱${monthlySpent.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              </Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={styles.cardFooterLabel}>To be Received</Text>
-              <Text style={styles.cardFooterValue}>₱{totalReceivables.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+              <Text style={styles.cardFooterValue}>
+                {isBalanceHidden ? "₱ ******" : `₱${totalReceivables.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              </Text>
             </View>
           </View>
         </View>
@@ -361,7 +383,7 @@ export default function HomeScreen() {
               <ShoppingCart size={20} color={colors.text} />
               {(() => {
                 const todayDayIndex = new Date().getDay();
-                const count = groceryLists.filter(list => 
+                const count = groceryLists.filter(list =>
                   list.scheduledDays && list.scheduledDays.includes(todayDayIndex)
                 ).length;
                 if (count > 0) {
@@ -406,61 +428,65 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {goals.length === 0 ? (
-          <View style={styles.emptyGoalCard}>
-            <Text style={styles.emptyGoalText}>You have no Goal yet</Text>
-            <TouchableOpacity style={styles.emptyGoalBtn} onPress={() => navigation.navigate('Goals')}>
-              <Text style={styles.emptyGoalBtnText}>Create Goal</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.carouselContainer}>
-            {(() => {
-              const goal = goals[activeGoalIndex];
-              if (!goal) return null;
+        {
+          goals.length === 0 ? (
+            <View style={styles.emptyGoalCard}>
+              <Text style={styles.emptyGoalText}>You have no Goal yet</Text>
+              <TouchableOpacity style={styles.emptyGoalBtn} onPress={() => navigation.navigate('Goals')}>
+                <Text style={styles.emptyGoalBtnText}>Create Goal</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.carouselContainer}>
+              {(() => {
+                const goal = goals[activeGoalIndex];
+                if (!goal) return null;
 
-              const linkedWallet = wallets.find(w => w.id === goal.walletId);
-              const currentAmount = linkedWallet ? linkedWallet.balance : 0;
-              const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
+                const linkedWallet = wallets.find(w => w.id === goal.walletId);
+                const currentAmount = linkedWallet ? linkedWallet.balance : 0;
+                const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
 
-              return (
-                <Animated.View
-                  style={[
-                    styles.goalCard,
-                    {
-                      opacity: goalFadeAnim,
-                    }
-                  ]}
-                >
-                  <TouchableOpacity
-                    activeOpacity={0.9}
-                    onPress={() => navigation.navigate('GoalDetail', { goal })}
+                return (
+                  <Animated.View
+                    style={[
+                      styles.goalCard,
+                      {
+                        opacity: goalFadeAnim,
+                      }
+                    ]}
                   >
-                    <View style={styles.goalRow}>
-                      <View style={styles.goalLeft}>
-                        <View style={styles.goalIconWrapper}>
-                          {goal.imageUrl ? (
-                            <Image source={{ uri: goal.imageUrl }} style={{ width: '100%', height: '100%', borderRadius: 14 }} />
-                          ) : (
-                            <Target size={20} color={theme.colors.primary} />
-                          )}
-                        </View>
-                        <View>
-                          <Text style={styles.goalTitle}>{goal.title}</Text>
-                          <Text style={styles.goalAmountText}>₱{currentAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })} / ₱{goal.targetAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
+                    <View style={styles.goalGlowBig} />
+                    <View style={styles.goalGlowSmall} />
+                    <TouchableOpacity
+                      activeOpacity={0.9}
+                      onPress={() => navigation.navigate('GoalDetail', { goal })}
+                    >
+                      <View style={styles.goalRow}>
+                        <View style={styles.goalLeft}>
+                          <View style={styles.goalIconWrapper}>
+                            {goal.imageUrl ? (
+                              <Image source={{ uri: goal.imageUrl }} style={{ width: '100%', height: '100%', borderRadius: 14 }} />
+                            ) : (
+                              <Target size={20} color="#ffffff" />
+                            )}
+                          </View>
+                          <View>
+                            <Text style={styles.goalTitle}>{goal.title}</Text>
+                            <Text style={styles.goalAmountText}>₱{currentAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })} / ₱{goal.targetAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
+                          </View>
                         </View>
                       </View>
-                    </View>
 
-                    <View style={styles.progressBarBg}>
-                      <View style={[styles.progressBarFill, { width: `${Math.max(0, Math.min(progress, 100))}%` }]} />
-                    </View>
-                  </TouchableOpacity>
-                </Animated.View>
-              );
-            })()}
-          </View>
-        )}
+                      <View style={styles.progressBarBg}>
+                        <View style={[styles.progressBarFill, { width: `${Math.max(0, Math.min(progress, 100))}%` }]} />
+                      </View>
+                    </TouchableOpacity>
+                  </Animated.View>
+                );
+              })()}
+            </View>
+          )
+        }
 
         {/* RECENT TRANSACTIONS */}
         <View style={styles.sectionHeader}>
@@ -506,11 +532,11 @@ export default function HomeScreen() {
 
 
         <View style={{ height: 20 }} />
-      </ScrollView>
+      </ScrollView >
 
 
       {/* TUTORIAL OVERLAY */}
-      <Modal visible={isTutorialActive} transparent animationType="fade" statusBarTranslucent={true}>
+      < Modal visible={isTutorialActive} transparent animationType="fade" statusBarTranslucent={true} >
 
         <View style={styles.tutorialContainer}>
           {targetLayout && (
@@ -567,11 +593,11 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
-      </Modal>
+      </Modal >
 
 
 
-    </View>
+    </View >
   );
 }
 
@@ -600,14 +626,35 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.4)',
     borderWidth: 1,
   },
-  glowEffect: {
+  decorLeaf1: {
     position: 'absolute',
-    top: -50,
-    right: -50,
-    width: 200,
-    height: 200,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 100,
+    top: -10,
+    right: 20,
+    zIndex: 0,
+  },
+  decorLeaf2: {
+    position: 'absolute',
+    top: 30,
+    left: -20,
+    zIndex: 0,
+  },
+  decorLeaf3: {
+    position: 'absolute',
+    bottom: 20,
+    right: 50,
+    zIndex: 0,
+  },
+  decorLeaf4: {
+    position: 'absolute',
+    bottom: -15,
+    left: 40,
+    zIndex: 0,
+  },
+  decorLeaf5: {
+    position: 'absolute',
+    top: 60,
+    right: -10,
+    zIndex: 0,
   },
   premiumCardTop: {
     flexDirection: 'row',
@@ -628,6 +675,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     marginBottom: theme.spacing.md,
     letterSpacing: -0.5,
     zIndex: 1,
+    minHeight: 40, // Prevent layout jump
+  },
+  eyeButton: {
+    padding: 4,
   },
   dividerLight: {
     height: 1,
@@ -736,12 +787,29 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     justifyContent: 'center',
   },
   goalCard: {
-    backgroundColor: colors.card,
+    backgroundColor: colors.primary,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
     width: '100%',
+    overflow: 'hidden',
+  },
+  goalGlowBig: {
+    position: 'absolute',
+    top: -40,
+    right: -40,
+    width: 140,
+    height: 140,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 70,
+  },
+  goalGlowSmall: {
+    position: 'absolute',
+    bottom: -20,
+    left: -20,
+    width: 80,
+    height: 80,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 40,
   },
   pagination: {
     flexDirection: 'row',
@@ -777,19 +845,19 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 14,
-    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   goalTitle: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 16,
-    color: colors.text,
+    color: '#ffffff',
   },
   goalAmountText: {
     fontFamily: theme.fonts.medium,
     fontSize: 13,
-    color: colors.textMuted,
+    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
   goalPercentage: {
@@ -799,14 +867,14 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   progressBarBg: {
     height: 8,
-    backgroundColor: isDarkMode ? '#334155' : '#f1f5f9',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 4,
     width: '100%',
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: colors.primary,
+    backgroundColor: '#ffffff',
     borderRadius: 4,
   },
   transactionsList: {

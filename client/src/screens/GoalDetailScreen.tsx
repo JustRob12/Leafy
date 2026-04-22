@@ -92,31 +92,35 @@ export default function GoalDetailScreen() {
             <Text style={styles.progressLabel}>Goal Completion</Text>
           </View>
 
-          {/* Dynamic Analysis Text */}
-          <View style={styles.analysisContainer}>
-            <Info size={16} color={colors.primary} style={{ marginTop: 2 }} />
-            <Text style={styles.analysisText}>
-              {getAnalyticalText()} 
-              {remaining > 0 && ` You currently need ₱${remaining.toLocaleString()} more to reach your target.`}
-            </Text>
-          </View>
 
-          {/* Analytical Grid */}
-          <View style={styles.statsGrid}>
-            <View style={styles.statBox}>
-              <TrendingUp size={20} color={colors.primary} style={styles.statIcon} />
-              <Text style={styles.statValue}>₱{currentAmount.toLocaleString()}</Text>
-              <Text style={styles.statLabel}>Saved</Text>
+          {/* Analytical Rows List */}
+          <View style={styles.statsVerticalList}>
+            <View style={styles.statRowItem}>
+              <View style={styles.statRowLabelGroup}>
+                <TrendingUp size={18} color={colors.primary} />
+                <Text style={styles.statRowLabel}>Saved</Text>
+              </View>
+              <Text style={styles.statRowValue}>₱{currentAmount.toLocaleString()}</Text>
             </View>
-            <View style={styles.statBox}>
-              <AlertCircle size={20} color="#f59e0b" style={styles.statIcon} />
-              <Text style={styles.statValue}>₱{remaining.toLocaleString()}</Text>
-              <Text style={styles.statLabel}>Gap</Text>
+
+            <View style={styles.statRowDivider} />
+
+            <View style={styles.statRowItem}>
+              <View style={styles.statRowLabelGroup}>
+                <AlertCircle size={18} color="#f59e0b" />
+                <Text style={styles.statRowLabel}>Gap</Text>
+              </View>
+              <Text style={[styles.statRowValue, { color: '#f59e0b' }]}>₱{remaining.toLocaleString()}</Text>
             </View>
-            <View style={styles.statBox}>
-              <BarChart3 size={20} color="#3b82f6" style={styles.statIcon} />
-              <Text style={styles.statValue}>₱{goal.targetAmount.toLocaleString()}</Text>
-              <Text style={styles.statLabel}>Target</Text>
+
+            <View style={styles.statRowDivider} />
+
+            <View style={styles.statRowItem}>
+              <View style={styles.statRowLabelGroup}>
+                <BarChart3 size={18} color="#3b82f6" />
+                <Text style={styles.statRowLabel}>Target</Text>
+              </View>
+              <Text style={[styles.statRowValue, { color: '#3b82f6' }]}>₱{goal.targetAmount.toLocaleString()}</Text>
             </View>
           </View>
 
@@ -298,35 +302,41 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     color: colors.text,
     lineHeight: 20,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-    width: '100%',
-  },
-  statBox: {
-    flex: 1,
+  statsVerticalList: {
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 24,
+    padding: 20,
     borderWidth: 1,
     borderColor: colors.border,
+    marginBottom: 24,
+    width: '100%',
+  },
+  statRowItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 12,
   },
-  statIcon: {
-    marginBottom: 8,
+  statRowLabelGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  statValue: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 14,
-    color: colors.text,
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 11,
+  statRowLabel: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 15,
     color: colors.textMuted,
-    textTransform: 'uppercase',
+  },
+  statRowValue: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 18,
+    color: colors.text,
+  },
+  statRowDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    width: '100%',
+    opacity: 0.5,
   },
   descriptionSection: {
     width: '100%',

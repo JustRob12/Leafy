@@ -161,14 +161,20 @@ export default function App() {
           {
             id: 'deposit',
             title: 'Add Savings',
-            icon: Platform.OS === 'ios' ? 'add' : 'add', 
+            icon: Platform.OS === 'ios' ? 'symbol:plus.circle.fill' : 'shortcut_add_savings', 
             params: { href: 'leafy://deposit' }
           },
           {
             id: 'withdraw',
             title: 'Withdraw',
-            icon: Platform.OS === 'ios' ? 'share' : 'share',
+            icon: Platform.OS === 'ios' ? 'symbol:arrow.up.right.circle.fill' : 'shortcut_withdraw',
             params: { href: 'leafy://withdraw' }
+          },
+          {
+            id: 'add_goal',
+            title: 'Add Goal',
+            icon: Platform.OS === 'ios' ? 'symbol:target' : 'shortcut_add_goal',
+            params: { href: 'leafy://add-goal' }
           }
         ]);
       } catch (e) {
@@ -184,6 +190,8 @@ export default function App() {
         navigationRef.navigate('Deposit' as never);
       } else if (action.id === 'withdraw') {
         navigationRef.navigate('Withdraw' as never);
+      } else if (action.id === 'add_goal') {
+        navigationRef.navigate('AddGoal' as never);
       }
     });
 
@@ -196,6 +204,8 @@ export default function App() {
           navigationRef.navigate('Deposit' as never);
         } else if (action.id === 'withdraw') {
           navigationRef.navigate('Withdraw' as never);
+        } else if (action.id === 'add_goal') {
+          navigationRef.navigate('AddGoal' as never);
         }
       }, 500);
     }

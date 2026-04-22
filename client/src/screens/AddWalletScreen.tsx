@@ -310,7 +310,7 @@ export default function AddWalletScreen() {
       <Modal
         visible={logoModalVisible}
         transparent
-        animationType="slide"
+        animationType="none"
         onRequestClose={() => setLogoModalVisible(false)}
       >
         <View style={styles.modalOverlay}>

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightPalette, darkPalette } from '../theme';
-import { requestNotificationPermissions, syncAllNotifications } from '../services/NotificationService';
+import { requestNotificationPermissions, syncAllNotifications, notifyGoalCompletion } from '../services/NotificationService';
 
 export type WalletType = {
   id: string;
@@ -165,6 +165,8 @@ type AppContextType = {
   editRecursion: (id: string, updates: Partial<Omit<RecursionType, 'id' | 'date'>>) => Promise<void>;
   deleteRecursion: (id: string) => Promise<void>;
   processRecursion: (id: string) => Promise<void>;
+  isNotificationsEnabled: boolean;
+  toggleNotifications: (enabled: boolean) => Promise<void>;
 };
 
 
@@ -202,6 +204,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     isDestructive: true
   });
   const [isTutorialActive, setIsTutorialActive] = useState(false);
+  const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(true);
 
 
   useEffect(() => {
@@ -268,6 +271,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (storedTheme !== null) {
         setIsDarkMode(storedTheme === 'true');
       }
+
+      const storedNotifs = await AsyncStorage.getItem('@isNotificationsEnabled');
+      if (storedNotifs !== null) {
+        setIsNotificationsEnabled(storedNotifs === 'true');
+      }
     } catch (e) {
       console.error('Failed to load data', e);
     } finally {
@@ -285,9 +293,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       // Initialize notifications
       const setupNotifications = async () => {
-        const hasPermission = await requestNotificationPermissions();
-        if (hasPermission) {
-          syncAllNotifications(debts, groceryLists);
+        if (isNotificationsEnabled) {
+          const hasPermission = await requestNotificationPermissions();
+          if (hasPermission) {
+            syncAllNotifications(debts, groceryLists, true);
+          }
+        } else {
+          syncAllNotifications(debts, groceryLists, false);
         }
       };
       setupNotifications();
@@ -297,9 +309,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Sync notifications whenever debts or grocery lists change
   useEffect(() => {
     if (isLoaded) {
-      syncAllNotifications(debts, groceryLists);
+      syncAllNotifications(debts, groceryLists, isNotificationsEnabled);
     }
-  }, [debts, groceryLists]);
+  }, [debts, groceryLists, isNotificationsEnabled]);
 
   const checkAndProcessRecursions = async () => {
     const today = new Date();
@@ -431,15 +443,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await AsyncStorage.setItem('@transactions', JSON.stringify(updatedTx));
 
     // Update wallet balance
+    let completedGoalTitle: string | null = null;
+
     const updatedWallets = wallets.map(w => {
       if (w.id === txData.walletId) {
+        const oldBalance = w.balance;
+        const newBalance = w.balance + (txData.type === 'deposit' ? txData.amount : -txData.amount);
+        
+        // Check for goal completion
+        if (txData.type === 'deposit') {
+          const associatedGoals = goals.filter(g => g.walletId === w.id);
+          for (const goal of associatedGoals) {
+            if (oldBalance < goal.targetAmount && newBalance >= goal.targetAmount) {
+              completedGoalTitle = goal.title;
+              break; // Only notify for one goal at a time to avoid spam
+            }
+          }
+        }
+
         return {
           ...w,
-          balance: w.balance + (txData.type === 'deposit' ? txData.amount : -txData.amount)
+          balance: newBalance
         };
       }
       return w;
     });
+
+    if (completedGoalTitle && isNotificationsEnabled) {
+      notifyGoalCompletion(completedGoalTitle);
+    }
+
     setWallets(updatedWallets);
     await AsyncStorage.setItem('@wallets', JSON.stringify(updatedWallets));
     setLoading(false);
@@ -695,6 +728,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newVal = !isDarkMode;
     setIsDarkMode(newVal);
     await AsyncStorage.setItem('@isDarkMode', newVal.toString());
+  };
+
+  const toggleNotifications = async (enabled: boolean) => {
+    setIsNotificationsEnabled(enabled);
+    await AsyncStorage.setItem('@isNotificationsEnabled', enabled.toString());
+    if (enabled) {
+      await requestNotificationPermissions();
+    }
   };
 
   const colors = isDarkMode ? darkPalette : lightPalette;
@@ -1121,7 +1162,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addRecursion,
         editRecursion,
         deleteRecursion,
-        processRecursion
+        processRecursion,
+        isNotificationsEnabled,
+        toggleNotifications,
       }}
     >
       {children}

@@ -77,7 +77,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
         <View style={styles.headerTop}>
           <View>
             <Text style={styles.realtimeDate}>{formattedDate}</Text>
-            <Text style={styles.greeting}>Hello, {username || 'User'}</Text>
+            <Text style={styles.greeting}>Hello, <Text style={styles.usernameBold}>{username || 'User'}</Text></Text>
             <Text style={styles.appMessage}>Welcome to Leafy</Text>
           </View>
 
@@ -366,9 +366,13 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     marginBottom: 2,
   },
   greeting: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 20,
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 22,
     color: colors.text,
+  },
+  usernameBold: {
+    fontFamily: theme.fonts.bold,
+    fontWeight: 'bold',
   },
   appMessage: {
     fontFamily: theme.fonts.medium,

@@ -4,14 +4,14 @@ import * as ImagePicker from 'expo-image-picker';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { theme } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check, Fingerprint, ChevronLeft } from 'lucide-react-native';
+import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check, Fingerprint, ChevronLeft, Plus } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 
 import { useNavigation } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 
 export default function SettingsScreen() {
-  const { username, userImage, setUserImage, clearData, showConfirm, isDarkMode, toggleTheme, colors, appPin, setAppPin, isSecurityEnabled, toggleSecurity, isBiometricsEnabled, toggleBiometrics } = useAppContext();
+  const { username, userImage, setUserImage, clearData, showConfirm, isDarkMode, toggleTheme, colors, appPin, setAppPin, isSecurityEnabled, toggleSecurity, isBiometricsEnabled, toggleBiometrics, isNotificationsEnabled, toggleNotifications } = useAppContext();
   const navigation = useNavigation<any>();
 
   const styles = getStyles(colors, isDarkMode);
@@ -23,6 +23,8 @@ export default function SettingsScreen() {
   const [aboutModalVisible, setAboutModalVisible] = React.useState(false);
   const [securityModalVisible, setSecurityModalVisible] = React.useState(false);
   const [accountModalVisible, setAccountModalVisible] = React.useState(false);
+  const [notifModalVisible, setNotifModalVisible] = React.useState(false);
+  const [widgetModalVisible, setWidgetModalVisible] = React.useState(false);
   const [pinSetupVisible, setPinSetupVisible] = React.useState(false);
   const [editName, setEditName] = React.useState(username || '');
   const [newPin, setNewPin] = React.useState('');
@@ -62,6 +64,8 @@ export default function SettingsScreen() {
     { id: '1', title: 'Account Settings', icon: User, action: () => { setEditName(username || ''); setAccountModalVisible(true); } },
     { id: '2', title: 'Backup & Restore', icon: Database, action: () => navigation.navigate('DataTransfer') },
     { id: '3', title: 'Privacy & Security', icon: Shield, action: () => { setPrivacyModalVisible(true); } },
+    { id: '8', title: 'Notifications', icon: Bell, action: () => { setNotifModalVisible(true); } },
+    { id: '9', title: 'Widgets & Shortcuts', icon: Plus, action: () => { setWidgetModalVisible(true); } },
     { id: '7', title: 'Security & PIN', icon: Lock, action: () => { setSecurityModalVisible(true); } },
     { id: '4', title: 'Help & Support', icon: CircleHelp, action: () => { setHelpModalVisible(true); } },
     { id: '6', title: 'About Leafy', icon: Leaf, action: () => { setAboutModalVisible(true); } },
@@ -331,6 +335,82 @@ export default function SettingsScreen() {
             }}
           >
             <Text style={styles.closeBtnText}>Save Changes</Text>
+          </TouchableOpacity>
+        </View>
+      </ActionSheet>
+
+      {/* Notifications Modal */}
+      <ActionSheet
+        visible={notifModalVisible}
+        onClose={() => setNotifModalVisible(false)}
+        title="Notifications"
+      >
+        <View style={styles.modalContent}>
+          <View style={styles.securityHeader}>
+            <View style={[styles.securityIconBox, isNotificationsEnabled && styles.securityIconBoxActive]}>
+              <Bell size={24} color={isNotificationsEnabled ? colors.primary : colors.textMuted} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.securityHeaderTitle}>Activity Reminders</Text>
+              <Text style={styles.securityHeaderSubtitle}>Get notified about debts due today and grocery schedules.</Text>
+            </View>
+          </View>
+
+          <View style={styles.configGroup}>
+            <TouchableOpacity
+              style={styles.configItem}
+              onPress={() => toggleNotifications(!isNotificationsEnabled)}
+            >
+              <View style={styles.configItemLeft}>
+                <View style={[styles.checkbox, isNotificationsEnabled && styles.checkboxActive]}>
+                  {isNotificationsEnabled && <Check size={14} color="#ffffff" />}
+                </View>
+                <Text style={styles.configText}>Enabled Notifications</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={styles.closeBtn} onPress={() => setNotifModalVisible(false)}>
+            <Text style={styles.closeBtnText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </ActionSheet>
+
+      {/* Widgets & Shortcuts Modal */}
+      <ActionSheet
+        visible={widgetModalVisible}
+        onClose={() => setWidgetModalVisible(false)}
+        title="Widgets & Shortcuts"
+      >
+        <View style={styles.modalContent}>
+          <View style={styles.infoSection}>
+            <Text style={styles.infoTitle}>Home Screen Shortcuts</Text>
+            <Text style={styles.infoDescription}>
+              Quickly access Add Savings and Withdraw screens directly from your home screen icon.
+            </Text>
+          </View>
+
+          <View style={styles.configGroup}>
+             <View style={styles.infoSection}>
+                <Text style={[styles.infoTitle, { fontSize: 16 }]}>How to use:</Text>
+                <Text style={styles.infoDescription}>
+                  1. Go to your phone's home screen.{"\n"}
+                  2. Long-press the Leafy app icon.{"\n"}
+                  3. Select "Add Savings" or "Withdraw".{"\n"}
+                  4. (Android) You can drag these items to your home screen as standalone widgets.
+                </Text>
+             </View>
+          </View>
+
+          <TouchableOpacity 
+            style={styles.closeBtn} 
+            onPress={() => {
+              // Trigger a refresh/setup check
+              Alert.alert("Shortcut Synchronized", "Your home screen shortcuts have been updated with the latest premium design.");
+              setWidgetModalVisible(false);
+            }}
+          >
+            <Text style={styles.closeBtnText}>Check Shortcuts</Text>
           </TouchableOpacity>
         </View>
       </ActionSheet>

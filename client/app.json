@@ -41,7 +41,8 @@
         }
       ],
       "expo-notifications",
-      "expo-quick-actions"
+      "expo-quick-actions",
+      "./withShortcutIcons"
     ],
     "extra": {
       "eas": {

@@ -59,25 +59,11 @@ import BottomTabNavigator from './src/navigation/BottomTabNavigator';
 const Stack = createNativeStackNavigator();
 
 function MainNavigation() {
-  const { isLoaded, username, colors, isDarkMode, isSecurityEnabled, isUnlocked } = useAppContext();
-
-
-  const [showSplash, setShowSplash] = useState(true);
-
-  if (showSplash || !isLoaded) {
-    return (
-      <>
-        <StatusBar style="light" />
-        <LoadingScreen onFinish={() => setShowSplash(false)} />
-      </>
-    );
-  }
+  const { username, colors, isDarkMode, isSecurityEnabled, isUnlocked } = useAppContext();
 
   if (username && isSecurityEnabled && !isUnlocked) {
     return <SecurityScreen />;
   }
-
-
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -160,7 +146,7 @@ const linking = {
 };
 
 export default function App() {
-  let [fontsLoaded] = useFonts({
+  const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
@@ -175,13 +161,13 @@ export default function App() {
           {
             id: 'deposit',
             title: 'Add Savings',
-            icon: Platform.OS === 'ios' ? 'add' : 'shortcut_add', // System icons
+            icon: Platform.OS === 'ios' ? 'add' : 'add', 
             params: { href: 'leafy://deposit' }
           },
           {
             id: 'withdraw',
             title: 'Withdraw',
-            icon: Platform.OS === 'ios' ? 'share' : 'shortcut_withdraw',
+            icon: Platform.OS === 'ios' ? 'share' : 'share',
             params: { href: 'leafy://withdraw' }
           }
         ]);
@@ -217,18 +203,36 @@ export default function App() {
     return () => deviceSubscription.remove();
   }, []);
 
-  if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: '#10b981' }} />;
+  return (
+    <AppProvider>
+      <AppContent fontsLoaded={fontsLoaded} />
+    </AppProvider>
+  );
+}
+
+function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
+  const { isLoaded } = useAppContext();
+  const [showSplash, setShowSplash] = useState(true);
+
+  // If fonts aren't loaded yet OR data isn't loaded OR splash is still showing
+  if (!fontsLoaded || !isLoaded || showSplash) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#10b981' }}>
+        <StatusBar style="light" />
+        <LoadingScreen onFinish={() => setShowSplash(false)} />
+      </View>
+    );
   }
 
   return (
-    <AppProvider>
-      <NavigationContainer ref={navigationRef} linking={linking}>
+    <NavigationContainer ref={navigationRef} linking={linking}>
+      <View style={{ flex: 1 }}>
         <MainNavigation />
         <FeedbackModal />
         <ConfirmModal />
         <LoadingOverlay />
-      </NavigationContainer>
-    </AppProvider>
+      </View>
+    </NavigationContainer>
   );
 }
+

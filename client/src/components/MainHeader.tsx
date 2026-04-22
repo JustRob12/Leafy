@@ -372,7 +372,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   usernameBold: {
     fontFamily: theme.fonts.bold,
-    fontWeight: 'bold',
   },
   appMessage: {
     fontFamily: theme.fonts.medium,

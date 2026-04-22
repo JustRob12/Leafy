@@ -137,3 +137,12 @@ export const notifyGoalCompletion = async (goalTitle: string) => {
         console.log('Failed to send goal notification:', error);
     }
 };
+
+export const updateBadgeCount = async (count: number) => {
+    try {
+        await Notifications.setBadgeCountAsync(count);
+    } catch (error) {
+        console.log('Failed to set badge count:', error);
+    }
+};
+

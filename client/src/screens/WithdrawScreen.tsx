@@ -260,8 +260,23 @@ export default function WithdrawScreen() {
       </View>
 
       <View style={styles.mainContent}>
-        {step === 0 && renderStep0()}
-        {step === 1 && renderStep1()}
+        {wallets.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>Please add a wallet first</Text>
+            <TouchableOpacity 
+              style={styles.addWalletBtn} 
+              onPress={() => navigation.navigate('AddWallet')}
+            >
+              <Plus size={20} color="#fff" />
+              <Text style={styles.addWalletBtnText}>Add Wallet</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            {step === 0 && renderStep0()}
+            {step === 1 && renderStep1()}
+          </>
+        )}
       </View>
 
       {/* Add Preset Modal */}
@@ -740,5 +755,31 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.semiBold,
     fontSize: 18,
     color: colors.text,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 100,
+  },
+  emptyStateText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 18,
+    color: colors.textMuted,
+    marginBottom: 20,
+  },
+  addWalletBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: theme.borderRadius.full,
+    gap: 8,
+  },
+  addWalletBtnText: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 16,
+    color: '#fff',
   },
 });

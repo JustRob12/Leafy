@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightPalette, darkPalette } from '../theme';
-import { requestNotificationPermissions, syncAllNotifications, notifyGoalCompletion } from '../services/NotificationService';
+import { requestNotificationPermissions, syncAllNotifications, notifyGoalCompletion, updateBadgeCount } from '../services/NotificationService';
 
 export type WalletType = {
   id: string;
@@ -312,6 +312,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       syncAllNotifications(debts, groceryLists, isNotificationsEnabled);
     }
   }, [debts, groceryLists, isNotificationsEnabled]);
+
+  // Sync app badge count whenever debts or grocery lists change
+  useEffect(() => {
+    if (isLoaded) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayIndex = new Date().getDay();
+
+      const todayDebts = debts.filter(d => d.dueDate === todayStr).length;
+      const todayGroceries = groceryLists.filter(list => 
+        list.scheduledDays && list.scheduledDays.includes(todayIndex)
+      ).length;
+
+      updateBadgeCount(todayDebts + todayGroceries);
+    }
+  }, [isLoaded, debts, groceryLists]);
 
   const checkAndProcessRecursions = async () => {
     const today = new Date();

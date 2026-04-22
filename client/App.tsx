@@ -147,14 +147,30 @@ const linking = {
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
+    'Inter_400Regular': Inter_400Regular,
+    'Inter_500Medium': Inter_500Medium,
+    'Inter_600SemiBold': Inter_600SemiBold,
+    'Inter_700Bold': Inter_700Bold,
   });
 
+  return (
+    <AppProvider>
+      <AppContent fontsLoaded={fontsLoaded} />
+    </AppProvider>
+  );
+}
+
+function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
+  const { isLoaded, isSecurityEnabled, isUnlocked } = useAppContext();
+  const [showSplash, setShowSplash] = useState(true);
+  const [didTimeout, setDidTimeout] = useState(false);
+  const [pendingWidgetAction, setPendingWidgetAction] = useState<string | null>(null);
+
+  // Quick Action / Widget Handling
   useEffect(() => {
-    // 1. Set up the shortcuts
+    if (!isLoaded) return;
+
+    // 1. Set up the shortcuts (only needs to be done once)
     const setupShortcuts = async () => {
       try {
         await QuickActions.setItems([
@@ -178,55 +194,59 @@ export default function App() {
           }
         ]);
       } catch (e) {
-        console.warn('QuickActions not supported on this platform/environment');
+        console.warn('QuickActions not supported');
+      }
+    };
+    setupShortcuts();
+
+    const handleAction = (actionId: string) => {
+      const routeMap: Record<string, string> = {
+        deposit: 'Deposit',
+        withdraw: 'Withdraw',
+        add_goal: 'AddGoal'
+      };
+      
+      const route = routeMap[actionId];
+      if (!route) return;
+
+      if (isSecurityEnabled && !isUnlocked) {
+        setPendingWidgetAction(route);
+      } else {
+        setTimeout(() => {
+            if (navigationRef.isReady()) {
+                navigationRef.navigate(route as never);
+            }
+        }, 100);
       }
     };
 
-    setupShortcuts();
-
     // 2. Listen for shortcut interactions
     const deviceSubscription = QuickActions.addListener((action) => {
-      if (action.id === 'deposit') {
-        navigationRef.navigate('Deposit' as never);
-      } else if (action.id === 'withdraw') {
-        navigationRef.navigate('Withdraw' as never);
-      } else if (action.id === 'add_goal') {
-        navigationRef.navigate('AddGoal' as never);
-      }
+      handleAction(action.id);
     });
 
     // 3. Check for initial launch action
-    const action = QuickActions.initial as any;
-    if (action) {
-      // Short delay to ensure navigation is ready
-      setTimeout(() => {
-        if (action.id === 'deposit') {
-          navigationRef.navigate('Deposit' as never);
-        } else if (action.id === 'withdraw') {
-          navigationRef.navigate('Withdraw' as never);
-        } else if (action.id === 'add_goal') {
-          navigationRef.navigate('AddGoal' as never);
-        }
-      }, 500);
+    const initialAction = QuickActions.initial as any;
+    if (initialAction) {
+      handleAction(initialAction.id);
     }
 
     return () => deviceSubscription.remove();
-  }, []);
+  }, [isLoaded]); // Re-run when app data is ready
 
-  return (
-    <AppProvider>
-      <AppContent fontsLoaded={fontsLoaded} />
-    </AppProvider>
-  );
-}
-
-function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
-  const { isLoaded } = useAppContext();
-  const [showSplash, setShowSplash] = useState(true);
-  const [didTimeout, setDidTimeout] = useState(false);
+  // Handle pending widget action after unlock
+  useEffect(() => {
+    if (isUnlocked && pendingWidgetAction) {
+      setTimeout(() => {
+        if (navigationRef.isReady()) {
+          navigationRef.navigate(pendingWidgetAction as never);
+          setPendingWidgetAction(null);
+        }
+      }, 500); // Small delay to allow Security screen transition
+    }
+  }, [isUnlocked, pendingWidgetAction]);
 
   // Safety valve: If loading takes more than 5 seconds, force the app to proceed
-  // This prevents being stuck on a green screen if fonts or data hangs
   useEffect(() => {
     const timer = setTimeout(() => {
       setDidTimeout(true);

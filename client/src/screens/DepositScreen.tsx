@@ -72,81 +72,96 @@ export default function DepositScreen() {
       </View>
 
       <View style={styles.mainContent}>
-        <View style={styles.amountDisplayWrapperCompact}>
-          <Text style={styles.currencyPrefixCompact}>₱</Text>
-          <Text style={[styles.amountTextCompact, !amount && { color: colors.textMuted + '44' }]}>
-            {amount || '0.00'}
-          </Text>
-        </View>
-
-        <View style={styles.searchBarWrapper}>
-          <Search size={14} color={colors.textMuted} />
-          <TextInput 
-            ref={searchInputRef}
-            style={styles.searchBarInput}
-            placeholder="Search wallet..."
-            placeholderTextColor={colors.textMuted}
-            value={walletSearchQuery}
-            onChangeText={setWalletSearchQuery}
-            onFocus={() => setIsSearching(true)}
-            onBlur={() => setIsSearching(false)}
-          />
-        </View>
-
-        <FlatList 
-          data={filteredWallets}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.walletSliderContent}
-          renderItem={({ item: wallet }) => (
+        {wallets.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>Please add a wallet first</Text>
             <TouchableOpacity 
-              style={[
-                styles.miniWalletItem,
-                selectedWalletId === wallet.id && styles.miniWalletItemSelected
-              ]}
-              onPress={() => setSelectedWalletId(wallet.id)}
+              style={styles.addWalletBtn} 
+              onPress={() => navigation.navigate('AddWallet')}
             >
-              <Text style={[styles.miniWalletName, selectedWalletId === wallet.id && { color: '#fff' }]} numberOfLines={1}>
-                {wallet.name}
-              </Text>
-              <Text style={[styles.miniWalletBalance, selectedWalletId === wallet.id && { color: '#fff' }]} numberOfLines={1}>
-                ₱{Math.floor(wallet.balance).toLocaleString()}
-              </Text>
+              <Plus size={20} color="#fff" />
+              <Text style={styles.addWalletBtnText}>Add Wallet</Text>
             </TouchableOpacity>
-          )}
-        />
-        
-        {!isSearching && (
-          <View style={styles.keypadBottom}>
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, '.', 0, 'DEL'].map((key) => (
-              <TouchableOpacity 
-                key={key} 
-                style={styles.keypadButtonCompact}
-                onPress={() => {
-                  if (key === 'DEL') {
-                    setAmount(prev => prev.slice(0, -1));
-                  } else if (key === '.') {
-                    if (!amount.includes('.')) setAmount(prev => prev + '.');
-                  } else {
-                    setAmount(prev => prev + key);
-                  }
-                }}
-              >
-                <Text style={styles.keypadButtonTextCompact}>{key}</Text>
-              </TouchableOpacity>
-            ))}
           </View>
-        )}
+        ) : (
+          <>
+            <View style={styles.amountDisplayWrapperCompact}>
+              <Text style={styles.currencyPrefixCompact}>₱</Text>
+              <Text style={[styles.amountTextCompact, !amount && { color: colors.textMuted + '44' }]}>
+                {amount || '0.00'}
+              </Text>
+            </View>
 
-        {!isSearching && (
-          <TouchableOpacity 
-            style={[styles.depositBtnFinal, (!amount || !selectedWalletId) && styles.depositBtnDisabled]}
-            onPress={handleDeposit}
-            disabled={!amount || !selectedWalletId}
-          >
-            <Text style={styles.depositBtnText}>Confirm Deposit</Text>
-          </TouchableOpacity>
+            <View style={styles.searchBarWrapper}>
+              <Search size={14} color={colors.textMuted} />
+              <TextInput 
+                ref={searchInputRef}
+                style={styles.searchBarInput}
+                placeholder="Search wallet..."
+                placeholderTextColor={colors.textMuted}
+                value={walletSearchQuery}
+                onChangeText={setWalletSearchQuery}
+                onFocus={() => setIsSearching(true)}
+                onBlur={() => setIsSearching(false)}
+              />
+            </View>
+
+            <FlatList 
+              data={filteredWallets}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.walletSliderContent}
+              renderItem={({ item: wallet }) => (
+                <TouchableOpacity 
+                  style={[
+                    styles.miniWalletItem,
+                    selectedWalletId === wallet.id && styles.miniWalletItemSelected
+                  ]}
+                  onPress={() => setSelectedWalletId(wallet.id)}
+                >
+                  <Text style={[styles.miniWalletName, selectedWalletId === wallet.id && { color: '#fff' }]} numberOfLines={1}>
+                    {wallet.name}
+                  </Text>
+                  <Text style={[styles.miniWalletBalance, selectedWalletId === wallet.id && { color: '#fff' }]} numberOfLines={1}>
+                    ₱{Math.floor(wallet.balance).toLocaleString()}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+            
+            {!isSearching && (
+              <View style={styles.keypadBottom}>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, '.', 0, 'DEL'].map((key) => (
+                  <TouchableOpacity 
+                    key={key} 
+                    style={styles.keypadButtonCompact}
+                    onPress={() => {
+                      if (key === 'DEL') {
+                        setAmount(prev => prev.slice(0, -1));
+                      } else if (key === '.') {
+                        if (!amount.includes('.')) setAmount(prev => prev + '.');
+                      } else {
+                        setAmount(prev => prev + key);
+                      }
+                    }}
+                  >
+                    <Text style={styles.keypadButtonTextCompact}>{key}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {!isSearching && (
+              <TouchableOpacity 
+                style={[styles.depositBtnFinal, (!amount || !selectedWalletId) && styles.depositBtnDisabled]}
+                onPress={handleDeposit}
+                disabled={!amount || !selectedWalletId}
+              >
+                <Text style={styles.depositBtnText}>Confirm Deposit</Text>
+              </TouchableOpacity>
+            )}
+          </>
         )}
         <View style={{ height: 30 }} />
       </View>
@@ -297,6 +312,32 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   depositBtnText: {
     fontFamily: theme.fonts.bold,
+    fontSize: 16,
+    color: '#fff',
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 100,
+  },
+  emptyStateText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 18,
+    color: colors.textMuted,
+    marginBottom: 20,
+  },
+  addWalletBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: theme.borderRadius.full,
+    gap: 8,
+  },
+  addWalletBtnText: {
+    fontFamily: theme.fonts.semiBold,
     fontSize: 16,
     color: '#fff',
   },

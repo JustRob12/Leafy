@@ -189,7 +189,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [statusCardBg, setStatusCardBgState] = useState<string | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode as requested
+  const [isDarkMode, setIsDarkMode] = useState(false); // Default to Light Mode as requested
   const [feedback, setFeedback] = useState<{ visible: boolean; type: 'success' | 'delete' | 'error'; message: string }>({
     visible: false,
     type: 'success',
@@ -271,6 +271,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {
       console.error('Failed to load data', e);
     } finally {
+      // Ensure we mark as loaded even if there's an error, 
+      // preventing the app from getting stuck on the splash screen
       setIsLoaded(true);
     }
   };

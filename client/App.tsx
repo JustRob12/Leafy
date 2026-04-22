@@ -213,9 +213,22 @@ export default function App() {
 function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
   const { isLoaded } = useAppContext();
   const [showSplash, setShowSplash] = useState(true);
+  const [didTimeout, setDidTimeout] = useState(false);
 
-  // If fonts aren't loaded yet OR data isn't loaded OR splash is still showing
-  if (!fontsLoaded || !isLoaded || showSplash) {
+  // Safety valve: If loading takes more than 5 seconds, force the app to proceed
+  // This prevents being stuck on a green screen if fonts or data hangs
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDidTimeout(true);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Determine if we should stay on the loading screen
+  // We are "ready" if (fonts are loaded AND data is loaded) OR we hit the safety timeout
+  const isReady = (fontsLoaded && isLoaded) || didTimeout;
+
+  if (showSplash || !isReady) {
     return (
       <View style={{ flex: 1, backgroundColor: '#10b981' }}>
         <StatusBar style="light" />
@@ -225,14 +238,14 @@ function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
   }
 
   return (
-    <NavigationContainer ref={navigationRef} linking={linking}>
-      <View style={{ flex: 1 }}>
-        <MainNavigation />
-        <FeedbackModal />
-        <ConfirmModal />
-        <LoadingOverlay />
-      </View>
-    </NavigationContainer>
+    <View style={{ flex: 1 }}>
+      <NavigationContainer ref={navigationRef} linking={linking}>
+         <MainNavigation />
+      </NavigationContainer>
+      <FeedbackModal />
+      <ConfirmModal />
+      <LoadingOverlay />
+    </View>
   );
 }
 

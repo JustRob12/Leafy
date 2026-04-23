@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { ArrowLeft, ArrowUpRight, ArrowDownRight, Calendar, Filter, Trash2 } from 'lucide-react-native';
@@ -201,6 +201,11 @@ export default function HistoryScreen() {
   );
 }
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = SCREEN_WIDTH / 375;
+
+const rf = (size: number) => Math.round(size * scale);
+
 const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
@@ -233,7 +238,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   filterBadgeText: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 16,
+    fontSize: rf(14),
     color: colors.primary,
   },
   scrollContent: {
@@ -247,7 +252,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   emptyStateText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 16,
+    fontSize: rf(16),
     color: colors.textMuted,
     marginTop: 16,
     textAlign: 'center',
@@ -257,9 +262,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.card,
-    padding: theme.spacing.md,
-    borderRadius: 16,
-    marginBottom: theme.spacing.sm,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    marginBottom: 6,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -278,23 +284,23 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   txTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 16,
+    fontSize: rf(14),
     color: colors.text,
   },
   txDate: {
     fontFamily: theme.fonts.regular,
-    fontSize: 12,
+    fontSize: rf(11),
     color: colors.textMuted,
     marginTop: 2,
   },
   txAmountPositive: {
     fontFamily: theme.fonts.bold,
-    fontSize: 16,
+    fontSize: rf(15),
     color: colors.success,
   },
   txAmountNegative: {
     fontFamily: theme.fonts.bold,
-    fontSize: 16,
+    fontSize: rf(15),
     color: colors.danger,
   },
   typeFilterRow: {
@@ -327,7 +333,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   typeChipText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 13,
+    fontSize: rf(12),
     color: colors.textMuted,
   },
   typeChipTextActive: {

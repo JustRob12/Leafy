@@ -575,10 +575,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addRecursion = async (recursionData: Omit<RecursionType, 'id' | 'date'>) => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 800));
+    
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const currentDay = today.getDate();
+    const currentDayOfWeek = today.getDay();
+    
+    // Determine if we should mark it as processed today to avoid immediate "catch-up" processing
+    let lastProcessedDate: string | undefined = undefined;
+    
+    if (recursionData.frequency === 'monthly') {
+      if (currentDay >= (recursionData.dayOfMonth || 1)) {
+        lastProcessedDate = todayStr;
+      }
+    } else if (recursionData.frequency === 'weekly') {
+      // For weekly, we only process on the exact day, but let's be safe
+      if (currentDayOfWeek > (recursionData.dayOfWeek ?? 0)) {
+        lastProcessedDate = todayStr;
+      }
+    } else if (recursionData.frequency === 'bi-monthly') {
+      const day1 = 15;
+      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+      const day2 = Math.min(30, lastDay);
+      if (currentDay >= day2 || (currentDay >= day1 && currentDay < day2)) {
+        // If we passed either 15th or 30th, we mark as processed to wait for the next specific one
+        // but bi-monthly logic in checkAndProcessRecursions is complex, 
+        // so setting it to today is safest to skip current "catch-up"
+        lastProcessedDate = todayStr;
+      }
+    }
+
     const newRecursion: RecursionType = {
       ...recursionData,
       id: Date.now().toString(),
       date: new Date().toISOString(),
+      lastProcessedDate: lastProcessedDate
     };
     const updated = [...recursions, newRecursion];
     setRecursions(updated);

@@ -15,8 +15,15 @@ export default function AddReceivableScreen() {
   const [taskName, setTaskName] = useState('');
   const [amount, setAmount] = useState('');
 
+  const formatAmount = (text: string) => {
+    const raw = text.replace(/,/g, '').replace(/[^0-9.]/g, '');
+    const parts = raw.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.join('.');
+  };
+
   const handleSave = async () => {
-    const numericAmount = parseFloat(amount);
+    const numericAmount = parseFloat(amount.replace(/,/g, ''));
     if (personName.trim() && taskName.trim() && !isNaN(numericAmount) && numericAmount > 0) {
       await addReceivable({
         personName: personName.trim(),
@@ -75,7 +82,7 @@ export default function AddReceivableScreen() {
             placeholderTextColor={colors.textMuted}
             keyboardType="numeric"
             value={amount}
-            onChangeText={setAmount}
+            onChangeText={(text) => setAmount(formatAmount(text))}
           />
         </View>
       </ScrollView>

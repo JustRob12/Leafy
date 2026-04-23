@@ -211,6 +211,11 @@ export default function WalletsScreen() {
 }
 
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = SCREEN_WIDTH / 375;
+
+const rf = (size: number) => Math.round(size * scale);
+
 const getStyles = (colors: any, isDarkMode: boolean) => {
   const { height } = Dimensions.get('window');
   return StyleSheet.create({
@@ -239,13 +244,13 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     emptyTitle: {
       fontFamily: theme.fonts.semiBold,
-      fontSize: 20,
+      fontSize: rf(20),
       color: colors.text,
       marginBottom: 8,
     },
     emptySubtitle: {
       fontFamily: theme.fonts.regular,
-      fontSize: 14,
+      fontSize: rf(14),
       color: colors.textMuted,
       textAlign: 'center',
       paddingHorizontal: 40,
@@ -262,7 +267,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     emptyBtnText: {
       fontFamily: theme.fonts.semiBold,
-      fontSize: 16,
+      fontSize: rf(16),
       color: '#ffffff',
     },
     gridContainer: {
@@ -276,7 +281,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     categoryLabel: {
       fontFamily: theme.fonts.bold,
-      fontSize: 14,
+      fontSize: rf(14),
       color: colors.textMuted,
       textTransform: 'uppercase',
       letterSpacing: 1,
@@ -335,7 +340,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     cardName: {
       fontFamily: theme.fonts.bold,
-      fontSize: 12,
+      fontSize: rf(12),
       color: '#ffffff',
       flex: 1,
     },
@@ -347,7 +352,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     cardBalanceText: {
       fontFamily: theme.fonts.bold,
-      fontSize: 18,
+      fontSize: rf(18),
       color: '#ffffff',
       textAlign: 'center',
     },
@@ -380,7 +385,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     qrActionText: {
       fontFamily: theme.fonts.bold,
-      fontSize: 10,
+      fontSize: rf(10),
       color: colors.primary,
     },
     reorderActionsVertical: {
@@ -449,7 +454,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     iconTypeChipText: {
       fontFamily: theme.fonts.medium,
-      fontSize: 12,
+      fontSize: rf(12),
       color: colors.textMuted,
     },
     iconTypeChipTextActive: {
@@ -476,7 +481,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     previewLogoName: {
       flex: 1,
       fontFamily: theme.fonts.semiBold,
-      fontSize: 14,
+      fontSize: rf(14),
       color: colors.text,
     },
     modalOverlay: {
@@ -499,7 +504,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     logoModalTitle: {
       fontFamily: theme.fonts.bold,
-      fontSize: 22,
+      fontSize: rf(22),
       color: colors.text,
     },
     logoModalClose: {
@@ -518,7 +523,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       flex: 1,
       marginLeft: 10,
       fontFamily: theme.fonts.regular,
-      fontSize: 16,
+      fontSize: rf(16),
       color: colors.text,
     },
     logoGrid: {
@@ -550,7 +555,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     logoItemName: {
       fontFamily: theme.fonts.medium,
-      fontSize: 12,
+      fontSize: rf(12),
       color: colors.text,
       textAlign: 'center',
     },
@@ -573,12 +578,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
   },
   visibilityToggleText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 12,
+    fontSize: rf(12),
     color: colors.textMuted,
   },
     inputLabel: {
       fontFamily: theme.fonts.medium,
-      fontSize: 14,
+      fontSize: rf(14),
       color: colors.text,
       marginBottom: theme.spacing.sm,
     },
@@ -589,7 +594,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       borderRadius: theme.borderRadius.md,
       padding: theme.spacing.md,
       fontFamily: theme.fonts.regular,
-      fontSize: 16,
+      fontSize: rf(16),
       color: colors.text,
       marginBottom: theme.spacing.lg,
     },
@@ -616,7 +621,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     purposeChipText: {
       fontFamily: theme.fonts.medium,
-      fontSize: 14,
+      fontSize: rf(14),
       color: colors.textMuted,
     },
     purposeChipTextSelected: {
@@ -634,7 +639,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     saveBtnText: {
       fontFamily: theme.fonts.semiBold,
-      fontSize: 16,
+      fontSize: rf(16),
       color: '#ffffff',
     },
     imagePicker: {
@@ -674,7 +679,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     pickerTitle: {
       fontFamily: theme.fonts.semiBold,
-      fontSize: 15,
+      fontSize: rf(15),
       color: colors.text,
     },
     pickerSubtitle: {
@@ -709,7 +714,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     qrModalTitle: {
       fontFamily: theme.fonts.bold,
-      fontSize: 20,
+      fontSize: rf(20),
       color: colors.text,
     },
     qrModalClose: {
@@ -732,7 +737,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     qrModalCloseBtnText: {
       fontFamily: theme.fonts.semiBold,
-      fontSize: 16,
+      fontSize: rf(16),
       color: '#ffffff',
     },
     fab: {

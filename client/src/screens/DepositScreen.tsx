@@ -17,24 +17,11 @@ export default function DepositScreen() {
 
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
-  const [walletSearchQuery, setWalletSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
   
   const searchInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    const showListener = Keyboard.addListener('keyboardDidShow', () => {
-      setIsSearching(true);
-    });
-    const hideListener = Keyboard.addListener('keyboardDidHide', () => {
-      setIsSearching(false);
-      searchInputRef.current?.blur();
-    });
-
-    return () => {
-      showListener.remove();
-      hideListener.remove();
-    };
+    // No keyboard search listeners needed
   }, []);
 
   const handleDeposit = async () => {
@@ -54,10 +41,14 @@ export default function DepositScreen() {
     navigation.navigate('Main');
   };
 
-  const filteredWallets = wallets.filter(w => 
-    w.name.toLowerCase().includes(walletSearchQuery.toLowerCase()) ||
-    w.purpose.toLowerCase().includes(walletSearchQuery.toLowerCase())
-  );
+  const filteredWallets = wallets;
+
+  const formatDisplayAmount = (raw: string) => {
+    if (!raw) return '0.00';
+    const parts = raw.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.join('.');
+  };
 
   return (
     <View style={styles.container}>
@@ -88,23 +79,10 @@ export default function DepositScreen() {
             <View style={styles.amountDisplayWrapperCompact}>
               <Text style={styles.currencyPrefixCompact}>₱</Text>
               <Text style={[styles.amountTextCompact, !amount && { color: colors.textMuted + '44' }]}>
-                {amount || '0.00'}
+                {formatDisplayAmount(amount)}
               </Text>
             </View>
 
-            <View style={styles.searchBarWrapper}>
-              <Search size={14} color={colors.textMuted} />
-              <TextInput 
-                ref={searchInputRef}
-                style={styles.searchBarInput}
-                placeholder="Search wallet..."
-                placeholderTextColor={colors.textMuted}
-                value={walletSearchQuery}
-                onChangeText={setWalletSearchQuery}
-                onFocus={() => setIsSearching(true)}
-                onBlur={() => setIsSearching(false)}
-              />
-            </View>
 
             <FlatList 
               data={filteredWallets}
@@ -136,8 +114,7 @@ export default function DepositScreen() {
               )}
             />
             
-            {!isSearching && (
-              <View style={styles.keypadBottom}>
+            <View style={styles.keypadBottom}>
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, '.', 0, 'DEL'].map((key) => (
                   <TouchableOpacity 
                     key={key} 
@@ -156,17 +133,14 @@ export default function DepositScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
-            )}
 
-            {!isSearching && (
-              <TouchableOpacity 
+            <TouchableOpacity 
                 style={[styles.depositBtnFinal, (!amount || !selectedWalletId) && styles.depositBtnDisabled]}
                 onPress={handleDeposit}
                 disabled={!amount || !selectedWalletId}
               >
                 <Text style={styles.depositBtnText}>Confirm Deposit</Text>
               </TouchableOpacity>
-            )}
           </>
         )}
         <View style={{ height: 30 }} />
@@ -174,6 +148,11 @@ export default function DepositScreen() {
     </View>
   );
 }
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = SCREEN_WIDTH / 375;
+
+const rf = (size: number) => Math.round(size * scale);
 
 const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
@@ -186,7 +165,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginBottom: 30,
+    marginBottom: 10,
   },
   backBtn: {
     width: 44,
@@ -201,7 +180,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   headerTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 20,
+    fontSize: rf(20),
     color: colors.text,
     marginBottom: 6,
   },
@@ -213,17 +192,18 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'center',
-    marginVertical: 30,
+    marginTop: 10,
+    marginBottom: 20,
   },
   currencyPrefixCompact: {
     fontFamily: theme.fonts.bold,
-    fontSize: 26,
+    fontSize: rf(26),
     color: colors.primary,
     marginRight: 6,
   },
   amountTextCompact: {
     fontFamily: theme.fonts.bold,
-    fontSize: 48,
+    fontSize: rf(48),
     color: colors.text,
   },
   searchBarWrapper: {
@@ -241,7 +221,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flex: 1,
     marginLeft: 10,
     fontFamily: theme.fonts.medium,
-    fontSize: 14,
+    fontSize: rf(14),
     color: colors.text,
     padding: 0,
   },
@@ -268,14 +248,14 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   miniWalletName: {
     fontFamily: theme.fonts.bold,
-    fontSize: 10,
+    fontSize: rf(10),
     color: colors.text,
     textTransform: 'uppercase',
     marginBottom: 4,
   },
   miniWalletBalance: {
     fontFamily: theme.fonts.medium,
-    fontSize: 9,
+    fontSize: rf(12),
     color: colors.textMuted,
   },
   keypadBottom: {
@@ -287,8 +267,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     marginBottom: 20,
   },
   keypadButtonCompact: {
-    width: (width - 80) / 3,
-    height: 52,
+    width: (width - 40 - 24) / 3, // Full width minus horizontal padding (20*2) and gaps (12*2)
+    height: height * 0.05, 
+    minHeight: 40,
+    maxHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
@@ -296,7 +278,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   keypadButtonTextCompact: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 20,
+    fontSize: rf(18),
     color: colors.text,
   },
   depositBtnFinal: {
@@ -318,7 +300,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   depositBtnText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 16,
+    fontSize: rf(16),
     color: '#fff',
   },
   emptyState: {
@@ -329,7 +311,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   emptyStateText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 18,
+    fontSize: rf(18),
     color: colors.textMuted,
     marginBottom: 20,
   },
@@ -344,7 +326,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   addWalletBtnText: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 16,
+    fontSize: rf(16),
     color: '#fff',
   },
   selectedIndicator: {

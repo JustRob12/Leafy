@@ -42,23 +42,17 @@ export default function BottomTabNavigator() {
         tabBarInactiveTintColor: colors.textMuted,
         tabBarHideOnKeyboard: true,
         tabBarBackground: () => (
-          <View style={{ flex: 1, backgroundColor: colors.card, borderRadius: 24 }} />
+          <View style={{ flex: 1, backgroundColor: colors.card }} />
         ),
         tabBarStyle: {
-          position: 'absolute',
-          bottom: 18,
-          marginHorizontal: 18,
           backgroundColor: colors.card,
-          borderRadius: 24,
-          height: 60,
-          borderTopWidth: 0,
-          paddingBottom: 12,
-          paddingTop: 2,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: isDarkMode ? 0.3 : 0.1,
-          shadowRadius: 10,
-          elevation: 12,
+          height: 70,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          paddingBottom: 20,
+          paddingTop: 10,
+          elevation: 0,
+          shadowOpacity: 0,
         },
         tabBarLabelStyle: {
           fontFamily: theme.fonts.medium,

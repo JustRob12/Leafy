@@ -27,6 +27,13 @@ export default function AddGoalScreen() {
   const [description, setDescription] = useState(editingGoal?.description || '');
   const [imageSourceVisible, setImageSourceVisible] = useState(false);
 
+  const formatAmount = (text: string) => {
+    const raw = text.replace(/,/g, '').replace(/[^0-9.]/g, '');
+    const parts = raw.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.join('.');
+  };
+
   const handleSelectImage = async () => {
     setImageSourceVisible(false);
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -63,7 +70,7 @@ export default function AddGoalScreen() {
   };
 
   const handleSave = async () => {
-    const amount = parseFloat(targetAmount);
+    const amount = parseFloat(targetAmount.replace(/,/g, ''));
     if (title.trim() && !isNaN(amount) && amount > 0 && selectedWalletId) {
       if (isEditing) {
         await editGoal(editingGoal.id, {
@@ -136,7 +143,7 @@ export default function AddGoalScreen() {
           placeholder="0.00"
           placeholderTextColor={colors.textMuted}
           value={targetAmount}
-          onChangeText={setTargetAmount}
+          onChangeText={(text) => setTargetAmount(formatAmount(text))}
           keyboardType="numeric"
         />
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { theme } from '../theme';
 import { Target, Plus, Wallet } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
@@ -144,6 +144,11 @@ export default function GoalsScreen() {
   );
 }
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = SCREEN_WIDTH / 375;
+
+const rf = (size: number) => Math.round(size * scale);
+
 const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
@@ -178,7 +183,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   filterChipText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 13,
+    fontSize: rf(13),
     color: colors.textMuted,
   },
   filterChipTextActive: {
@@ -201,13 +206,13 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   emptyTitle: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 20,
+    fontSize: rf(20),
     color: colors.text,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontFamily: theme.fonts.regular,
-    fontSize: 14,
+    fontSize: rf(14),
     color: colors.textMuted,
     textAlign: 'center',
     paddingHorizontal: 40,
@@ -224,7 +229,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   emptyBtnText: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 16,
+    fontSize: rf(16),
     color: '#ffffff',
   },
   shopeeCard: {
@@ -262,14 +267,14 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   shopeeTitle: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 15,
+    fontSize: rf(15),
     color: colors.text,
     flex: 1,
     marginRight: 8,
   },
   shopeeProgressText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 14,
+    fontSize: rf(14),
     color: colors.primary,
   },
   shopeeMetaRow: {
@@ -280,7 +285,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   shopeeWalletName: {
     fontFamily: theme.fonts.medium,
-    fontSize: 11,
+    fontSize: rf(11),
     color: colors.textMuted,
   },
   shopeeStatsRow: {
@@ -289,12 +294,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   shopeeStatValue: {
     fontFamily: theme.fonts.bold,
-    fontSize: 13,
+    fontSize: rf(13),
     color: colors.text,
   },
   shopeeStatTotal: {
     fontFamily: theme.fonts.medium,
-    fontSize: 11,
+    fontSize: rf(11),
     color: colors.textMuted,
   },
   previewImage: {
@@ -324,7 +329,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   imagePlaceholderText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 14,
+    fontSize: rf(14),
     color: colors.textMuted,
     marginTop: 8,
   },

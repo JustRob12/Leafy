@@ -39,8 +39,6 @@ export default function WithdrawScreen() {
   const [selectedPreset, setSelectedPreset] = useState<any>(null);
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
-  const [walletSearchQuery, setWalletSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
   
   // Custom Preset Modal State
   const [showAddPreset, setShowAddPreset] = useState(false);
@@ -50,19 +48,15 @@ export default function WithdrawScreen() {
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const showListener = Keyboard.addListener('keyboardDidShow', () => {
-      setIsSearching(true);
-    });
-    const hideListener = Keyboard.addListener('keyboardDidHide', () => {
-      setIsSearching(false);
-      searchInputRef.current?.blur();
-    });
-
-    return () => {
-      showListener.remove();
-      hideListener.remove();
-    };
+    // No keyboard search listeners needed
   }, []);
+
+  const formatDisplayAmount = (raw: string) => {
+    if (!raw) return '0.00';
+    const parts = raw.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.join('.');
+  };
 
   // Animations
   const transitionTo = (nextStep: number) => {
@@ -155,10 +149,7 @@ export default function WithdrawScreen() {
   };
 
   const renderStep1 = () => {
-    const filteredWallets = wallets.filter(w => 
-      w.name.toLowerCase().includes(walletSearchQuery.toLowerCase()) ||
-      w.purpose.toLowerCase().includes(walletSearchQuery.toLowerCase())
-    );
+    const filteredWallets = wallets;
 
     return (
       <View style={styles.stepContainer}>
@@ -174,23 +165,10 @@ export default function WithdrawScreen() {
         <View style={styles.amountDisplayWrapperCompact}>
           <Text style={styles.currencyPrefixCompact}>₱</Text>
           <Text style={[styles.amountTextCompact, !amount && { color: colors.textMuted + '44' }]}>
-            {amount || '0.00'}
+            {formatDisplayAmount(amount)}
           </Text>
         </View>
 
-        <View style={styles.searchBarWrapper}>
-          <Search size={14} color={colors.textMuted} />
-          <TextInput 
-            ref={searchInputRef}
-            style={styles.searchBarInput}
-            placeholder="Search wallet..."
-            placeholderTextColor={colors.textMuted}
-            value={walletSearchQuery}
-            onChangeText={setWalletSearchQuery}
-            onFocus={() => setIsSearching(true)}
-            onBlur={() => setIsSearching(false)}
-          />
-        </View>
 
         <FlatList 
           data={filteredWallets}
@@ -230,8 +208,7 @@ export default function WithdrawScreen() {
           )}
         />
 
-        {!isSearching && (
-          <View style={styles.keypadBottom}>
+        <View style={styles.keypadBottom}>
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, '.', 0, 'DEL'].map((key) => (
               <TouchableOpacity 
                 key={key} 
@@ -250,17 +227,14 @@ export default function WithdrawScreen() {
               </TouchableOpacity>
             ))}
           </View>
-        )}
         
-        {!isSearching && (
-          <TouchableOpacity 
+        <TouchableOpacity 
             style={[styles.withdrawBtnFinal, (!amount || !selectedWalletId) && styles.withdrawBtnDisabled]}
             onPress={handleWithdraw}
             disabled={!amount || !selectedWalletId}
           >
             <Text style={styles.withdrawBtnText}>Confirm Withdrawal</Text>
           </TouchableOpacity>
-        )}
         <View style={{ height: 30 }} />
       </View>
     );
@@ -351,6 +325,11 @@ export default function WithdrawScreen() {
   );
 }
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = SCREEN_WIDTH / 375;
+
+const rf = (size: number) => Math.round(size * scale);
+
 const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
@@ -362,7 +341,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginBottom: 30,
+    marginBottom: 10,
   },
   backBtn: {
     width: 44,
@@ -377,7 +356,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   headerTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 20,
+    fontSize: rf(20),
     color: colors.text,
     marginBottom: 6,
   },
@@ -406,13 +385,13 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   stepTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 28,
+    fontSize: rf(28),
     color: colors.text,
     marginBottom: 24,
   },
   sectionLabel: {
     fontFamily: theme.fonts.bold,
-    fontSize: 12,
+    fontSize: rf(12),
     color: colors.textMuted,
     letterSpacing: 1.2,
     marginBottom: 16,
@@ -485,7 +464,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   presetText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 13,
+    fontSize: rf(13),
     color: colors.text,
   },
   walletSelectionWrapper: {
@@ -500,7 +479,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   summaryLabel: {
     fontFamily: theme.fonts.medium,
-    fontSize: 14,
+    fontSize: rf(14),
     color: colors.textMuted,
     marginRight: 10,
   },
@@ -517,7 +496,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   summaryText: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 13,
+    fontSize: rf(13),
     color: '#fff',
   },
   amountDisplayWrapper: {
@@ -554,7 +533,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   keypadButtonText: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 20,
+    fontSize: rf(20),
     color: colors.text,
   },
   withdrawBtn: {
@@ -575,7 +554,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   withdrawBtnText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 16,
+    fontSize: rf(16),
     color: '#fff',
   },
   modalOverlay: {
@@ -600,7 +579,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   inputLabel: {
     fontFamily: theme.fonts.medium,
-    fontSize: 14,
+    fontSize: rf(14),
     color: colors.textMuted,
     marginBottom: 8,
     marginTop: 16,
@@ -610,7 +589,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     fontFamily: theme.fonts.medium,
-    fontSize: 16,
+    fontSize: rf(16),
     color: colors.text,
   },
   iconSelector: {
@@ -662,28 +641,28 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   compactHeader: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   amountDisplayWrapperCompact: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   currencyPrefixCompact: {
     fontFamily: theme.fonts.bold,
-    fontSize: 24,
+    fontSize: rf(24),
     color: colors.primary,
     marginRight: 6,
   },
   amountTextCompact: {
     fontFamily: theme.fonts.bold,
-    fontSize: 44,
+    fontSize: rf(44),
     color: colors.text,
   },
   sectionLabelSmall: {
     fontFamily: theme.fonts.bold,
-    fontSize: 10,
+    fontSize: rf(10),
     color: colors.textMuted,
     letterSpacing: 1,
     marginBottom: 10,
@@ -713,7 +692,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   miniWalletName: {
     fontFamily: theme.fonts.bold,
-    fontSize: 10,
+    fontSize: rf(10),
     color: colors.text,
     textTransform: 'uppercase',
     marginBottom: 4,
@@ -753,7 +732,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flex: 1,
     marginLeft: 8,
     fontFamily: theme.fonts.medium,
-    fontSize: 13,
+    fontSize: rf(13),
     color: colors.text,
     padding: 0,
   },
@@ -783,8 +762,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     marginTop: 10,
   },
   keypadButtonCompact: {
-    width: (width - 80) / 3,
-    height: 48,
+    width: (width - 40 - 20) / 3, // Full width minus horizontal padding (20*2) and gaps (10*2)
+    height: height * 0.05, 
+    minHeight: 40,
+    maxHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
@@ -792,7 +773,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   keypadButtonTextCompact: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 18,
+    fontSize: rf(16),
     color: colors.text,
   },
   emptyState: {
@@ -818,7 +799,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   addWalletBtnText: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 16,
+    fontSize: rf(16),
     color: '#fff',
   },
   selectedIndicator: {

@@ -706,39 +706,47 @@ export default function HomeScreen() {
 
                 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
                 const currentWeekTitle = `Week ${getWeekOfMonth(new Date())} of ${monthNames[new Date().getMonth()]}`;
-                const dayLabels = ['S', 'M', 'T', 'W', 'Th', 'F', 'Sa'];
                 
-                // Get labels for the last 7 days ending today
-                const activeLabels = [...Array(7)].map((_, i) => {
-                  const d = new Date();
-                  d.setDate(d.getDate() - (6 - i));
-                  return dayLabels[d.getDay()];
-                });
+                // Current Week Activity (Monday to Sunday)
+                const getMonday = (d: Date) => {
+                  const day = d.getDay();
+                  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                  const mon = new Date(d.setDate(diff));
+                  mon.setHours(0, 0, 0, 0);
+                  return mon;
+                };
 
-                // Daily Activity for Line Graph (Last 7 Days)
-                const last7Days = [...Array(7)].map((_, i) => {
-                  const d = new Date();
-                  d.setDate(d.getDate() - (6 - i));
-                  d.setHours(0,0,0,0);
+                const weekStart = getMonday(new Date());
+                const currentWeekDays = [...Array(7)].map((_, i) => {
+                  const d = new Date(weekStart);
+                  d.setDate(weekStart.getDate() + i);
                   return d;
                 });
 
-                const dailyPoints = last7Days.map(day => {
-                  const dayTotal = transactions
+                const savingsPoints = currentWeekDays.map(day => {
+                  return transactions
                     .filter(t => {
                       const tDate = new Date(t.date);
                       tDate.setHours(0,0,0,0);
-                      return tDate.getTime() === day.getTime();
+                      return tDate.getTime() === day.getTime() && t.type === 'deposit';
                     })
-                    .reduce((acc, curr) => acc + (curr.type === 'deposit' ? curr.amount : -curr.amount), 0);
-                  return dayTotal;
+                    .reduce((acc, curr) => acc + curr.amount, 0);
                 });
 
-                const maxVal = Math.max(...dailyPoints.map(Math.abs), 1000);
+                const withdrawPoints = currentWeekDays.map(day => {
+                  return transactions
+                    .filter(t => {
+                      const tDate = new Date(t.date);
+                      tDate.setHours(0,0,0,0);
+                      return tDate.getTime() === day.getTime() && t.type === 'withdrawal';
+                    })
+                    .reduce((acc, curr) => acc + curr.amount, 0);
+                });
+
+                const maxVal = Math.max(...savingsPoints, ...withdrawPoints, 1000);
                 const chartHeight = 80;
                 const chartWidth = Dimensions.get('window').width - 80;
 
-                // Function to get control points for a smooth curve
                 const getSmoothPath = (pts: {x: number, y: number}[]) => {
                   if (pts.length === 0) return '';
                   let d = `M ${pts[0].x} ${pts[0].y}`;
@@ -754,14 +762,22 @@ export default function HomeScreen() {
                   return d;
                 };
 
-                const pts = dailyPoints.map((val, i) => {
+                const savingsPts = savingsPoints.map((val, i) => {
                   const x = (i / 6) * chartWidth;
-                  const y = (chartHeight / 2) - (val / maxVal) * (chartHeight / 4) * 1.5; // Scale slightly smaller to fit
+                  const y = chartHeight - (val / maxVal) * (chartHeight - 10) - 5;
                   return { x, y };
                 });
 
-                const smoothPath = getSmoothPath(pts);
-                const areaPath = `${smoothPath} L ${chartWidth} ${chartHeight} L 0 ${chartHeight} Z`;
+                const withdrawPts = withdrawPoints.map((val, i) => {
+                  const x = (i / 6) * chartWidth;
+                  const y = chartHeight - (val / maxVal) * (chartHeight - 10) - 5;
+                  return { x, y };
+                });
+
+                const savingsPath = getSmoothPath(savingsPts);
+                const withdrawPath = getSmoothPath(withdrawPts);
+                const savingsArea = `${savingsPath} L ${chartWidth} ${chartHeight} L 0 ${chartHeight} Z`;
+                const withdrawArea = `${withdrawPath} L ${chartWidth} ${chartHeight} L 0 ${chartHeight} Z`;
 
                 return (
                   <>
@@ -779,57 +795,78 @@ export default function HomeScreen() {
                       <View style={styles.lineChartWrapper}>
                         <Svg height={chartHeight} width={chartWidth}>
                           <Defs>
-                            <LinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                              <Stop offset="0" stopColor={colors.primary} stopOpacity="0.3" />
+                            <LinearGradient id="gradSavings" x1="0" y1="0" x2="0" y2="1">
+                              <Stop offset="0" stopColor={colors.primary} stopOpacity="0.2" />
                               <Stop offset="1" stopColor={colors.primary} stopOpacity="0" />
+                            </LinearGradient>
+                            <LinearGradient id="gradWithdraw" x1="0" y1="0" x2="0" y2="1">
+                              <Stop offset="0" stopColor="#ef4444" stopOpacity="0.2" />
+                              <Stop offset="1" stopColor="#ef4444" stopOpacity="0" />
                             </LinearGradient>
                           </Defs>
 
                           {/* Zero Line */}
                           <Path 
-                            d={`M 0 ${chartHeight/2} L ${chartWidth} ${chartHeight/2}`} 
+                            d={`M 0 ${chartHeight} L ${chartWidth} ${chartHeight}`} 
                             stroke={isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'} 
                             strokeWidth="1" 
                           />
 
-                          {/* Area Fill */}
-                          <Path
-                            d={areaPath}
-                            fill="url(#grad)"
-                          />
+                          {/* Area Fills */}
+                          <Path d={savingsArea} fill="url(#gradSavings)" />
+                          <Path d={withdrawArea} fill="url(#gradWithdraw)" />
 
-                          {/* Smooth Line */}
+                          {/* Smooth Lines */}
                           <Path
-                            d={smoothPath}
+                            d={savingsPath}
                             fill="none"
                             stroke={colors.primary}
                             strokeWidth="3"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           />
+                          <Path
+                            d={withdrawPath}
+                            fill="none"
+                            stroke="#ef4444"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
 
-                          {pts.map((p, i) => (
+                          {savingsPts.map((p, i) => (
                             <Circle 
-                              key={i} 
+                              key={`sav-${i}`} 
                               cx={p.x} 
                               cy={p.y} 
-                              r="4" 
+                              r="3.5" 
                               fill={colors.primary} 
+                              stroke={colors.card}
+                              strokeWidth="2"
+                            />
+                          ))}
+                          {withdrawPts.map((p, i) => (
+                            <Circle 
+                              key={`wit-${i}`} 
+                              cx={p.x} 
+                              cy={p.y} 
+                              r="3.5" 
+                              fill="#ef4444" 
                               stroke={colors.card}
                               strokeWidth="2"
                             />
                           ))}
                         </Svg>
                         <View style={styles.chartLabelsRow}>
-                          {activeLabels.map((label, i) => (
+                          {['M', 'T', 'W', 'Th', 'F', 'S', 'Su'].map((label, i) => (
                             <Text key={i} style={styles.chartLabelText}>{label}</Text>
                           ))}
                         </View>
                       </View>
                       
                       <View style={styles.chartValues}>
-                        <Text style={styles.chartValueText}>{last7Days[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</Text>
-                        <Text style={styles.chartValueText}>Today</Text>
+                        <Text style={styles.chartValueText}>{currentWeekDays[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</Text>
+                        <Text style={styles.chartValueText}>{currentWeekDays[6].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</Text>
                       </View>
                     </View>
                   </>
@@ -984,6 +1021,11 @@ export default function HomeScreen() {
   );
 }
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = SCREEN_WIDTH / 375;
+
+const rf = (size: number) => Math.round(size * scale);
+
 const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
@@ -998,7 +1040,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
-    marginBottom: 24, // More space from balance card
+    marginBottom: 12,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.3,
@@ -1047,12 +1089,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   premiumLabel: {
     fontFamily: theme.fonts.medium,
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#ecfdf5',
   },
   premiumAmount: {
     fontFamily: theme.fonts.bold,
-    fontSize: 34,
+    fontSize: rf(34),
     color: '#ffffff',
     marginTop: 8,
     marginBottom: theme.spacing.md,
@@ -1075,12 +1117,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   cardFooterLabel: {
     fontFamily: theme.fonts.regular,
-    fontSize: 12,
+    fontSize: rf(12),
     color: '#d1fae5',
   },
   cardFooterValue: {
     fontFamily: theme.fonts.medium,
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#ffffff',
     marginTop: 2,
   },
@@ -1111,7 +1153,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   actionText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 10,
+    fontSize: rf(10),
     color: colors.text,
   },
   sectionHeader: {
@@ -1122,12 +1164,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 18,
+    fontSize: rf(18),
     color: colors.text,
   },
   seeAllText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 12,
+    fontSize: rf(12),
     color: colors.primary,
   },
   emptyGoalCard: {
@@ -1141,7 +1183,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   emptyGoalText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 16,
+    fontSize: rf(16),
     color: colors.textMuted,
     marginBottom: theme.spacing.lg,
   },
@@ -1153,7 +1195,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   emptyGoalBtnText: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 14,
+    fontSize: rf(14),
     color: colors.primary,
   },
   goalsList: {
@@ -1234,18 +1276,18 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   goalTitle: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 16,
+    fontSize: rf(16),
     color: '#ffffff',
   },
   goalAmountText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 13,
+    fontSize: rf(13),
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
   goalPercentage: {
     fontFamily: theme.fonts.bold,
-    fontSize: 16,
+    fontSize: rf(16),
     color: colors.primary,
   },
   progressBarBg: {
@@ -1293,28 +1335,28 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   txTitle: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 15,
+    fontSize: rf(15),
     color: colors.text,
   },
   txDate: {
     fontFamily: theme.fonts.regular,
-    fontSize: 13,
+    fontSize: rf(13),
     color: colors.textMuted,
     marginTop: 2,
   },
   txAmountNegative: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 15,
+    fontSize: rf(15),
     color: colors.danger,
   },
   txAmountPositive: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 15,
+    fontSize: rf(15),
     color: colors.primary,
   },
   inputLabel: {
     fontFamily: theme.fonts.medium,
-    fontSize: 14,
+    fontSize: rf(14),
     color: colors.text,
     marginBottom: theme.spacing.sm,
   },
@@ -1325,7 +1367,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     fontFamily: theme.fonts.regular,
-    fontSize: 16,
+    fontSize: rf(16),
     color: colors.text,
     marginBottom: theme.spacing.lg,
   },
@@ -1341,7 +1383,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   saveBtnText: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 16,
+    fontSize: rf(16),
     color: '#ffffff',
   },
   walletSlide: {
@@ -1368,7 +1410,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   walletNameText: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 10,
+    fontSize: rf(10),
     color: colors.primary,
     textTransform: 'uppercase',
   },
@@ -1398,13 +1440,13 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   pendingLabel: {
     fontFamily: theme.fonts.medium,
-    fontSize: 12,
+    fontSize: rf(12),
     color: isDarkMode ? '#fcd34d' : '#b45309',
     marginBottom: 1,
   },
   pendingAmount: {
     fontFamily: theme.fonts.bold,
-    fontSize: 18,
+    fontSize: rf(18),
     color: colors.text,
   },
   pendingActionBtn: {
@@ -1418,7 +1460,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   pendingActionText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 10,
+    fontSize: rf(10),
     color: colors.primary,
   },
   tutorialContainer: {
@@ -1452,13 +1494,13 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   tooltipTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 18,
+    fontSize: rf(18),
     color: colors.text,
     marginBottom: 8,
   },
   tooltipDesc: {
     fontFamily: theme.fonts.medium,
-    fontSize: 14,
+    fontSize: rf(14),
     color: colors.textMuted,
     lineHeight: 20,
     marginBottom: 20,
@@ -1474,7 +1516,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   skipBtnText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 14,
+    fontSize: rf(14),
     color: colors.textMuted,
   },
   nextBtn: {
@@ -1485,7 +1527,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   nextBtnText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#ffffff',
   },
 
@@ -1508,13 +1550,13 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   insightLabel: {
     fontFamily: theme.fonts.bold,
-    fontSize: 16,
+    fontSize: rf(16),
     color: colors.text,
     marginBottom: 4,
   },
   insightDescription: {
     fontFamily: theme.fonts.medium,
-    fontSize: 13,
+    fontSize: rf(13),
     color: colors.textMuted,
     lineHeight: 20,
     marginBottom: 16,
@@ -1539,7 +1581,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   legendText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 11,
+    fontSize: rf(11),
     color: colors.textMuted,
   },
   chartValues: {
@@ -1549,7 +1591,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   chartValueText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 11,
+    fontSize: rf(11),
     color: colors.textMuted,
   },
   lineChartWrapper: {
@@ -1586,7 +1628,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   moreActionText: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 12,
+    fontSize: rf(12),
     color: colors.text,
   },
   homeSubCard: {
@@ -1618,7 +1660,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   homeSubTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 14,
+    fontSize: rf(14),
     color: colors.text,
   },
   homeSubTitleDueSoon: {
@@ -1626,7 +1668,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   homeSubDays: {
     fontFamily: theme.fonts.medium,
-    fontSize: 11,
+    fontSize: rf(11),
     color: colors.textMuted,
     marginTop: 2,
   },
@@ -1635,7 +1677,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   homeSubAmount: {
     fontFamily: theme.fonts.bold,
-    fontSize: 13,
+    fontSize: rf(13),
     color: colors.text,
   },
   homeSubAmountDueSoon: {
@@ -1676,7 +1718,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   gridBadgeText: {
     color: '#ffffff',
-    fontSize: 10,
+    fontSize: rf(10),
     fontFamily: theme.fonts.bold,
   },
   homeSubIcon: {
@@ -1693,7 +1735,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   chartLabelText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 10,
+    fontSize: rf(10),
     color: colors.textMuted,
     width: 20,
     textAlign: 'center',
@@ -1701,36 +1743,37 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   paydayContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: isDarkMode ? 'rgba(74, 222, 128, 0.1)' : '#f0fdf4',
-    marginHorizontal: 20,
-    marginTop: 6,
-    padding: 10,
-    borderRadius: 16,
+    backgroundColor: isDarkMode ? `${colors.primary}10` : `${colors.primary}15`,
+    marginHorizontal: 0,
+    marginTop: 0,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: isDarkMode ? 'rgba(74, 222, 128, 0.2)' : '#dcfce7',
-    gap: 10,
+    borderColor: isDarkMode ? `${colors.primary}20` : `${colors.primary}30`,
+    gap: 8,
   },
   paydayIconWrapper: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: isDarkMode ? 'rgba(74, 222, 128, 0.1)' : '#dcfce7',
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: isDarkMode ? `${colors.primary}20` : `${colors.primary}30`,
     alignItems: 'center',
     justifyContent: 'center',
   },
   paydayText: {
     flex: 1,
     fontFamily: theme.fonts.medium,
-    fontSize: 13,
-    color: isDarkMode ? '#dcfce7' : '#166534',
+    fontSize: rf(11),
+    color: colors.text,
   },
   paydayHighlight: {
     fontFamily: theme.fonts.bold,
-    color: isDarkMode ? '#4ade80' : '#15803d',
+    color: colors.primary,
   },
   paydayAmount: {
     fontFamily: theme.fonts.bold,
-    fontSize: 14,
-    color: isDarkMode ? '#4ade80' : '#16a34a',
+    fontSize: rf(12),
+    color: colors.primary,
   },
 });

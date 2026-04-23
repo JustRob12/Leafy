@@ -20,8 +20,15 @@ export default function AddTravelScreen() {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerMode, setPickerMode] = useState<'start' | 'end' | null>(null);
 
+  const formatAmount = (text: string) => {
+    const raw = text.replace(/,/g, '').replace(/[^0-9.]/g, '');
+    const parts = raw.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.join('.');
+  };
+
   const handleAddTravel = async () => {
-    const numericExpenses = parseFloat(expenses);
+    const numericExpenses = parseFloat(expenses.replace(/,/g, ''));
     if (tripName.trim() && location.trim() && !isNaN(numericExpenses) && startDate && endDate) {
       await addTravel({
         name: tripName.trim(),
@@ -100,7 +107,7 @@ export default function AddTravelScreen() {
                 placeholderTextColor={colors.textMuted}
                 keyboardType="numeric"
                 value={expenses}
-                onChangeText={setExpenses}
+                onChangeText={(text) => setExpenses(formatAmount(text))}
               />
             </View>
 

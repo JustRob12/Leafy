@@ -40,8 +40,15 @@ export default function AddSubscriptionScreen() {
   const [dayOfMonth, setDayOfMonth] = useState(editingSubscription?.dayOfMonth?.toString() || '1');
   const [selectedIcon, setSelectedIcon] = useState<string | null>(editingSubscription?.icon || null);
 
+  const formatAmount = (text: string) => {
+    const raw = text.replace(/,/g, '').replace(/[^0-9.]/g, '');
+    const parts = raw.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.join('.');
+  };
+
   const handleSave = async () => {
-    const numericAmount = parseFloat(amount);
+    const numericAmount = parseFloat(amount.replace(/,/g, ''));
     const dayNumeric = parseInt(dayOfMonth);
     
     // Basic validation
@@ -99,7 +106,7 @@ export default function AddSubscriptionScreen() {
             placeholderTextColor={colors.textMuted}
             keyboardType="numeric"
             value={amount}
-            onChangeText={setAmount}
+            onChangeText={(text) => setAmount(formatAmount(text))}
           />
         </View>
 

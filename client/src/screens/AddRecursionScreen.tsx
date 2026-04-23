@@ -23,6 +23,13 @@ export default function AddRecursionScreen() {
   const [dayOfWeek, setDayOfWeek] = useState<number>(editingRecursion?.dayOfWeek ?? 1); // Default to Monday
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(editingRecursion?.walletId || null);
 
+  const formatAmount = (text: string) => {
+    const raw = text.replace(/,/g, '').replace(/[^0-9.]/g, '');
+    const parts = raw.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.join('.');
+  };
+
   const daysOfWeek = [
     { label: 'Sun', value: 0 },
     { label: 'Mon', value: 1 },
@@ -34,7 +41,7 @@ export default function AddRecursionScreen() {
   ];
 
   const handleSave = async () => {
-    const numericAmount = parseFloat(amount);
+    const numericAmount = parseFloat(amount.replace(/,/g, ''));
     const dayNumeric = parseInt(dayOfMonth);
     
     // Basic validation
@@ -102,7 +109,7 @@ export default function AddRecursionScreen() {
             placeholderTextColor={colors.textMuted}
             keyboardType="numeric"
             value={amount}
-            onChangeText={setAmount}
+            onChangeText={(text) => setAmount(formatAmount(text))}
           />
         </View>
 

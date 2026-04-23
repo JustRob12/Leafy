@@ -5,7 +5,7 @@ import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { navigationRef } from '../navigation/navigationUtils';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, User, Settings, LogOut, Info, ChevronRight, Moon, Sun, Flame, Sprout, TreeDeciduous, Egg, X, Image as ImageIcon, HelpCircle } from 'lucide-react-native';
+import { Plus, User, Settings, LogOut, Info, ChevronRight, Moon, Sun, Flame, Sprout, TreeDeciduous, Egg, X, Image as ImageIcon, HelpCircle, Bell } from 'lucide-react-native';
 
 
 export interface MainHeaderProps {
@@ -49,11 +49,9 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
     }
   };
 
-  const formattedDate = currentDate.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric'
-  });
+  const month = currentDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  const day = currentDate.toLocaleDateString('en-US', { day: 'numeric' });
+  const time = currentDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
   const handleLogout = () => {
     setDropdownVisible(false);
@@ -73,18 +71,12 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <View style={styles.container}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.realtimeDate}>{formattedDate}</Text>
-            <Text style={styles.greeting}>Hello, <Text style={styles.usernameBold}>{username || 'User'}</Text></Text>
-            <Text style={styles.appMessage}>Welcome to Leafy</Text>
-          </View>
-
-          <View style={styles.rightActions}>
+        <View style={styles.headerContent}>
+          {/* First Row: Streak (Left) and Notification/Profile (Right) */}
+          <View style={styles.topRow}>
             <TouchableOpacity
               style={[
-                styles.streakBadge,
+                styles.streakBadgeCompact,
                 streakCount >= 8 ? styles.streakBadgeTree :
                   streakCount >= 3 ? styles.streakBadgeSapling :
                     styles.streakBadgeSeed
@@ -93,31 +85,55 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
               activeOpacity={0.7}
             >
               {(() => {
-                if (streakCount >= 8) return <TreeDeciduous size={16} color="#15803d" fill="#15803d" />;
-                if (streakCount >= 3) return <Sprout size={16} color="#22c55e" fill="#22c55e" />;
-                return <Egg size={16} color="#92400e" fill="#92400e" />;
+                if (streakCount >= 8) return <TreeDeciduous size={14} color="#15803d" fill="#15803d" />;
+                if (streakCount >= 3) return <Sprout size={14} color="#22c55e" fill="#22c55e" />;
+                return <Egg size={14} color="#92400e" fill="#92400e" />;
               })()}
               <Text style={[
-                styles.streakText,
+                styles.streakTextSmall,
                 streakCount >= 8 ? { color: '#15803d' } :
                   streakCount >= 3 ? { color: '#16a34a' } :
                     { color: '#92400e' }
               ]}>{streakCount}</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.profileCircle}
-              onPress={() => setDropdownVisible(true)}
-              activeOpacity={0.8}
-            >
-              {userImage ? (
-                <Image source={{ uri: userImage }} style={styles.headerProfileImage} />
-              ) : (
-                <User size={22} color={colors.primary} />
-              )}
-            </TouchableOpacity>
+
+            <View style={styles.rightActionsSmall}>
+              <TouchableOpacity style={styles.iconActionSmall} activeOpacity={0.7}>
+                <Bell size={18} color={colors.text} />
+                <View style={styles.notifDot} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.profileCircleSmall}
+                onPress={() => setDropdownVisible(true)}
+                activeOpacity={0.8}
+              >
+                {userImage ? (
+                  <Image source={{ uri: userImage }} style={styles.headerProfileImage} />
+                ) : (
+                  <User size={18} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Second Row: Greeting and Calendar Date (Right) */}
+          <View style={styles.bottomRow}>
+            <View style={styles.greetingWrapper}>
+              <Text style={styles.greetingSmall}>Hello, <Text style={styles.usernameBoldSmall}>{username || 'User'}</Text></Text>
+              <Text style={styles.timeText}>{time}</Text>
+            </View>
+
+            <View style={styles.calendarDateBox}>
+              <View style={styles.calendarMonthBox}>
+                <Text style={styles.calendarMonthText}>{month}</Text>
+              </View>
+              <View style={styles.calendarDayBox}>
+                <Text style={styles.calendarDayText}>{day}</Text>
+              </View>
+            </View>
           </View>
         </View>
-      </View>
 
       <Modal
         visible={dropdownVisible}
@@ -328,25 +344,102 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   container: {
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
     paddingBottom: theme.spacing.sm,
-    height: 100,
-    justifyContent: 'center',
+    backgroundColor: colors.background,
   },
-  headerTop: {
+  headerContent: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+    gap: 12,
+  },
+  topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  rightActions: {
+  bottomRow: {
+    marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
   },
-  profileCircle: {
+  calendarDateBox: {
     width: 44,
-    height: 44,
-    borderRadius: 22,
+    height: 48,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  calendarMonthBox: {
+    width: '100%',
+    backgroundColor: colors.primary,
+    paddingVertical: 2,
+    alignItems: 'center',
+  },
+  calendarMonthText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 9,
+    color: '#ffffff',
+  },
+  calendarDayBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  calendarDayText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 18,
+    color: colors.text,
+    marginTop: -2,
+  },
+  greetingWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  timeText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: -2,
+  },
+  rightActionsSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  iconActionSmall: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  notifDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#ef4444',
+  },
+  profileCircleSmall: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
     alignItems: 'center',
     justifyContent: 'center',
@@ -357,34 +450,42 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   headerProfileImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 22,
+    borderRadius: 10,
   },
-  realtimeDate: {
+  realtimeDateSmall: {
     fontFamily: theme.fonts.medium,
-    fontSize: 11,
+    fontSize: 10,
     color: colors.textMuted,
-    marginBottom: 2,
+    marginTop: 1,
   },
-  greeting: {
-    fontFamily: theme.fonts.semiBold,
-    fontSize: 22,
+  greetingSmall: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 24,
     color: colors.text,
+    letterSpacing: -0.5,
   },
-  usernameBold: {
+  usernameBoldSmall: {
     fontFamily: theme.fonts.bold,
   },
-  appMessage: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 11,
-    color: colors.textMuted,
-    marginTop: 2,
+  streakBadgeCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  streakTextSmall: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 12,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'transparent',
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
-    paddingTop: 80,
+    paddingTop: 60, // Positioned below profile icon
     paddingRight: 20,
   },
   dropdownMenu: {

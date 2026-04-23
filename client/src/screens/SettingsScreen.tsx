@@ -4,14 +4,14 @@ import * as ImagePicker from 'expo-image-picker';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { theme } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check, Fingerprint, ChevronLeft, Plus } from 'lucide-react-native';
+import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check, Fingerprint, ChevronLeft, Plus, Palette, Moon, Sun } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 
 import { useNavigation } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 
 export default function SettingsScreen() {
-  const { username, userImage, setUserImage, clearData, showConfirm, isDarkMode, toggleTheme, colors, appPin, setAppPin, isSecurityEnabled, toggleSecurity, isBiometricsEnabled, toggleBiometrics, isNotificationsEnabled, toggleNotifications } = useAppContext();
+  const { username, userImage, setUserImage, clearData, showConfirm, isDarkMode, toggleTheme, treeType, setTreeType, colors, appPin, setAppPin, isSecurityEnabled, toggleSecurity, isBiometricsEnabled, toggleBiometrics, isNotificationsEnabled, toggleNotifications } = useAppContext();
   const navigation = useNavigation<any>();
 
   const styles = getStyles(colors, isDarkMode);
@@ -29,6 +29,7 @@ export default function SettingsScreen() {
   const [editName, setEditName] = React.useState(username || '');
   const [newPin, setNewPin] = React.useState('');
   const [biometricsSupported, setBiometricsSupported] = React.useState(false);
+  const [appearanceModalVisible, setAppearanceModalVisible] = React.useState(false);
 
   React.useEffect(() => {
     checkBiometricSupport();
@@ -62,6 +63,7 @@ export default function SettingsScreen() {
 
   const settingsOptions = [
     { id: '1', title: 'Account Settings', icon: User, action: () => { setEditName(username || ''); setAccountModalVisible(true); } },
+    { id: '10', title: 'Appearance & Themes', icon: Palette, action: () => setAppearanceModalVisible(true) },
     { id: '2', title: 'Backup & Restore', icon: Database, action: () => navigation.navigate('DataTransfer') },
     { id: '3', title: 'Privacy & Security', icon: Shield, action: () => { setPrivacyModalVisible(true); } },
     { id: '8', title: 'Notifications', icon: Bell, action: () => { setNotifModalVisible(true); } },
@@ -72,7 +74,7 @@ export default function SettingsScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <ChevronLeft size={24} color={colors.text} />
@@ -128,6 +130,58 @@ export default function SettingsScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Appearance & Themes Modal */}
+      <ActionSheet
+        visible={appearanceModalVisible}
+        onClose={() => setAppearanceModalVisible(false)}
+        title="Appearance & Themes"
+      >
+        <View style={styles.modalContent}>
+          <Text style={styles.configLabel}>Dark Mode</Text>
+          <View style={styles.configGroup}>
+            <TouchableOpacity style={styles.configItem} onPress={toggleTheme}>
+              <View style={styles.configItemLeft}>
+                <View style={[styles.checkbox, isDarkMode && styles.checkboxActive]}>
+                  {isDarkMode && <Check size={14} color="#ffffff" />}
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  {isDarkMode ? <Moon size={18} color={colors.textMuted} /> : <Sun size={18} color={colors.textMuted} />}
+                  <Text style={styles.configText}>{isDarkMode ? 'Dark Mode On' : 'Dark Mode Off'}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.configLabel}>Tree Theme</Text>
+          <View style={styles.themeGrid}>
+            {[
+              { id: 'emerald', name: 'Emerald Leaf', color: '#10b981' },
+              { id: 'cherry', name: 'Cherry Tree', color: '#f472b6' },
+              { id: 'maple', name: 'Autumn Maple', color: '#f97316' },
+              { id: 'spruce', name: 'Blue Spruce', color: '#0284c7' },
+            ].map((theme) => (
+              <TouchableOpacity 
+                key={theme.id} 
+                style={[styles.themeOption, treeType === theme.id && styles.themeOptionActive]}
+                onPress={() => setTreeType(theme.id as any)}
+              >
+                <View style={[styles.themeColor, { backgroundColor: theme.color }]} />
+                <Text style={[styles.themeName, treeType === theme.id && styles.themeNameActive]}>{theme.name}</Text>
+                {treeType === theme.id && (
+                  <View style={styles.themeCheck}>
+                    <Check size={10} color="#ffffff" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TouchableOpacity style={styles.closeBtn} onPress={() => setAppearanceModalVisible(false)}>
+            <Text style={styles.closeBtnText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </ActionSheet>
 
       {/* Privacy & Security Modal */}
       <ActionSheet
@@ -443,7 +497,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingBottom: 90,
   },
   scrollContent: {
     padding: theme.spacing.lg,
@@ -759,5 +812,60 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize: 20,
     color: colors.text,
+  },
+  configLabel: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 14,
+    color: colors.textMuted,
+    marginBottom: 12,
+    marginTop: 8,
+    marginLeft: 4,
+    textTransform: 'uppercase',
+  },
+  themeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 24,
+  },
+  themeOption: {
+    width: '47%',
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+    borderRadius: 16,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    position: 'relative',
+  },
+  themeOptionActive: {
+    borderColor: colors.primary,
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.05)' : 'rgba(16, 185, 129, 0.02)',
+  },
+  themeColor: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginBottom: 8,
+  },
+  themeName: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+    color: colors.text,
+  },
+  themeNameActive: {
+    fontFamily: theme.fonts.bold,
+    color: colors.primary,
+  },
+  themeCheck: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: colors.primary,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

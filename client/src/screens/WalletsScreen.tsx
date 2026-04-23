@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image as RNImage, Modal, Dimensions } from 'react-native';
 import { theme } from '../theme';
 import { Plus, Wallet as WalletIcon, MoreHorizontal, QrCode, X, ChevronUp, ChevronDown, User, AlertTriangle, ShoppingBag, Plane, Eye, EyeOff } from 'lucide-react-native';
-import { useAppContext } from '../context/AppContext';
+import { useAppContext, WalletCategory } from '../context/AppContext';
 import { useNavigation, useRoute, useScrollToTop } from '@react-navigation/native';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 
@@ -19,6 +19,7 @@ export default function WalletsScreen() {
     'paypal.png': require('../../public/walletimages/paypal.png'),
     'wise.png': require('../../public/walletimages/wise.png'),
     'maribank.png': require('../../public/walletimages/maribank.png'),
+    'gotyme.png': require('../../public/walletimages/gotyme.png'),
   };
 
   const navigation = useNavigation<any>();
@@ -40,8 +41,13 @@ export default function WalletsScreen() {
     { label: 'Travel', icon: Plane },
   ];
 
-  const sortedWallets = useMemo(() => {
-    return [...wallets].sort((a, b) => b.balance - a.balance);
+  const groupedWallets = useMemo(() => {
+    const categories: WalletCategory[] = ['E-Wallet', 'Banks', 'Personal'];
+    return categories.map(cat => ({
+      title: cat,
+      data: wallets.filter(w => (w.category || 'Personal') === cat)
+        .sort((a, b) => b.balance - a.balance)
+    })).filter(group => group.data.length > 0);
   }, [wallets]);
 
   return (
@@ -81,68 +87,75 @@ export default function WalletsScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.gridContainer}>
-            {sortedWallets.map((wallet, index) => (
-              <View key={wallet.id} style={styles.premiumCardWrapper}>
-                <View style={[styles.premiumCard, { backgroundColor: wallet.color || colors.primary }]}>
-                  <View style={styles.cardHeader}>
-                    <View style={styles.cardHeaderLeft}>
-                      <View style={styles.cardIconBox}>
-                        <View style={styles.headerGlow} />
-                        {(() => {
-                          if (wallet.iconType === 'custom' && wallet.customIcon) {
-                            return <RNImage source={{ uri: wallet.customIcon }} style={styles.cardIconImage as any} />;
-                          }
-                          if (wallet.iconType === 'preset' && wallet.presetLogo) {
-                            return <RNImage source={brandLogos[wallet.presetLogo]} style={[styles.cardIconImage as any, { resizeMode: 'contain' }]} />;
-                          }
-                          const PurposeIcon = purposes.find(p => p.label === wallet.purpose)?.icon || WalletIcon;
-                          return <PurposeIcon size={16} color="#ffffff" />;
-                        })()}
+          <View>
+            {groupedWallets.map((group) => (
+              <View key={group.title} style={styles.categorySection}>
+                <Text style={styles.categoryLabel}>{group.title}</Text>
+                <View style={styles.gridContainer}>
+                  {group.data.map((wallet) => (
+                    <View key={wallet.id} style={styles.premiumCardWrapper}>
+                      <View style={[styles.premiumCard, { backgroundColor: wallet.color || colors.primary }]}>
+                        <View style={styles.cardHeader}>
+                          <View style={styles.cardHeaderLeft}>
+                            <View style={styles.cardIconBox}>
+                              <View style={styles.headerGlow} />
+                              {(() => {
+                                if (wallet.iconType === 'custom' && wallet.customIcon) {
+                                  return <RNImage source={{ uri: wallet.customIcon }} style={styles.cardIconImage as any} />;
+                                }
+                                if (wallet.iconType === 'preset' && wallet.presetLogo) {
+                                  return <RNImage source={brandLogos[wallet.presetLogo]} style={[styles.cardIconImage as any, { resizeMode: 'contain' }]} />;
+                                }
+                                const PurposeIcon = purposes.find(p => p.label === wallet.purpose)?.icon || WalletIcon;
+                                return <PurposeIcon size={16} color="#ffffff" />;
+                              })()}
+                            </View>
+                            <Text style={[styles.cardName, { color: '#ffffff' }]} numberOfLines={1}>{wallet.name}</Text>
+                          </View>
+
+                          <View style={styles.cardHeaderRight}>
+                            <TouchableOpacity
+                              onPress={() => navigation.navigate('AddWallet', { wallet })}
+                              style={styles.moreActionBtn}
+                            >
+                              <MoreHorizontal size={14} color="rgba(255, 255, 255, 0.7)" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+
+                        <View style={styles.cardBody}>
+                          <Text 
+                            style={[
+                              styles.cardBalanceText, 
+                              wallet.balance >= 1000000 ? { fontSize: 13 } : wallet.balance >= 100000 ? { fontSize: 15 } : {}
+                            ]} 
+                            numberOfLines={1} 
+                            adjustsFontSizeToFit
+                          >
+                            {showBalances 
+                              ? `₱${wallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : '₱*****'
+                            }
+                          </Text>
+                        </View>
+
+                        <View style={styles.cardFooter}>
+                          <View style={[styles.purposePill, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
+                            <Text style={[styles.purposePillText, { color: '#ffffff' }]}>{wallet.purpose}</Text>
+                          </View>
+
+                          {wallet.qrCodeImage && (
+                            <TouchableOpacity
+                              onPress={(e) => { e.stopPropagation(); setViewingQrCode(wallet.qrCodeImage || null); }}
+                              style={[styles.qrActionBtn, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
+                            >
+                              <QrCode size={14} color="#ffffff" />
+                            </TouchableOpacity>
+                          )}
+                        </View>
                       </View>
-                      <Text style={[styles.cardName, { color: '#ffffff' }]} numberOfLines={1}>{wallet.name}</Text>
                     </View>
-
-                    <View style={styles.cardHeaderRight}>
-                      <TouchableOpacity
-                        onPress={() => navigation.navigate('AddWallet', { wallet })}
-                        style={styles.moreActionBtn}
-                      >
-                        <MoreHorizontal size={14} color="rgba(255, 255, 255, 0.7)" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-
-                  <View style={styles.cardBody}>
-                    <Text 
-                      style={[
-                        styles.cardBalanceText, 
-                        wallet.balance >= 1000000 ? { fontSize: 13 } : wallet.balance >= 100000 ? { fontSize: 15 } : {}
-                      ]} 
-                      numberOfLines={1} 
-                      adjustsFontSizeToFit
-                    >
-                      {showBalances 
-                        ? `₱${wallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                        : '₱*****'
-                      }
-                    </Text>
-                  </View>
-
-                  <View style={styles.cardFooter}>
-                    <View style={[styles.purposePill, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
-                      <Text style={[styles.purposePillText, { color: '#ffffff' }]}>{wallet.purpose}</Text>
-                    </View>
-
-                    {wallet.qrCodeImage && (
-                      <TouchableOpacity
-                        onPress={(e) => { e.stopPropagation(); setViewingQrCode(wallet.qrCodeImage || null); }}
-                        style={[styles.qrActionBtn, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
-                      >
-                        <QrCode size={14} color="#ffffff" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
+                  ))}
                 </View>
               </View>
             ))}
@@ -255,7 +268,20 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     gridContainer: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-start',
+      gap: 12,
+    },
+    categorySection: {
+      marginBottom: 24,
+    },
+    categoryLabel: {
+      fontFamily: theme.fonts.bold,
+      fontSize: 14,
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+      marginBottom: 12,
+      marginLeft: 4,
     },
     premiumCardWrapper: {
       width: (Dimensions.get('window').width - theme.spacing.lg * 2 - 12) / 2,

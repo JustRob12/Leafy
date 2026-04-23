@@ -127,7 +127,10 @@ export default function GoalDetailScreen() {
           {/* User Description / Notes */}
           {goal.description ? (
             <View style={styles.descriptionSection}>
-              <Text style={styles.sectionLabel}>Notes & Motivation</Text>
+              <View style={styles.sectionHeaderRow}>
+                <Info size={18} color={colors.text} />
+                <Text style={styles.sectionLabel}>Information</Text>
+              </View>
               <View style={styles.descriptionCard}>
                 <Text style={styles.descriptionText}>{goal.description}</Text>
               </View>
@@ -346,7 +349,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize: 16,
     color: colors.text,
-    marginBottom: 8,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
     marginLeft: 4,
   },
   descriptionCard: {

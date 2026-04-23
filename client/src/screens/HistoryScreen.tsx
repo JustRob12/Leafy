@@ -5,9 +5,41 @@ import { useAppContext } from '../context/AppContext';
 import { ArrowLeft, ArrowUpRight, ArrowDownRight, Calendar, Filter, Trash2 } from 'lucide-react-native';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 import { useScrollToTop } from '@react-navigation/native';
+import * as LucideIcons from 'lucide-react-native';
+import { Image } from 'react-native';
+
+const BRAND_LOGOS: { [key: string]: any } = {
+  'gcash.png': require('../../public/walletimages/gcash.png'),
+  'maya.png': require('../../public/walletimages/maya.png'),
+  'paypal.png': require('../../public/walletimages/paypal.png'),
+  'wise.png': require('../../public/walletimages/wise.png'),
+  'maribank.png': require('../../public/walletimages/maribank.png'),
+  'gotyme.png': require('../../public/walletimages/gotyme.png'),
+};
+
+const ICON_MAP: { [key: string]: any } = {
+  Utensils: LucideIcons.Utensils,
+  Car: LucideIcons.Car,
+  Receipt: LucideIcons.Receipt,
+  Heart: LucideIcons.Heart,
+  ShoppingBag: LucideIcons.ShoppingBag,
+  MoreHorizontal: LucideIcons.MoreHorizontal,
+  Coffee: LucideIcons.Coffee,
+  Home: LucideIcons.Home,
+  Gift: LucideIcons.Gift,
+  Smartphone: LucideIcons.Smartphone,
+  Gamepad: LucideIcons.Gamepad,
+  Briefcase: LucideIcons.Briefcase,
+  Camera: LucideIcons.Camera,
+  Film: LucideIcons.Film,
+  Music: LucideIcons.Music,
+  Globe: LucideIcons.Globe,
+  Map: LucideIcons.Map,
+  Search: LucideIcons.Search,
+};
 
 export default function HistoryScreen() {
-  const { transactions, deleteTransaction, showConfirm, showFeedback, colors, isDarkMode } = useAppContext();
+  const { transactions, deleteTransaction, showConfirm, showFeedback, colors, isDarkMode, wallets } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const { handleScroll } = useScrollHideTabBar();
   const scrollViewRef = React.useRef<ScrollView>(null);
@@ -60,9 +92,22 @@ export default function HistoryScreen() {
     return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
   };
 
-  const getTxIcon = (type: string) => {
-    if (type === 'deposit') return <ArrowDownRight size={20} color={colors.success} />;
-    return <ArrowUpRight size={20} color={colors.danger} />;
+  const getTxIcon = (tx: any) => {
+    const isDeposit = tx.type === 'deposit';
+    
+    if (isDeposit) {
+      const wallet = wallets.find(w => w.id === tx.walletId);
+      if (wallet?.iconType === 'preset' && wallet.presetLogo) {
+        return <Image source={BRAND_LOGOS[wallet.presetLogo]} style={styles.txBrandLogo as any} />;
+      }
+      return <LucideIcons.ArrowDownRight size={20} color={colors.success} />;
+    } else {
+      if (tx.icon && ICON_MAP[tx.icon]) {
+        const IconComp = ICON_MAP[tx.icon];
+        return <IconComp size={20} color={colors.danger} />;
+      }
+      return <LucideIcons.ArrowUpRight size={20} color={colors.danger} />;
+    }
   };
 
   return (
@@ -134,7 +179,7 @@ export default function HistoryScreen() {
                       { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5', borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.2)' : '#ecfdf5' } : 
                       { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2', borderColor: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : '#fef2f2' }
                   ]}>
-                    {getTxIcon(tx.type)}
+                    {getTxIcon(tx)}
                   </View>
                   <View>
                     <Text style={styles.txTitle}>{tx.title}</Text>
@@ -288,5 +333,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   typeChipTextActive: {
     color: '#ffffff',
     fontFamily: theme.fonts.bold,
+  },
+  txBrandLogo: {
+    width: 28,
+    height: 28,
+    resizeMode: 'contain',
   },
 });

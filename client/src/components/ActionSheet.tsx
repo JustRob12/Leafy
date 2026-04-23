@@ -33,9 +33,9 @@ export default function ActionSheet({ visible, onClose, title, children }: Actio
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.overlay}>
           <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.container}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 25}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
           >
             <Animated.View 
               style={[

@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { lightPalette, darkPalette } from '../theme';
+import { palettes, TreeType } from '../theme';
 import { requestNotificationPermissions, syncAllNotifications, notifyGoalCompletion, updateBadgeCount } from '../services/NotificationService';
+
+export type WalletCategory = 'E-Wallet' | 'Banks' | 'Personal';
 
 export type WalletType = {
   id: string;
@@ -13,6 +15,7 @@ export type WalletType = {
   presetLogo?: string;
   customIcon?: string;
   color?: string;
+  category: WalletCategory;
 };
 
 export type TransactionType = {
@@ -22,6 +25,7 @@ export type TransactionType = {
   date: string;
   type: 'deposit' | 'withdrawal';
   walletId: string;
+  icon?: string; // Optional icon name for withdrawals
 };
 
 export type GoalType = {
@@ -93,6 +97,15 @@ export type RecursionType = {
   date: string;
 };
 
+export type SubscriptionType = {
+  id: string;
+  title: string;
+  amount: number;
+  dayOfMonth: number;
+  date: string;
+  icon?: string;
+};
+
 type AppContextType = {
   isLoaded: boolean;
   username: string | null;
@@ -130,7 +143,9 @@ type AppContextType = {
   importData: (jsonString: string) => Promise<void>;
   isDarkMode: boolean;
   toggleTheme: () => Promise<void>;
-  colors: typeof lightPalette;
+  treeType: TreeType;
+  setTreeType: (type: TreeType) => Promise<void>;
+  colors: any;
   groceryLists: GroceryListType[];
   addGroceryList: (title: string, scheduledDays?: number[]) => Promise<void>;
   deleteGroceryList: (id: string) => Promise<void>;
@@ -167,6 +182,10 @@ type AppContextType = {
   processRecursion: (id: string) => Promise<void>;
   isNotificationsEnabled: boolean;
   toggleNotifications: (enabled: boolean) => Promise<void>;
+  subscriptions: SubscriptionType[];
+  addSubscription: (subscription: Omit<SubscriptionType, 'id' | 'date'>) => Promise<void>;
+  editSubscription: (id: string, updates: Partial<Omit<SubscriptionType, 'id' | 'date'>>) => Promise<void>;
+  deleteSubscription: (id: string) => Promise<void>;
 };
 
 
@@ -184,6 +203,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [travels, setTravels] = useState<TravelType[]>([]);
   const [withdrawPresets, setWithdrawPresets] = useState<WithdrawPresetType[]>([]);
   const [recursions, setRecursions] = useState<RecursionType[]>([]);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionType[]>([]);
   const [userImage, setUserImageState] = useState<string | null>(null);
   const [appPin, setAppPinState] = useState<string | null>(null);
   const [isSecurityEnabled, setIsSecurityEnabled] = useState(false);
@@ -191,7 +211,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [statusCardBg, setStatusCardBgState] = useState<string | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false); // Default to Light Mode as requested
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [treeType, setTreeTypeState] = useState<TreeType>('emerald');
   const [feedback, setFeedback] = useState<{ visible: boolean; type: 'success' | 'delete' | 'error'; message: string }>({
     visible: false,
     type: 'success',
@@ -229,12 +250,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (storedDebts) setDebts(JSON.parse(storedDebts));
       const storedRecursions = await AsyncStorage.getItem('@recursions');
       if (storedRecursions) setRecursions(JSON.parse(storedRecursions));
+      const storedSubscriptions = await AsyncStorage.getItem('@subscriptions');
+      if (storedSubscriptions) setSubscriptions(JSON.parse(storedSubscriptions));
       const storedGrocery = await AsyncStorage.getItem('@groceryLists');
       if (storedGrocery) setGroceryLists(JSON.parse(storedGrocery));
       const storedTravels = await AsyncStorage.getItem('@travels');
       if (storedTravels) setTravels(JSON.parse(storedTravels));
       const storedPresets = await AsyncStorage.getItem('@withdrawPresets');
-      if (storedPresets) {
+      if (storedPresets && JSON.parse(storedPresets).length > 0) {
         setWithdrawPresets(JSON.parse(storedPresets));
       } else {
         const defaultPresets: WithdrawPresetType[] = [
@@ -243,7 +266,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           { id: '3', name: 'Bills', iconName: 'Receipt' },
           { id: '4', name: 'Health', iconName: 'Heart' },
           { id: '5', name: 'Shopping', iconName: 'ShoppingBag' },
-          { id: '6', name: 'Others', iconName: 'MoreHorizontal' },
+          { id: '6', name: 'Coffee', iconName: 'Coffee' },
+          { id: '7', name: 'Gift', iconName: 'Gift' },
+          { id: '8', name: 'Gaming', iconName: 'Gamepad' },
+          { id: '9', name: 'Travel', iconName: 'Map' },
+          { id: '10', name: 'Music', iconName: 'Music' },
+          { id: '11', name: 'Phone', iconName: 'Smartphone' },
+          { id: '12', name: 'Others', iconName: 'MoreHorizontal' },
         ];
         setWithdrawPresets(defaultPresets);
         await AsyncStorage.setItem('@withdrawPresets', JSON.stringify(defaultPresets));
@@ -275,6 +304,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const storedNotifs = await AsyncStorage.getItem('@isNotificationsEnabled');
       if (storedNotifs !== null) {
         setIsNotificationsEnabled(storedNotifs === 'true');
+      }
+
+      const storedTreeType = await AsyncStorage.getItem('@treeType');
+      if (storedTreeType !== null) {
+        setTreeTypeState(storedTreeType as TreeType);
       }
     } catch (e) {
       console.error('Failed to load data', e);
@@ -625,6 +659,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStatusCardBgState(image);
   };
 
+  const addSubscription = async (subscriptionData: Omit<SubscriptionType, 'id' | 'date'>) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const newSubscription: SubscriptionType = {
+      ...subscriptionData,
+      id: Date.now().toString(),
+      date: new Date().toISOString(),
+    };
+    const updated = [...subscriptions, newSubscription];
+    setSubscriptions(updated);
+    await AsyncStorage.setItem('@subscriptions', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('success', 'Subscription Added');
+  };
+
+  const editSubscription = async (id: string, updates: Partial<Omit<SubscriptionType, 'id' | 'date'>>) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const updated = subscriptions.map(s => s.id === id ? { ...s, ...updates } : s);
+    setSubscriptions(updated);
+    await AsyncStorage.setItem('@subscriptions', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('success', 'Subscription Updated');
+  };
+
+  const deleteSubscription = async (id: string) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const updated = subscriptions.filter(s => s.id !== id);
+    setSubscriptions(updated);
+    await AsyncStorage.setItem('@subscriptions', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('delete', 'Subscription Removed');
+  };
+
   const editWallet = async (id: string, updates: Partial<WalletType>) => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 800));
@@ -731,6 +800,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTravels([]);
     setWithdrawPresets([]);
     setRecursions([]);
+    setSubscriptions([]);
     setAppPinState(null);
     setIsSecurityEnabled(false);
     setIsBiometricsEnabled(false);
@@ -753,7 +823,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const colors = isDarkMode ? darkPalette : lightPalette;
+
 
   const importData = async (jsonString: string) => {
     try {
@@ -772,6 +842,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ['@travels', data.travels ? JSON.stringify(data.travels) : '[]'],
         ['@withdrawPresets', data.withdrawPresets ? JSON.stringify(data.withdrawPresets) : '[]'],
         ['@recursions', data.recursions ? JSON.stringify(data.recursions) : '[]'],
+        ['@subscriptions', data.subscriptions ? JSON.stringify(data.subscriptions) : '[]'],
         ['@appPin', data.appPin || null],
         ['@isSecurityEnabled', data.isSecurityEnabled !== undefined ? String(data.isSecurityEnabled) : null],
         ['@isBiometricsEnabled', data.isBiometricsEnabled !== undefined ? String(data.isBiometricsEnabled) : null],
@@ -922,6 +993,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await AsyncStorage.setItem('@travels', JSON.stringify(updated));
     showFeedback('delete', 'Travel Removed');
   };
+
+  const setTreeType = async (type: TreeType) => {
+    setTreeTypeState(type);
+    await AsyncStorage.setItem('@treeType', type);
+  };
+
+  const colors = palettes[treeType][isDarkMode ? 'dark' : 'light'];
 
   const setAppPin = async (pin: string | null) => {
     if (pin) await AsyncStorage.setItem('@appPin', pin);
@@ -1143,6 +1221,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         importData,
         isDarkMode,
         toggleTheme,
+        treeType,
+        setTreeType,
         colors,
         groceryLists,
         addGroceryList,
@@ -1180,6 +1260,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         processRecursion,
         isNotificationsEnabled,
         toggleNotifications,
+        subscriptions,
+        addSubscription,
+        editSubscription,
+        deleteSubscription,
       }}
     >
       {children}

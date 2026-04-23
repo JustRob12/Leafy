@@ -41,6 +41,7 @@ import DebtsScreen from './src/screens/DebtsScreen';
 import GroceryScreen from './src/screens/GroceryScreen';
 import GroceryDetailScreen from './src/screens/GroceryDetailScreen';
 import TravelScreen from './src/screens/TravelScreen';
+import AddTravelScreen from './src/screens/AddTravelScreen';
 import StatusCardScreen from './src/screens/StatusCardScreen';
 import WithdrawScreen from './src/screens/WithdrawScreen';
 import DepositScreen from './src/screens/DepositScreen';
@@ -50,6 +51,8 @@ import AddGoalScreen from './src/screens/AddGoalScreen';
 import AddRecursionScreen from './src/screens/AddRecursionScreen';
 import AddReceivableScreen from './src/screens/AddReceivableScreen';
 import AddDebtScreen from './src/screens/AddDebtScreen';
+import SubscriptionScreen from './src/screens/SubscriptionScreen';
+import AddSubscriptionScreen from './src/screens/AddSubscriptionScreen';
 import MainHeader from './src/components/MainHeader';
 import FeedbackModal from './src/components/FeedbackModal';
 import ConfirmModal from './src/components/ConfirmModal';
@@ -90,6 +93,7 @@ function MainNavigation() {
             <Stack.Screen name="Grocery" component={GroceryScreen} />
             <Stack.Screen name="GroceryDetail" component={GroceryDetailScreen} />
             <Stack.Screen name="Travel" component={TravelScreen} />
+            <Stack.Screen name="AddTravel" component={AddTravelScreen} />
             <Stack.Screen name="Security" component={SecurityScreen} />
             <Stack.Screen name="StatusCard" component={StatusCardScreen} />
             <Stack.Screen name="Withdraw" component={WithdrawScreen} />
@@ -101,6 +105,8 @@ function MainNavigation() {
             <Stack.Screen name="AddRecursion" component={AddRecursionScreen} />
             <Stack.Screen name="AddReceivable" component={AddReceivableScreen} />
             <Stack.Screen name="AddDebt" component={AddDebtScreen} />
+            <Stack.Screen name="Subscription" component={SubscriptionScreen} />
+            <Stack.Screen name="AddSubscription" component={AddSubscriptionScreen} />
           </Stack.Group>
         )}
       </Stack.Navigator>
@@ -141,6 +147,7 @@ const linking = {
       Deposit: 'deposit',
       Withdraw: 'withdraw',
       AddSavings: 'deposit', // Alias
+      AddTravel: 'add-travel',
     },
   },
 };
@@ -246,11 +253,11 @@ function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
     }
   }, [isUnlocked, pendingWidgetAction]);
 
-  // Safety valve: If loading takes more than 5 seconds, force the app to proceed
+  // Safety valve: If loading takes more than 15 seconds, force the app to proceed
   useEffect(() => {
     const timer = setTimeout(() => {
       setDidTimeout(true);
-    }, 5000);
+    }, 15000);
     return () => clearTimeout(timer);
   }, []);
 

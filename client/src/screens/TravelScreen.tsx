@@ -10,52 +10,14 @@ import LeafyDatePicker from '../components/LeafyDatePicker';
 import { useNavigation } from '@react-navigation/native';
 
 export default function TravelScreen() {
-  const { travels, addTravel, deleteTravel, showConfirm, colors, isDarkMode } = useAppContext();
+  const travels = useAppContext().travels;
+  const deleteTravel = useAppContext().deleteTravel;
+  const showConfirm = useAppContext().showConfirm;
+  const colors = useAppContext().colors;
+  const isDarkMode = useAppContext().isDarkMode;
+  
   const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation<any>();
-
-  const [modalVisible, setModalVisible] = useState(false);
-  const [tripName, setTripName] = useState('');
-  const [location, setLocation] = useState('');
-  const [expenses, setExpenses] = useState('');
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
-  const [pickerVisible, setPickerVisible] = useState(false);
-  const [pickerMode, setPickerMode] = useState<'start' | 'end' | null>(null);
-
-  const handleAddTravel = async () => {
-    const numericExpenses = parseFloat(expenses);
-    if (tripName.trim() && location.trim() && !isNaN(numericExpenses) && startDate && endDate) {
-      await addTravel({
-        name: tripName.trim(),
-        location: location.trim(),
-        expenses: numericExpenses,
-        startDate: formatDisplayDate(startDate),
-        endDate: formatDisplayDate(endDate),
-      });
-      setModalVisible(false);
-      resetForm();
-    }
-  };
-
-  const resetForm = () => {
-    setTripName('');
-    setLocation('');
-    setExpenses('');
-    setStartDate(null);
-    setEndDate(null);
-  };
-
-  const handleOpenPicker = (mode: 'start' | 'end') => {
-    setPickerMode(mode);
-    setPickerVisible(true);
-  };
-
-  const handleDateSelect = (date: Date) => {
-    if (pickerMode === 'start') setStartDate(date);
-    else if (pickerMode === 'end') setEndDate(date);
-    setPickerVisible(false);
-  };
 
   const formatDisplayDate = (date: Date | null) => {
     if (!date) return '';
@@ -96,7 +58,7 @@ export default function TravelScreen() {
             <Text style={styles.emptySubtitle}>You haven't recorded any trips yet. Start logging your adventures and expenses!</Text>
             <TouchableOpacity
               style={styles.createBtn}
-              onPress={() => setModalVisible(true)}
+              onPress={() => navigation.navigate('AddTravel')}
             >
               <Plus size={18} color="#ffffff" />
               <Text style={styles.createBtnText}>Record First Trip</Text>
@@ -147,99 +109,12 @@ export default function TravelScreen() {
       {/* Floating Add Button */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => setModalVisible(true)}
+        onPress={() => navigation.navigate('AddTravel')}
         activeOpacity={0.8}
       >
         <Plus size={30} color="#ffffff" />
       </TouchableOpacity>
 
-      <ActionSheet
-        visible={modalVisible}
-        onClose={() => { setModalVisible(false); resetForm(); }}
-        title="Record New Trip"
-      >
-        <Text style={styles.inputLabel}>Trip Name</Text>
-        <View style={styles.inputWrapper}>
-          <Plane size={18} color={colors.textMuted} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., Summer in El Nido"
-            placeholderTextColor={colors.textMuted}
-            value={tripName}
-            onChangeText={setTripName}
-            autoFocus
-          />
-        </View>
-
-        <Text style={styles.inputLabel}>Location</Text>
-        <View style={styles.inputWrapper}>
-          <MapPin size={18} color={colors.textMuted} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., Palawan, Philippines"
-            placeholderTextColor={colors.textMuted}
-            value={location}
-            onChangeText={setLocation}
-          />
-        </View>
-
-        <Text style={styles.inputLabel}>Expenses (₱)</Text>
-        <View style={styles.inputWrapper}>
-          <Text style={{ fontSize: 18, color: colors.textMuted, fontFamily: theme.fonts.bold, marginRight: 10 }}>₱</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="0.00"
-            placeholderTextColor={colors.textMuted}
-            keyboardType="numeric"
-            value={expenses}
-            onChangeText={setExpenses}
-          />
-        </View>
-
-        <View style={styles.rowInputs}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.inputLabel}>Start Date</Text>
-            <TouchableOpacity 
-              style={styles.inputWrapper}
-              onPress={() => handleOpenPicker('start')}
-            >
-              <Calendar size={18} color={colors.textMuted} style={styles.inputIcon} />
-              <Text style={[styles.dateInputPlaceholder, startDate && { color: colors.text }]}>
-                {startDate ? formatDisplayDate(startDate) : 'Select Start'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={{ flex: 1 }}>
-            <Text style={styles.inputLabel}>End Date</Text>
-            <TouchableOpacity 
-              style={styles.inputWrapper}
-              onPress={() => handleOpenPicker('end')}
-            >
-              <Calendar size={18} color={colors.textMuted} style={styles.inputIcon} />
-              <Text style={[styles.dateInputPlaceholder, endDate && { color: colors.text }]}>
-                {endDate ? formatDisplayDate(endDate) : 'Select End'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.saveBtn, (!tripName.trim() || !location.trim() || !expenses || !startDate || !endDate) && styles.saveBtnDisabled]}
-          onPress={handleAddTravel}
-          disabled={!tripName.trim() || !location.trim() || !expenses || !startDate || !endDate}
-        >
-          <Text style={styles.saveBtnText}>Save Trip Record</Text>
-        </TouchableOpacity>
-
-        <LeafyDatePicker
-          visible={pickerVisible}
-          onClose={() => setPickerVisible(false)}
-          onSelect={handleDateSelect}
-          initialDate={pickerMode === 'start' ? (startDate || undefined) : (endDate || undefined)}
-          title={pickerMode === 'start' ? "Select Start Date" : "Select End Date"}
-        />
-      </ActionSheet>
     </SafeAreaView>
   );
 }

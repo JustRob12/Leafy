@@ -146,7 +146,7 @@ export default function AddGoalScreen() {
           onSelectWallet={setSelectedWalletId}
         />
 
-        <Text style={styles.inputLabel}>About this Goal (Optional)</Text>
+        <Text style={styles.inputLabel}>Goal Description</Text>
         <TextInput
           style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
           placeholder="Why are you saving for this? Add some details..."
@@ -157,14 +157,7 @@ export default function AddGoalScreen() {
           numberOfLines={4}
         />
 
-        {isEditing && (
-          <TouchableOpacity
-            style={styles.deleteLink}
-            onPress={handleDelete}
-          >
-            <Text style={styles.deleteLinkText}>Delete this goal</Text>
-          </TouchableOpacity>
-        )}
+
       </ScrollView>
 
       {/* Fixed Footer */}

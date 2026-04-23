@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Animated, Dimensions, Platform, KeyboardAvoidingView, FlatList, Easing, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Animated, Dimensions, Platform, KeyboardAvoidingView, FlatList, Easing, Keyboard, Image as RNImage } from 'react-native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
@@ -20,6 +20,15 @@ const ICON_MAP: { [key: string]: any } = {
 };
 
 const AVAILABLE_ICONS = Object.keys(ICON_MAP);
+
+const BRAND_LOGOS: { [key: string]: any } = {
+  'gcash.png': require('../../public/walletimages/gcash.png'),
+  'maya.png': require('../../public/walletimages/maya.png'),
+  'paypal.png': require('../../public/walletimages/paypal.png'),
+  'wise.png': require('../../public/walletimages/wise.png'),
+  'maribank.png': require('../../public/walletimages/maribank.png'),
+  'gotyme.png': require('../../public/walletimages/gotyme.png'),
+};
 
 export default function WithdrawScreen() {
   const { colors, isDarkMode, withdrawPresets, addWithdrawPreset, wallets, addTransaction, showFeedback } = useAppContext();
@@ -84,7 +93,8 @@ export default function WithdrawScreen() {
         title: selectedPreset.name,
         amount: numericAmount,
         type: 'withdrawal',
-        walletId: selectedWalletId
+        walletId: selectedWalletId,
+        icon: selectedPreset.iconName
       });
       navigation.navigate('Main');
     }
@@ -106,14 +116,14 @@ export default function WithdrawScreen() {
         style={styles.simplePresetItem}
         onPress={() => handleSelectPreset(preset)}
       >
-        <Icon color={colors.primary} size={28} />
+        <Icon color={colors.primary} size={22} />
         <Text style={styles.simplePresetText} numberOfLines={1}>{preset.name}</Text>
       </TouchableOpacity>
     );
   };
 
   const renderStep0 = () => {
-    const defaultIds = ['1', '2', '3', '4', '5', '6'];
+    const defaultIds = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
     const defaultPresets = withdrawPresets.filter(p => defaultIds.includes(p.id));
     const customPresets = withdrawPresets.filter(p => !defaultIds.includes(p.id));
 
@@ -202,6 +212,14 @@ export default function WithdrawScreen() {
                   <Check size={8} color="#ffffff" strokeWidth={3} />
                 </View>
               )}
+              <View style={styles.miniWalletIconBox}>
+                {(() => {
+                  if (wallet.iconType === 'preset' && wallet.presetLogo) {
+                    return <RNImage source={BRAND_LOGOS[wallet.presetLogo]} style={styles.miniWalletLogo as any} />;
+                  }
+                  return <CreditCard size={14} color="#ffffff" />;
+                })()}
+              </View>
               <Text style={[styles.miniWalletName, { color: '#ffffff' }]} numberOfLines={1}>
                 {wallet.name}
               </Text>
@@ -406,35 +424,35 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     justifyContent: 'flex-start',
   },
   simplePresetItem: {
-    width: (width - 64) / 3,
+    width: (width - 76) / 4,
     aspectRatio: 1,
     backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-    borderRadius: 24,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-    padding: 10,
+    padding: 6,
   },
   addSimpleItem: {
-    width: (width - 64) / 3,
+    width: (width - 76) / 4,
     aspectRatio: 1,
-    borderRadius: 24,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     borderStyle: 'dashed',
     borderWidth: 1.5,
     borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)',
-    padding: 10,
+    padding: 6,
     backgroundColor: 'transparent',
   },
   simplePresetText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 11,
+    fontSize: 9,
     color: colors.text,
-    marginTop: 10,
+    marginTop: 6,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   presetItem: {
     width: (width - 56) / 3,
@@ -704,6 +722,21 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.medium,
     fontSize: 9,
     color: colors.textMuted,
+  },
+  miniWalletIconBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    overflow: 'hidden',
+  },
+  miniWalletLogo: {
+    width: 18,
+    height: 18,
+    resizeMode: 'contain',
   },
   searchBarWrapper: {
     flexDirection: 'row',

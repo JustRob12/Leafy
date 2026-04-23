@@ -1,21 +1,63 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Animated, Easing, FlatList, Dimensions, NativeSyntheticEvent, NativeScrollEvent, Modal, Platform, StatusBar } from 'react-native';
+import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { AudioPlayer, createAudioPlayer } from 'expo-audio';
 
 
 
 import { theme } from '../theme';
-import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane, RefreshCw, Leaf, Eye, EyeOff } from 'lucide-react-native';
+import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane, RefreshCw, Leaf, Eye, EyeOff, CreditCard } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation, useScrollToTop } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 import WalletDropdown from '../components/WalletDropdown';
 import AnimatedCounter from '../components/AnimatedCounter';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
+import * as LucideIcons from 'lucide-react-native';
+
+const SUBS_ICONS: { [key: string]: any } = {
+  'capcut.png': require('../../public/subs/capcut.png'),
+  'chatgpt.png': require('../../public/subs/chatgpt.png'),
+  'disney.png': require('../../public/subs/disney.png'),
+  'gemini.png': require('../../public/subs/gemini.png'),
+  'netflix.png': require('../../public/subs/netflix.png'),
+  'prime.png': require('../../public/subs/prime.png'),
+  'spotify.png': require('../../public/subs/spotify.png'),
+};
+
+const BRAND_LOGOS: { [key: string]: any } = {
+  'gcash.png': require('../../public/walletimages/gcash.png'),
+  'maya.png': require('../../public/walletimages/maya.png'),
+  'paypal.png': require('../../public/walletimages/paypal.png'),
+  'wise.png': require('../../public/walletimages/wise.png'),
+  'maribank.png': require('../../public/walletimages/maribank.png'),
+  'gotyme.png': require('../../public/walletimages/gotyme.png'),
+};
+
+const ICON_MAP: { [key: string]: any } = {
+  Utensils: LucideIcons.Utensils,
+  Car: LucideIcons.Car,
+  Receipt: LucideIcons.Receipt,
+  Heart: LucideIcons.Heart,
+  ShoppingBag: LucideIcons.ShoppingBag,
+  MoreHorizontal: LucideIcons.MoreHorizontal,
+  Coffee: LucideIcons.Coffee,
+  Home: LucideIcons.Home,
+  Gift: LucideIcons.Gift,
+  Smartphone: LucideIcons.Smartphone,
+  Gamepad: LucideIcons.Gamepad,
+  Briefcase: LucideIcons.Briefcase,
+  Camera: LucideIcons.Camera,
+  Film: LucideIcons.Film,
+  Music: LucideIcons.Music,
+  Globe: LucideIcons.Globe,
+  Map: LucideIcons.Map,
+  Search: LucideIcons.Search,
+};
 
 
 export default function HomeScreen() {
-  const { totalBalance, totalReceivables, totalDebts, wallets, debts, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode, isTutorialActive, stopTutorial, groceryLists } = useAppContext();
+  const { totalBalance, totalReceivables, totalDebts, wallets, debts, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode, treeType, isTutorialActive, stopTutorial, groceryLists, subscriptions, recursions } = useAppContext();
 
   const navigation = useNavigation<any>();
   const { handleScroll } = useScrollHideTabBar();
@@ -29,6 +71,7 @@ export default function HomeScreen() {
 
   // Goal Fade Carousel Logic
   const [activeGoalIndex, setActiveGoalIndex] = useState(0);
+  const [moreActionsVisible, setMoreActionsVisible] = useState(false);
   const goalFadeAnim = useRef(new Animated.Value(1)).current;
   const fadeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -56,13 +99,71 @@ export default function HomeScreen() {
         });
       }, 5000); // 5 seconds per goal
     };
-
     startFadeTransition();
-
     return () => {
       if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
     };
   }, [goals.length]);
+
+  const topSubscriptions = useMemo(() => {
+    const getRemaining = (day: number) => {
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth();
+      let targetDate = new Date(currentYear, currentMonth, day);
+      if (targetDate < today) {
+        targetDate = new Date(currentYear, currentMonth + 1, day);
+      }
+      const diffTime = targetDate.getTime() - today.getTime();
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    };
+
+    return [...subscriptions]
+      .sort((a, b) => getRemaining(a.dayOfMonth) - getRemaining(b.dayOfMonth))
+      .slice(0, 3);
+  }, [subscriptions]);
+
+  const paydayInfo = useMemo(() => {
+    if (recursions.length === 0) return null;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+    
+    const countdowns = recursions.map(r => {
+      let targetDate: Date;
+
+      if (r.frequency === 'weekly') {
+        targetDate = new Date(today);
+        const targetDay = r.dayOfWeek ?? 1;
+        const currentDay = today.getDay();
+        let daysUntil = (targetDay - currentDay + 7) % 7;
+        if (daysUntil === 0) daysUntil = 7; // Next week if today is the day
+        targetDate.setDate(today.getDate() + daysUntil);
+      } else if (r.frequency === 'bi-monthly') {
+        const d15 = new Date(currentYear, currentMonth, 15);
+        const d30 = new Date(currentYear, currentMonth, 30);
+        if (today < d15) targetDate = d15;
+        else if (today < d30) targetDate = d30;
+        else targetDate = new Date(currentYear, currentMonth + 1, 15);
+      } else {
+        // Monthly
+        const day = r.dayOfMonth || 1;
+        targetDate = new Date(currentYear, currentMonth, day);
+        if (targetDate <= today) {
+          targetDate = new Date(currentYear, currentMonth + 1, day);
+        }
+      }
+
+      const diffTime = targetDate.getTime() - today.getTime();
+      const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return { days, company: r.companyName, amount: r.amount };
+    }).filter(c => !isNaN(c.days));
+    
+    if (countdowns.length === 0) return null;
+    return countdowns.sort((a, b) => a.days - b.days)[0];
+  }, [recursions]);
 
 
 
@@ -227,9 +328,22 @@ export default function HomeScreen() {
 
 
 
-  const getTxIcon = (type: string) => {
-    if (type === 'deposit') return <ArrowDownRight size={18} color={theme.colors.primary} />;
-    return <ArrowUpRight size={18} color="#ef4444" />;
+  const getTxIcon = (tx: any) => {
+    const isDeposit = tx.type === 'deposit';
+    
+    if (isDeposit) {
+      const wallet = wallets.find(w => w.id === tx.walletId);
+      if (wallet?.iconType === 'preset' && wallet.presetLogo) {
+        return <Image source={BRAND_LOGOS[wallet.presetLogo]} style={styles.txBrandLogo as any} />;
+      }
+      return <ArrowDownRight size={18} color={theme.colors.primary} />;
+    } else {
+      if (tx.icon && ICON_MAP[tx.icon]) {
+        const IconComp = ICON_MAP[tx.icon];
+        return <IconComp size={18} color="#ef4444" />;
+      }
+      return <ArrowUpRight size={18} color="#ef4444" />;
+    }
   };
 
   const formatTxDate = (isoString: string) => {
@@ -247,6 +361,42 @@ export default function HomeScreen() {
     .filter(t => t.type === 'withdrawal')
     .reduce((acc, curr) => acc + curr.amount, 0);
 
+  const getThemeDecorIcon = (size: number, rotation: string) => {
+    const iconProps = { size, color: "#ffffff", opacity: 0.3, style: { transform: [{ rotate: rotation }] } as any };
+    
+    switch (treeType) {
+      case 'cherry':
+        return <LucideIcons.Flower2 {...iconProps} />;
+      case 'maple':
+        return <LucideIcons.Wind {...iconProps} />;
+      case 'spruce':
+        return <LucideIcons.CloudSnow {...iconProps} />;
+      default:
+        return <Leaf {...iconProps} />;
+    }
+  };
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayIndex = new Date().getDay();
+  const pendingDebts = debts.filter(d => d.dueDate === todayStr).length;
+  const pendingGroceries = groceryLists.filter(list => list.scheduledDays && list.scheduledDays.includes(todayIndex)).length;
+  
+  // Subscription due soon count
+  const pendingSubscriptions = subscriptions.filter(sub => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+    let targetDate = new Date(currentYear, currentMonth, sub.dayOfMonth);
+    if (targetDate < today) {
+      targetDate = new Date(currentYear, currentMonth + 1, sub.dayOfMonth);
+    }
+    const diffTime = targetDate.getTime() - today.getTime();
+    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return daysRemaining <= 3;
+  }).length;
+
+  const totalMoreBadge = pendingDebts + pendingGroceries + pendingSubscriptions;
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -260,11 +410,11 @@ export default function HomeScreen() {
         {/* PREMIUM BALANCE CARD (Glass Green Palette) */}
         <View ref={balanceRef} collapsable={false} style={styles.premiumCard}>
 
-          <View style={styles.decorLeaf1}><Leaf size={50} color="#ffffff" opacity={0.3} style={{ transform: [{ rotate: '45deg' }] }} /></View>
-          <View style={styles.decorLeaf2}><Leaf size={80} color="#ffffff" opacity={0.3} style={{ transform: [{ rotate: '-20deg' }] }} /></View>
-          <View style={styles.decorLeaf3}><Leaf size={40} color="#ffffff" opacity={0.3} style={{ transform: [{ rotate: '15deg' }] }} /></View>
-          <View style={styles.decorLeaf4}><Leaf size={60} color="#ffffff" opacity={0.3} style={{ transform: [{ rotate: '70deg' }] }} /></View>
-          <View style={styles.decorLeaf5}><Leaf size={30} color="#ffffff" opacity={0.3} style={{ transform: [{ rotate: '-45deg' }] }} /></View>
+          <View style={styles.decorLeaf1}>{getThemeDecorIcon(50, '45deg')}</View>
+          <View style={styles.decorLeaf2}>{getThemeDecorIcon(80, '-20deg')}</View>
+          <View style={styles.decorLeaf3}>{getThemeDecorIcon(40, '15deg')}</View>
+          <View style={styles.decorLeaf4}>{getThemeDecorIcon(60, '70deg')}</View>
+          <View style={styles.decorLeaf5}>{getThemeDecorIcon(30, '-45deg')}</View>
 
           <View style={styles.premiumCardTop}>
             <Text style={styles.premiumLabel}>Total Balance</Text>
@@ -306,6 +456,21 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {/* PAYDAY COUNTDOWN */}
+        {paydayInfo && (
+          <View style={styles.paydayContainer}>
+            <View style={styles.paydayIconWrapper}>
+              <RefreshCw size={16} color={isDarkMode ? '#4ade80' : '#166534'} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.paydayText}>
+                You have <Text style={styles.paydayHighlight}>{paydayInfo.days} days</Text> until your payday from <Text style={styles.paydayHighlight}>{paydayInfo.company}</Text>
+              </Text>
+            </View>
+            <Text style={styles.paydayAmount}>+₱{paydayInfo.amount.toLocaleString()}</Text>
+          </View>
+        )}
+
 
         {/* QUICK ACTIONS */}
         <View style={styles.sectionHeader}>
@@ -319,25 +484,12 @@ export default function HomeScreen() {
             <Text style={styles.actionText}>Add Savings</Text>
           </TouchableOpacity>
 
-
-
           <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Withdraw')}>
             <View ref={withdrawRef} collapsable={false} style={styles.actionIconBorder}>
               <ArrowUpRight size={20} color={colors.text} />
             </View>
             <Text style={styles.actionText}>Withdraw</Text>
           </TouchableOpacity>
-
-
-
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Calculator')}>
-            <View ref={calculatorRef} collapsable={false} style={styles.actionIconBorder}>
-              <Calculator size={20} color={colors.text} />
-            </View>
-            <Text style={styles.actionText}>Calculator</Text>
-          </TouchableOpacity>
-
-
 
           <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Calendar')}>
             <View ref={calendarRef} collapsable={false} style={styles.actionIconBorder}>
@@ -346,75 +498,17 @@ export default function HomeScreen() {
             <Text style={styles.actionText}>Calendar</Text>
           </TouchableOpacity>
 
-
-
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Receivables')}>
-            <View ref={pendingRef} collapsable={false} style={styles.actionIconBorder}>
-              <Clock size={20} color={colors.text} />
+          <TouchableOpacity style={styles.actionItem} onPress={() => setMoreActionsVisible(true)}>
+            <View style={styles.actionIconBorder}>
+              <LucideIcons.MoreHorizontal size={20} color={colors.text} />
+              {totalMoreBadge > 0 && (
+                <View style={styles.badgeContainer}>
+                  <Text style={styles.badgeText}>{totalMoreBadge}</Text>
+                </View>
+              )}
             </View>
-            <Text style={styles.actionText}>Pending</Text>
+            <Text style={styles.actionText}>More</Text>
           </TouchableOpacity>
-
-
-
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Debts')}>
-            <View ref={debtRef} collapsable={false} style={styles.actionIconBorder}>
-              <AlertCircle size={20} color={colors.text} />
-              {(() => {
-                const today = new Date().toISOString().split('T')[0];
-                const count = debts.filter(d => d.dueDate === today).length;
-                if (count > 0) {
-                  return (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{count}</Text>
-                    </View>
-                  );
-                }
-                return null;
-              })()}
-            </View>
-            <Text style={styles.actionText}>Debt</Text>
-          </TouchableOpacity>
-
-
-
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Grocery')}>
-            <View ref={groceryRef} collapsable={false} style={styles.actionIconBorder}>
-              <ShoppingCart size={20} color={colors.text} />
-              {(() => {
-                const todayDayIndex = new Date().getDay();
-                const count = groceryLists.filter(list =>
-                  list.scheduledDays && list.scheduledDays.includes(todayDayIndex)
-                ).length;
-                if (count > 0) {
-                  return (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{count}</Text>
-                    </View>
-                  );
-                }
-                return null;
-              })()}
-            </View>
-            <Text style={styles.actionText}>Grocery</Text>
-          </TouchableOpacity>
-
-
-
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Travel')}>
-            <View ref={travelRef} collapsable={false} style={styles.actionIconBorder}>
-              <Plane size={20} color={colors.text} />
-            </View>
-            <Text style={styles.actionText}>Travel</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Recursion')}>
-            <View ref={recursionRef} collapsable={false} style={styles.actionIconBorder}>
-              <RefreshCw size={20} color={colors.text} />
-            </View>
-            <Text style={styles.actionText}>Recursion</Text>
-          </TouchableOpacity>
-
         </View>
 
 
@@ -488,6 +582,56 @@ export default function HomeScreen() {
           )
         }
 
+        {/* SUBSCRIPTIONS */}
+        {subscriptions.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Subscriptions</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Subscription')}>
+                <Text style={styles.seeAllText}>MANAGE</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ gap: 12 }}>
+              {topSubscriptions.map((sub) => {
+                // Calculate days remaining
+                const today = new Date();
+                const currentYear = today.getFullYear();
+                const currentMonth = today.getMonth();
+                let targetDate = new Date(currentYear, currentMonth, sub.dayOfMonth);
+                if (targetDate < today) {
+                  targetDate = new Date(currentYear, currentMonth + 1, sub.dayOfMonth);
+                }
+                const diffTime = targetDate.getTime() - today.getTime();
+                const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                const isDueSoon = daysRemaining <= 3;
+
+                return (
+                  <TouchableOpacity 
+                    key={sub.id} 
+                    style={[styles.homeSubCard, isDueSoon && styles.homeSubCardDueSoon]}
+                    onPress={() => navigation.navigate('Subscription')}
+                  >
+                    <View style={[styles.homeSubIconWrapper, isDueSoon && styles.homeSubIconWrapperDueSoon, sub.icon && { backgroundColor: 'transparent', borderWidth: 0 }]}>
+                      {sub.icon ? (
+                        <Image source={SUBS_ICONS[sub.icon]} style={styles.homeSubIcon} />
+                      ) : (
+                        <CreditCard size={18} color={isDueSoon ? '#ffffff' : colors.primary} />
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.homeSubTitle, isDueSoon && styles.homeSubTitleDueSoon]} numberOfLines={1}>{sub.title}</Text>
+                      <Text style={[styles.homeSubDays, isDueSoon && styles.homeSubDaysDueSoon]}>
+                        {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
+                      </Text>
+                    </View>
+                    <Text style={[styles.homeSubAmount, isDueSoon && styles.homeSubAmountDueSoon]}>₱{sub.amount.toLocaleString()}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        )}
+
         {/* RECENT TRANSACTIONS */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent</Text>
@@ -502,7 +646,7 @@ export default function HomeScreen() {
               <Text style={{ fontFamily: theme.fonts.medium, color: theme.colors.textMuted }}>No recent transactions.</Text>
             </View>
           ) : (
-            transactions.slice(0, 3).map(tx => {
+            transactions.slice(0, 4).map(tx => {
               const isDeposit = tx.type === 'deposit';
               return (
                 <View key={tx.id} style={styles.txItem}>
@@ -518,9 +662,9 @@ export default function HomeScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <View style={[
                       styles.txIconWrapper,
-                      isDeposit ? { backgroundColor: '#ecfdf5', borderColor: '#ecfdf5' } : { backgroundColor: '#fef2f2', borderColor: '#fef2f2' }
+                      isDeposit ? { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#ecfdf5', borderColor: 'transparent' } : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#fef2f2', borderColor: 'transparent' }
                     ]}>
-                      {getTxIcon(tx.type)}
+                      {getTxIcon(tx)}
                     </View>
                   </View>
                 </View>
@@ -529,10 +673,249 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {/* INSIGHTS SECTION */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Insights</Text>
+        </View>
+        <View style={styles.insightsCard}>
+          <View style={styles.insightsRow}>
+            <View style={styles.insightInfo}>
+              <Text style={styles.insightLabel}>Monthly Activity</Text>
+              {(() => {
+                const now = new Date();
+                const thisMonth = now.getMonth();
+                const thisYear = now.getFullYear();
+                
+                const monthSavings = transactions
+                  .filter(t => t.type === 'deposit' && new Date(t.date).getMonth() === thisMonth && new Date(t.date).getFullYear() === thisYear)
+                  .reduce((acc, curr) => acc + curr.amount, 0);
+                  
+                const monthSpent = transactions
+                  .filter(t => t.type === 'withdrawal' && new Date(t.date).getMonth() === thisMonth && new Date(t.date).getFullYear() === thisYear)
+                  .reduce((acc, curr) => acc + curr.amount, 0);
+
+                const total = monthSavings + monthSpent;
+                const savingsPerc = total > 0 ? (monthSavings / total) * 100 : 50;
+                const spentPerc = total > 0 ? (monthSpent / total) * 100 : 50;
+
+                const getWeekOfMonth = (date: Date) => {
+                  const day = date.getDate();
+                  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+                  return Math.ceil((day + firstDay) / 7);
+                };
+
+                const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                const currentWeekTitle = `Week ${getWeekOfMonth(new Date())} of ${monthNames[new Date().getMonth()]}`;
+                const dayLabels = ['S', 'M', 'T', 'W', 'Th', 'F', 'Sa'];
+                
+                // Get labels for the last 7 days ending today
+                const activeLabels = [...Array(7)].map((_, i) => {
+                  const d = new Date();
+                  d.setDate(d.getDate() - (6 - i));
+                  return dayLabels[d.getDay()];
+                });
+
+                // Daily Activity for Line Graph (Last 7 Days)
+                const last7Days = [...Array(7)].map((_, i) => {
+                  const d = new Date();
+                  d.setDate(d.getDate() - (6 - i));
+                  d.setHours(0,0,0,0);
+                  return d;
+                });
+
+                const dailyPoints = last7Days.map(day => {
+                  const dayTotal = transactions
+                    .filter(t => {
+                      const tDate = new Date(t.date);
+                      tDate.setHours(0,0,0,0);
+                      return tDate.getTime() === day.getTime();
+                    })
+                    .reduce((acc, curr) => acc + (curr.type === 'deposit' ? curr.amount : -curr.amount), 0);
+                  return dayTotal;
+                });
+
+                const maxVal = Math.max(...dailyPoints.map(Math.abs), 1000);
+                const chartHeight = 80;
+                const chartWidth = Dimensions.get('window').width - 80;
+
+                // Function to get control points for a smooth curve
+                const getSmoothPath = (pts: {x: number, y: number}[]) => {
+                  if (pts.length === 0) return '';
+                  let d = `M ${pts[0].x} ${pts[0].y}`;
+                  for (let i = 0; i < pts.length - 1; i++) {
+                    const p0 = pts[i];
+                    const p1 = pts[i + 1];
+                    const cp1x = p0.x + (p1.x - p0.x) / 2;
+                    const cp1y = p0.y;
+                    const cp2x = p0.x + (p1.x - p0.x) / 2;
+                    const cp2y = p1.y;
+                    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
+                  }
+                  return d;
+                };
+
+                const pts = dailyPoints.map((val, i) => {
+                  const x = (i / 6) * chartWidth;
+                  const y = (chartHeight / 2) - (val / maxVal) * (chartHeight / 4) * 1.5; // Scale slightly smaller to fit
+                  return { x, y };
+                });
+
+                const smoothPath = getSmoothPath(pts);
+                const areaPath = `${smoothPath} L ${chartWidth} ${chartHeight} L 0 ${chartHeight} Z`;
+
+                return (
+                  <>
+                    <Text style={styles.insightDescription}>
+                      You've saved <Text style={{ color: colors.primary }}>₱{monthSavings.toLocaleString()}</Text> and spent <Text style={{ color: '#ef4444' }}>₱{monthSpent.toLocaleString()}</Text> this month.
+                    </Text>
+                    
+                    <View style={styles.miniChartContainer}>
+                      <View style={styles.miniChartHeader}>
+                        <View style={styles.chartLegend}>
+                          <Text style={styles.legendText}>{currentWeekTitle}</Text>
+                        </View>
+                      </View>
+                      
+                      <View style={styles.lineChartWrapper}>
+                        <Svg height={chartHeight} width={chartWidth}>
+                          <Defs>
+                            <LinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                              <Stop offset="0" stopColor={colors.primary} stopOpacity="0.3" />
+                              <Stop offset="1" stopColor={colors.primary} stopOpacity="0" />
+                            </LinearGradient>
+                          </Defs>
+
+                          {/* Zero Line */}
+                          <Path 
+                            d={`M 0 ${chartHeight/2} L ${chartWidth} ${chartHeight/2}`} 
+                            stroke={isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'} 
+                            strokeWidth="1" 
+                          />
+
+                          {/* Area Fill */}
+                          <Path
+                            d={areaPath}
+                            fill="url(#grad)"
+                          />
+
+                          {/* Smooth Line */}
+                          <Path
+                            d={smoothPath}
+                            fill="none"
+                            stroke={colors.primary}
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+
+                          {pts.map((p, i) => (
+                            <Circle 
+                              key={i} 
+                              cx={p.x} 
+                              cy={p.y} 
+                              r="4" 
+                              fill={colors.primary} 
+                              stroke={colors.card}
+                              strokeWidth="2"
+                            />
+                          ))}
+                        </Svg>
+                        <View style={styles.chartLabelsRow}>
+                          {activeLabels.map((label, i) => (
+                            <Text key={i} style={styles.chartLabelText}>{label}</Text>
+                          ))}
+                        </View>
+                      </View>
+                      
+                      <View style={styles.chartValues}>
+                        <Text style={styles.chartValueText}>{last7Days[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</Text>
+                        <Text style={styles.chartValueText}>Today</Text>
+                      </View>
+                    </View>
+                  </>
+                );
+              })()}
+            </View>
+          </View>
+        </View>
+
 
 
         <View style={{ height: 20 }} />
       </ScrollView >
+
+      {/* MORE ACTIONS MODAL */}
+      <ActionSheet
+        visible={moreActionsVisible}
+        onClose={() => setMoreActionsVisible(false)}
+        title="More Actions"
+      >
+        <View style={styles.moreActionsGrid}>
+          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Calculator'); }}>
+            <View style={styles.moreActionIconBox}>
+              <Calculator size={22} color={colors.text} />
+            </View>
+            <Text style={styles.moreActionText}>Calculator</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Receivables'); }}>
+            <View style={styles.moreActionIconBox}>
+              <Clock size={22} color={colors.text} />
+            </View>
+            <Text style={styles.moreActionText}>Pending</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Debts'); }}>
+            <View style={styles.moreActionIconBox}>
+              <AlertCircle size={22} color={colors.text} />
+              {pendingDebts > 0 && (
+                <View style={styles.gridBadge}>
+                  <Text style={styles.gridBadgeText}>{pendingDebts}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.moreActionText}>Debt</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Grocery'); }}>
+            <View style={styles.moreActionIconBox}>
+              <ShoppingCart size={22} color={colors.text} />
+              {pendingGroceries > 0 && (
+                <View style={styles.gridBadge}>
+                  <Text style={styles.gridBadgeText}>{pendingGroceries}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.moreActionText}>Grocery</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Travel'); }}>
+            <View style={styles.moreActionIconBox}>
+              <Plane size={22} color={colors.text} />
+            </View>
+            <Text style={styles.moreActionText}>Travel</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Recursion'); }}>
+            <View style={styles.moreActionIconBox}>
+              <RefreshCw size={22} color={colors.text} />
+            </View>
+            <Text style={styles.moreActionText}>Recursion</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Subscription'); }}>
+            <View style={styles.moreActionIconBox}>
+              <CreditCard size={22} color={colors.text} />
+              {pendingSubscriptions > 0 && (
+                <View style={styles.gridBadge}>
+                  <Text style={styles.gridBadgeText}>{pendingSubscriptions}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.moreActionText}>Subscription</Text>
+          </TouchableOpacity>
+        </View>
+      </ActionSheet>
 
 
       {/* TUTORIAL OVERLAY */}
@@ -707,7 +1090,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     justifyContent: 'flex-start',
     flexWrap: 'wrap',
     columnGap: '1.3%',
-    marginBottom: theme.spacing.sm, // Reduced from xl
+    marginBottom: 20, // Reduced space after Explore
     paddingHorizontal: theme.spacing.xs,
   },
   actionItem: {
@@ -778,7 +1161,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     marginBottom: theme.spacing.xl,
   },
   carouselContainer: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: 24, // Reduced space after Goals
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -883,6 +1266,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: theme.spacing.md,
+    marginBottom: 24, // Reduced space after Recent
   },
   txItem: {
     flexDirection: 'row',
@@ -1051,28 +1435,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderColor: '#ffffff',
     backgroundColor: 'transparent',
   },
-  badge: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: '#ef4444',
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 1.5,
-    borderColor: colors.card,
-  },
-  badgeText: {
-    color: '#ffffff',
-    fontSize: 8,
-    fontFamily: theme.fonts.bold,
-  },
-
-
-
   tooltip: {
     position: 'absolute',
     left: 20,
@@ -1128,4 +1490,247 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
 
 
+  insightsCard: {
+    backgroundColor: colors.card,
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 24, // Reduced space
+  },
+  insightsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  insightInfo: {
+    flex: 1,
+  },
+  insightLabel: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 16,
+    color: colors.text,
+    marginBottom: 4,
+  },
+  insightDescription: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 13,
+    color: colors.textMuted,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  miniChartContainer: {
+    marginTop: 8,
+  },
+  miniChartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  chartLegend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 11,
+    color: colors.textMuted,
+  },
+  chartValues: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  chartValueText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 11,
+    color: colors.textMuted,
+  },
+  lineChartWrapper: {
+    height: 80,
+    justifyContent: 'center',
+    marginVertical: 12,
+  },
+  txBrandLogo: {
+    width: 24,
+    height: 24,
+    resizeMode: 'contain',
+  },
+  moreActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingBottom: 20,
+    justifyContent: 'flex-start',
+  },
+  moreActionItem: {
+    width: '33.33%',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  moreActionIconBox: {
+    width: 60,
+    height: 60,
+    borderRadius: 20,
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  moreActionText: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 12,
+    color: colors.text,
+  },
+  homeSubCard: {
+    width: '100%',
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 0,
+  },
+  homeSubCardDueSoon: {
+    backgroundColor: '#ef4444',
+    borderColor: '#ef4444',
+  },
+  homeSubIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  homeSubIconWrapperDueSoon: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  homeSubTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 14,
+    color: colors.text,
+  },
+  homeSubTitleDueSoon: {
+    color: '#ffffff',
+  },
+  homeSubDays: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  homeSubDaysDueSoon: {
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  homeSubAmount: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 13,
+    color: colors.text,
+  },
+  homeSubAmountDueSoon: {
+    color: '#ffffff',
+  },
+  badgeContainer: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  badgeText: {
+    color: '#ffffff',
+    fontSize: 9,
+    fontFamily: theme.fonts.bold,
+  },
+  gridBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: colors.card,
+  },
+  gridBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontFamily: theme.fonts.bold,
+  },
+  homeSubIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    resizeMode: 'contain',
+  },
+  chartLabelsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: Dimensions.get('window').width - 80,
+    marginTop: 8,
+  },
+  chartLabelText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 10,
+    color: colors.textMuted,
+    width: 20,
+    textAlign: 'center',
+  },
+  paydayContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: isDarkMode ? 'rgba(74, 222, 128, 0.1)' : '#f0fdf4',
+    marginHorizontal: 20,
+    marginTop: 6,
+    padding: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(74, 222, 128, 0.2)' : '#dcfce7',
+    gap: 10,
+  },
+  paydayIconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: isDarkMode ? 'rgba(74, 222, 128, 0.1)' : '#dcfce7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paydayText: {
+    flex: 1,
+    fontFamily: theme.fonts.medium,
+    fontSize: 13,
+    color: isDarkMode ? '#dcfce7' : '#166534',
+  },
+  paydayHighlight: {
+    fontFamily: theme.fonts.bold,
+    color: isDarkMode ? '#4ade80' : '#15803d',
+  },
+  paydayAmount: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 14,
+    color: isDarkMode ? '#4ade80' : '#16a34a',
+  },
 });

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { ChevronLeft, User, AlertTriangle, ShoppingBag, Plane, Wallet as WalletIcon, QrCode, Image as ImageIcon, X, ChevronRight, Search } from 'lucide-react-native';
-import { useAppContext } from '../context/AppContext';
+import { useAppContext, WalletCategory } from '../context/AppContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -19,6 +19,7 @@ export default function AddWalletScreen() {
   const isEditing = !!editingWallet;
 
   const [walletName, setWalletName] = useState(editingWallet?.name || '');
+  const [category, setCategory] = useState<WalletCategory>(editingWallet?.category || 'Personal');
   const [purpose, setPurpose] = useState(editingWallet?.purpose || 'Personal');
   const [qrCodeImage, setQrCodeImage] = useState<string | null>(editingWallet?.qrCodeImage || null);
   const [iconType, setIconType] = useState<'purpose' | 'preset' | 'custom'>(editingWallet?.iconType || 'purpose');
@@ -111,7 +112,8 @@ export default function AddWalletScreen() {
           iconType,
           presetLogo: selectedPreset || undefined,
           customIcon: customIcon || undefined,
-          color: walletColor
+          color: walletColor,
+          category: category
         });
       } else {
         await addWallet({
@@ -121,7 +123,8 @@ export default function AddWalletScreen() {
           iconType,
           presetLogo: selectedPreset || undefined,
           customIcon: customIcon || undefined,
-          color: walletColor
+          color: walletColor,
+          category: category
         });
       }
       navigation.goBack();
@@ -160,6 +163,21 @@ export default function AddWalletScreen() {
           onChangeText={setWalletName}
           autoFocus={!isEditing}
         />
+
+        <Text style={styles.inputLabel}>Wallet Category</Text>
+        <View style={styles.categoryRow}>
+          {(['E-Wallet', 'Banks', 'Personal'] as WalletCategory[]).map((cat) => (
+            <TouchableOpacity
+              key={cat}
+              style={[styles.categoryChip, category === cat && styles.categoryChipActive]}
+              onPress={() => setCategory(cat)}
+            >
+              <Text style={[styles.categoryChipText, category === cat && styles.categoryChipTextActive]}>
+                {cat}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <Text style={styles.inputLabel}>Accent Theme</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.colorRow}>
@@ -406,6 +424,34 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     marginBottom: 24,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 24,
+  },
+  categoryChip: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  categoryChipText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  categoryChipTextActive: {
+    color: '#ffffff',
+    fontFamily: theme.fonts.bold,
   },
   colorRow: {
     flexDirection: 'row',

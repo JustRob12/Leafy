@@ -181,7 +181,7 @@ export default function HomeScreen() {
   const addSavingsRef = useRef<View>(null);
   const withdrawRef = useRef<View>(null);
   const calculatorRef = useRef<View>(null);
-  const calendarRef = useRef<View>(null);
+  const subscriptionRef = useRef<View>(null);
   const pendingRef = useRef<View>(null);
   const debtRef = useRef<View>(null);
   const groceryRef = useRef<View>(null);
@@ -190,7 +190,7 @@ export default function HomeScreen() {
 
   const tutorialRefs = [
     balanceRef, addSavingsRef, withdrawRef, calculatorRef,
-    calendarRef, pendingRef, debtRef, groceryRef, travelRef,
+    subscriptionRef, pendingRef, debtRef, groceryRef, travelRef,
     recursionRef
   ];
 
@@ -199,7 +199,7 @@ export default function HomeScreen() {
     { title: 'Add Savings', description: 'Quickly record new deposits and watch your individual wallet balances grow.', borderRadius: 16 },
     { title: 'Withdraw', description: 'Log your daily expenses and outgoings to keep your spending habits on track.', borderRadius: 16 },
     { title: 'Calculator', description: 'Use the built-in math tool to instantly calculate totals without leaving the app.', borderRadius: 16 },
-    { title: 'Calendar', description: 'Visualize your daily spending patterns and financial history over any period of time.', borderRadius: 16 },
+    { title: 'Subscription', description: 'Track your recurring bills and digital subscriptions to stay ahead of upcoming payments.', borderRadius: 16 },
     { title: 'Pending', description: 'Track the money people owe you and stay updated on all incoming receivables.', borderRadius: 16 },
     { title: 'Debt', description: 'Monitor your outstanding balances and stay organized as you work toward being debt-free.', borderRadius: 16 },
     { title: 'Grocery', description: 'Create and manage shopping lists to streamline your errands and stay within budget.', borderRadius: 16 },
@@ -225,7 +225,7 @@ export default function HomeScreen() {
         require('../../assets/sound/AddSavings.mp3'),
         require('../../assets/sound/Withdraw.mp3'),
         require('../../assets/sound/Calculator.mp3'),
-        require('../../assets/sound/Calendar.mp3'),
+        null, // No sound for Subscription yet
         require('../../assets/sound/Pending.mp3'),
         require('../../assets/sound/Debt.mp3'),
         require('../../assets/sound/Grocery.mp3'),
@@ -395,7 +395,7 @@ export default function HomeScreen() {
     return daysRemaining <= 3;
   }).length;
 
-  const totalMoreBadge = pendingDebts + pendingGroceries + pendingSubscriptions;
+  const totalMoreBadge = pendingDebts + pendingGroceries;
 
   return (
     <View style={styles.container}>
@@ -491,11 +491,16 @@ export default function HomeScreen() {
             <Text style={styles.actionText}>Withdraw</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Calendar')}>
-            <View ref={calendarRef} collapsable={false} style={styles.actionIconBorder}>
-              <CalendarIcon size={20} color={colors.text} />
+          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Subscription')}>
+            <View ref={subscriptionRef} collapsable={false} style={styles.actionIconBorder}>
+              <CreditCard size={20} color={colors.text} />
+              {pendingSubscriptions > 0 && (
+                <View style={styles.badgeContainer}>
+                  <Text style={styles.badgeText}>{pendingSubscriptions}</Text>
+                </View>
+              )}
             </View>
-            <Text style={styles.actionText}>Calendar</Text>
+            <Text style={styles.actionText}>Subscription</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionItem} onPress={() => setMoreActionsVisible(true)}>
@@ -940,16 +945,11 @@ export default function HomeScreen() {
             <Text style={styles.moreActionText}>Recursion</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Subscription'); }}>
+          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Calendar'); }}>
             <View style={styles.moreActionIconBox}>
-              <CreditCard size={22} color={colors.text} />
-              {pendingSubscriptions > 0 && (
-                <View style={styles.gridBadge}>
-                  <Text style={styles.gridBadgeText}>{pendingSubscriptions}</Text>
-                </View>
-              )}
+              <CalendarIcon size={22} color={colors.text} />
             </View>
-            <Text style={styles.moreActionText}>Subscription</Text>
+            <Text style={styles.moreActionText}>Calendar</Text>
           </TouchableOpacity>
         </View>
       </ActionSheet>

@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Modal, Image, Alert, Switch } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Modal, Image, Alert, Switch, FlatList } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { navigationRef } from '../navigation/navigationUtils';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, User, Settings, LogOut, Info, ChevronRight, Moon, Sun, Flame, Sprout, TreeDeciduous, Egg, X, Image as ImageIcon, HelpCircle, Bell } from 'lucide-react-native';
+import { Plus, User, Settings, LogOut, Info, ChevronRight, Moon, Sun, Flame, Sprout, TreeDeciduous, Egg, X, Image as ImageIcon, HelpCircle, Bell, Target, AlertCircle, ShoppingCart } from 'lucide-react-native';
 
 
 export interface MainHeaderProps {
@@ -13,15 +14,84 @@ export interface MainHeaderProps {
 }
 
 export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderProps) {
-  const { username, userImage, streakCount, transactionDates, showConfirm, clearData, colors, isDarkMode, toggleTheme, startTutorial } = useAppContext();
+  const { username, userImage, streakCount, transactionDates, showConfirm, clearData, colors, isDarkMode, toggleTheme, startTutorial, goals, wallets, debts, groceryLists } = useAppContext();
 
   const navigation = useNavigation<any>();
-
-  const styles = getStyles(colors, isDarkMode);
   const [internalActiveRoute, setInternalActiveRoute] = useState('Home');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [streakModalVisible, setStreakModalVisible] = useState(false);
+  const [notificationModalVisible, setNotificationModalVisible] = useState(false);
+  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadDismissed = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('@dismissedNotifications');
+        if (stored) setDismissedIds(JSON.parse(stored));
+      } catch (e) {}
+    };
+    loadDismissed();
+  }, []);
+
+  const markAllAsRead = async () => {
+    const currentNotifIds = notifications.map(n => n.id);
+    const newDismissed = [...new Set([...dismissedIds, ...currentNotifIds])];
+    setDismissedIds(newDismissed);
+    try {
+      await AsyncStorage.setItem('@dismissedNotifications', JSON.stringify(newDismissed));
+    } catch (e) {}
+  };
+
+  const notifications = useMemo(() => {
+    const list = [];
+    
+    // Goals at 100%
+    if (goals && wallets) {
+      goals.forEach(g => {
+        const wallet = wallets.find(w => w.id === g.walletId);
+        if (wallet && wallet.balance >= g.targetAmount) {
+          list.push({
+            id: `goal-${g.id}-complete`,
+            title: 'Goal Achieved!',
+            message: `Your goal "${g.title}" is 100% complete! 🎉`,
+            icon: Target,
+            color: colors.primary,
+            screen: 'Goals'
+          });
+        }
+      });
+    }
+
+    // Active Debts
+    if (debts && debts.length > 0) {
+      list.push({
+        id: `debts-summary-${debts.length}`,
+        title: 'Outstanding Debts',
+        message: `You have ${debts.length} active debts to settle.`,
+        icon: AlertCircle,
+        color: '#ef4444',
+        screen: 'Debts'
+      });
+    }
+
+    // Grocery Lists
+    if (groceryLists && groceryLists.length > 0) {
+      const activeLists = groceryLists.filter(l => l.items.some(i => !i.completed)).length;
+      if (activeLists > 0) {
+        list.push({
+          id: `grocery-summary-${activeLists}`,
+          title: 'Grocery Lists',
+          message: `You have ${activeLists} active shopping lists.`,
+          icon: ShoppingCart,
+          color: '#3b82f6',
+          screen: 'Grocery'
+        });
+      }
+    }
+
+    return list.filter(n => !dismissedIds.includes(n.id));
+  }, [goals, wallets, debts, groceryLists, colors, dismissedIds]);
 
   const activeRoute = propActiveRoute || internalActiveRoute;
 
@@ -49,9 +119,9 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
     }
   };
 
-  const month = currentDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-  const day = currentDate.toLocaleDateString('en-US', { day: 'numeric' });
-  const time = currentDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const fullDate = currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  const styles = getStyles(colors, isDarkMode);
 
   const handleLogout = () => {
     setDropdownVisible(false);
@@ -94,13 +164,22 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                 streakCount >= 8 ? { color: '#15803d' } :
                   streakCount >= 3 ? { color: '#16a34a' } :
                     { color: '#92400e' }
-              ]}>{streakCount}</Text>
+              ]}>
+                Growth {streakCount}
+              </Text>
             </TouchableOpacity>
 
             <View style={styles.rightActionsSmall}>
-              <TouchableOpacity style={styles.iconActionSmall} activeOpacity={0.7}>
+              <TouchableOpacity 
+                style={styles.iconActionSmall} 
+                onPress={() => setNotificationModalVisible(true)}
+              >
                 <Bell size={18} color={colors.text} />
-                <View style={styles.notifDot} />
+                {notifications.length > 0 && (
+                  <View style={styles.notificationBadgeSmall}>
+                    <Text style={styles.notificationCountText}>{notifications.length}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
               
               <TouchableOpacity
@@ -120,17 +199,9 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
           {/* Second Row: Greeting and Calendar Date (Right) */}
           <View style={styles.bottomRow}>
             <View style={styles.greetingWrapper}>
-              <Text style={styles.greetingSmall}>Hello, <Text style={styles.usernameBoldSmall}>{username || 'User'}</Text></Text>
-              <Text style={styles.timeText}>{time}</Text>
-            </View>
-
-            <View style={styles.calendarDateBox}>
-              <View style={styles.calendarMonthBox}>
-                <Text style={styles.calendarMonthText}>{month}</Text>
-              </View>
-              <View style={styles.calendarDayBox}>
-                <Text style={styles.calendarDayText}>{day}</Text>
-              </View>
+              <Text style={styles.welcomeLabel}>Welcome to Leafy</Text>
+              <Text style={styles.greetingSmall}>{username || 'User'}</Text>
+              <Text style={styles.timeText}>{fullDate}</Text>
             </View>
           </View>
         </View>
@@ -139,6 +210,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
         visible={dropdownVisible}
         transparent
         animationType="fade"
+        statusBarTranslucent
         onRequestClose={() => setDropdownVisible(false)}
       >
         <TouchableWithoutFeedback onPress={() => setDropdownVisible(false)}>
@@ -183,9 +255,6 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                   <ChevronRight size={16} color={colors.border} />
                 </TouchableOpacity>
 
-
-
-
                 <View style={styles.dropdownItem}>
                   <View style={styles.dropdownItemLeft}>
                     {isDarkMode ? <Moon size={18} color={colors.textMuted} /> : <Sun size={18} color={colors.textMuted} />}
@@ -198,8 +267,6 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                     thumbColor={isDarkMode ? '#ffffff' : '#f4f3f4'}
                   />
                 </View>
-
-
 
                 <View style={styles.dropdownDivider} />
 
@@ -219,9 +286,66 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
       </Modal>
 
       <Modal
+        visible={notificationModalVisible}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setNotificationModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setNotificationModalVisible(false)}>
+          <View style={styles.notificationOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.notificationDropdown}>
+                <View style={styles.notifDropdownHeader}>
+                  <Text style={styles.dropdownTitle}>Notifications</Text>
+                  {notifications.length > 0 && (
+                    <TouchableOpacity onPress={markAllAsRead}>
+                      <Text style={styles.markReadText}>Mark all as read</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                
+                {notifications.length > 0 ? (
+                  <FlatList
+                    data={notifications}
+                    keyExtractor={(item) => item.id}
+                    scrollEnabled={notifications.length > 4}
+                    style={{ maxHeight: 350 }}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity 
+                        style={styles.notifDropdownItem}
+                        onPress={() => {
+                          setNotificationModalVisible(false);
+                          navigation.navigate(item.screen);
+                        }}
+                      >
+                        <View style={[styles.notifIconCircle, { backgroundColor: item.color + '15' }]}>
+                          <item.icon size={16} color={item.color} />
+                        </View>
+                        <View style={styles.notifTextContent}>
+                          <Text style={styles.notifItemTitle} numberOfLines={1}>{item.title}</Text>
+                          <Text style={styles.notifItemMessage} numberOfLines={2}>{item.message}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    )}
+                  />
+                ) : (
+                  <View style={styles.notifEmptyDropdown}>
+                    <Bell size={24} color={colors.textMuted} />
+                    <Text style={styles.notifEmptyText}>No new notifications</Text>
+                  </View>
+                )}
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      <Modal
         visible={streakModalVisible}
         transparent
         animationType="fade"
+        statusBarTranslucent
         onRequestClose={() => setStreakModalVisible(false)}
       >
         <TouchableWithoutFeedback onPress={() => setStreakModalVisible(false)}>
@@ -238,14 +362,14 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                 <View style={styles.streakStatsRow}>
                   <View style={styles.streakStatItem}>
                     <Text style={styles.streakStatValue}>{streakCount}</Text>
-                    <Text style={styles.streakStatLabel}>Day Streak</Text>
+                    <Text style={styles.streakStatLabel}>Growth Days</Text>
                   </View>
                   <View style={styles.streakStatDivider} />
                   <View style={styles.streakStatItem}>
                     <Text style={styles.streakStatValue}>
                       {streakCount >= 8 ? 'Tree' : streakCount >= 3 ? 'Sapling' : 'Seed'}
                     </Text>
-                    <Text style={styles.streakStatLabel}>Current Stage</Text>
+                    <Text style={styles.streakStatLabel}>Tree Stage</Text>
                   </View>
                 </View>
 
@@ -350,9 +474,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   headerContent: {
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
-    gap: 12,
+    paddingTop: 14,
+    paddingBottom: 10,
+    gap: 0,
   },
   topRow: {
     flexDirection: 'row',
@@ -360,7 +484,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     alignItems: 'center',
   },
   bottomRow: {
-    marginTop: 12,
+    marginTop: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
@@ -411,7 +535,15 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.medium,
     fontSize: 12,
     color: colors.textMuted,
-    marginTop: -2,
+    marginTop: 2,
+  },
+  welcomeLabel: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 11,
+    color: colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 1,
   },
   rightActionsSmall: {
     flexDirection: 'row',
@@ -426,6 +558,25 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+  },
+  notificationBadgeSmall: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#ef4444',
+    minWidth: 14,
+    height: 14,
+    borderRadius: 7,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 2,
+    borderWidth: 1.5,
+    borderColor: colors.background,
+  },
+  notificationCountText: {
+    color: '#ffffff',
+    fontSize: 7,
+    fontFamily: theme.fonts.bold,
   },
   notifDot: {
     position: 'absolute',
@@ -463,6 +614,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: 24,
     color: colors.text,
     letterSpacing: -0.5,
+    lineHeight: 30,
   },
   usernameBoldSmall: {
     fontFamily: theme.fonts.bold,
@@ -471,9 +623,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
     borderWidth: 1,
   },
   streakTextSmall: {
@@ -482,7 +634,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
     paddingTop: 60, // Positioned below profile icon
@@ -757,5 +909,108 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize: 16,
     color: '#ffffff',
+  },
+  emptySubText: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 40,
+  },
+  notificationOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 65,
+    paddingRight: 50,
+  },
+  notificationDropdown: {
+    width: 280,
+    backgroundColor: colors.card,
+    borderRadius: 24,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  notifDropdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  dropdownTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 16,
+    color: colors.text,
+  },
+  markReadText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 11,
+    color: colors.primary,
+  },
+  notifBadgeCount: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  notifBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontFamily: theme.fonts.bold,
+  },
+  notifDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border + '30',
+  },
+  notifIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  notifTextContent: {
+    flex: 1,
+  },
+  notifItemTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 14,
+    color: colors.text,
+  },
+  notifItemMessage: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 1,
+  },
+  notifEmptyDropdown: {
+    paddingVertical: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  notifEmptyText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  emptyText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 18,
+    color: colors.text,
   },
 });

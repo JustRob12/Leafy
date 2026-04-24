@@ -277,7 +277,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       gap: 12,
     },
     categorySection: {
-      marginBottom: 24,
+      marginBottom: 12,
     },
     categoryLabel: {
       fontFamily: theme.fonts.bold,
@@ -285,7 +285,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       color: colors.textMuted,
       textTransform: 'uppercase',
       letterSpacing: 1,
-      marginBottom: 12,
+      marginBottom: 4,
       marginLeft: 4,
     },
     premiumCardWrapper: {

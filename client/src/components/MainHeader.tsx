@@ -14,7 +14,7 @@ export interface MainHeaderProps {
 }
 
 export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderProps) {
-  const { username, userImage, streakCount, transactionDates, showConfirm, clearData, colors, isDarkMode, toggleTheme, startTutorial, goals, wallets, debts, groceryLists } = useAppContext();
+  const { username, userImage, streakCount, transactionDates, showConfirm, clearData, colors, isDarkMode, toggleTheme, startTutorial, goals, wallets, debts, groceryLists, totalBalance, transactions } = useAppContext();
 
   const navigation = useNavigation<any>();
   const [internalActiveRoute, setInternalActiveRoute] = useState('Home');
@@ -45,12 +45,14 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
 
   const notifications = useMemo(() => {
     const list = [];
+    const todayStr = currentDate.toISOString().split('T')[0];
+    const todayIndex = currentDate.getDay();
     
     // Goals at 100%
     if (goals && wallets) {
       goals.forEach(g => {
         const wallet = wallets.find(w => w.id === g.walletId);
-        if (wallet && wallet.balance >= g.targetAmount) {
+        if (wallet && g.targetAmount > 0 && wallet.balance >= g.targetAmount) {
           list.push({
             id: `goal-${g.id}-complete`,
             title: 'Goal Achieved!',
@@ -63,26 +65,53 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
       });
     }
 
-    // Active Debts
+    // Active Debts (Due Today or Overdue)
     if (debts && debts.length > 0) {
-      list.push({
-        id: `debts-summary-${debts.length}`,
-        title: 'Outstanding Debts',
-        message: `You have ${debts.length} active debts to settle.`,
-        icon: AlertCircle,
-        color: '#ef4444',
-        screen: 'Debts'
-      });
+      const dueToday = debts.filter(d => d.dueDate && d.dueDate === todayStr).length;
+      const overdue = debts.filter(d => d.dueDate && d.dueDate < todayStr).length;
+
+      if (dueToday > 0 || overdue > 0) {
+        list.push({
+          id: `debts-urgent-${todayStr}-${dueToday}-${overdue}`,
+          title: dueToday > 0 ? 'Debt Due Today!' : 'Overdue Debt!',
+          message: dueToday > 0 
+            ? `You have ${dueToday} debt${dueToday > 1 ? 's' : ''} to pay today.` 
+            : `You have ${overdue} overdue debt${overdue > 1 ? 's' : ''}.`,
+          icon: AlertCircle,
+          color: '#ef4444',
+          screen: 'Debts'
+        });
+      } else {
+        list.push({
+          id: `debts-summary-${debts.length}`,
+          title: 'Outstanding Debts',
+          message: `You have ${debts.length} active debt${debts.length > 1 ? 's' : ''} to settle.`,
+          icon: AlertCircle,
+          color: '#ef4444',
+          screen: 'Debts'
+        });
+      }
     }
 
-    // Grocery Lists
+    // Grocery Lists (Scheduled Today or Active)
     if (groceryLists && groceryLists.length > 0) {
+      const scheduledToday = groceryLists.filter(l => l.scheduledDays?.includes(todayIndex)).length;
       const activeLists = groceryLists.filter(l => l.items.some(i => !i.completed)).length;
-      if (activeLists > 0) {
+
+      if (scheduledToday > 0) {
+        list.push({
+          id: `grocery-today-${todayStr}-${scheduledToday}`,
+          title: 'Shopping Day!',
+          message: `You have ${scheduledToday} grocery list${scheduledToday > 1 ? 's' : ''} for today.`,
+          icon: ShoppingCart,
+          color: '#3b82f6',
+          screen: 'Grocery'
+        });
+      } else if (activeLists > 0) {
         list.push({
           id: `grocery-summary-${activeLists}`,
           title: 'Grocery Lists',
-          message: `You have ${activeLists} active shopping lists.`,
+          message: `You have ${activeLists} active shopping list${activeLists > 1 ? 's' : ''}.`,
           icon: ShoppingCart,
           color: '#3b82f6',
           screen: 'Grocery'
@@ -91,7 +120,55 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
     }
 
     return list.filter(n => !dismissedIds.includes(n.id));
-  }, [goals, wallets, debts, groceryLists, colors, dismissedIds]);
+  }, [goals, wallets, debts, groceryLists, colors, dismissedIds, currentDate]);
+
+  const statusMessage = useMemo(() => {
+    const today = new Date();
+    const thisMonth = today.getMonth();
+    const thisYear = today.getFullYear();
+
+    const monthSavings = transactions
+      .filter(t => t.type === 'deposit' && new Date(t.date).getMonth() === thisMonth && new Date(t.date).getFullYear() === thisYear)
+      .reduce((acc, curr) => acc + curr.amount, 0);
+
+    const monthSpent = transactions
+      .filter(t => t.type === 'withdrawal' && new Date(t.date).getMonth() === thisMonth && new Date(t.date).getFullYear() === thisYear)
+      .reduce((acc, curr) => acc + curr.amount, 0);
+
+    // 1. Critical Debt Check
+    const overdueDebts = debts.filter(d => d.dueDate && d.dueDate < today.toISOString().split('T')[0]).length;
+    if (overdueDebts > 0) return "Hey, I noticed a few overdue debts. Shall we clear those first? 🌿";
+
+    // 2. Low Balance Check
+    if (totalBalance < 500 && totalBalance > 0) return "Your balance is looking a bit thin! Time for some fresh seeds? 🌱";
+    if (totalBalance <= 0 && wallets.length > 0) return "Your garden is a bit dry! Let's add some water to those wallets. 🥀";
+
+    // 3. Spending Check
+    if (monthSpent > monthSavings && monthSpent > 0) return "Whoa, you're spending a bit fast! Let's be extra careful today, okay? 🍃";
+
+    // 4. Goal Encouragement
+    const nearGoal = goals.find(g => {
+        const wallet = wallets.find(w => w.id === g.walletId);
+        const progress = wallet ? (wallet.balance / g.targetAmount) : 0;
+        return progress > 0.8 && progress < 1;
+    });
+    if (nearGoal) return `You're so close! Just a little more and "${nearGoal.title}" will be fully blooming. ✨`;
+
+    // 5. Positive Reinforcement
+    if (monthSavings > monthSpent * 1.5 && monthSavings > 0) return "Wow, your savings are booming! You're really good at this. Keep it up! 🌲";
+
+    // Default Nature Wisdom
+    const wisdom = [
+      "Every small saving is a leaf on your tree of wealth. You're doing great!",
+      "I love how you're nurturing your garden today. Keep it up!",
+      "Ready for another day of growth? Let's make it count!",
+      "Patience is key! Just like a tree, your wealth grows slowly but surely.",
+      "Your financial forest is looking beautiful today. Any new plans?",
+      "Grow your wealth, one leaf at a time. I'm here to help!",
+      "Did you know? Consistent savings are the best fertilizer for goals!"
+    ];
+    return wisdom[today.getDay() % wisdom.length];
+  }, [totalBalance, transactions, debts, goals, wallets, colors]);
 
   const activeRoute = propActiveRoute || internalActiveRoute;
 
@@ -202,6 +279,9 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
               <Text style={styles.welcomeLabel}>Welcome to Leafy</Text>
               <Text style={styles.greetingSmall}>{username || 'User'}</Text>
               <Text style={styles.timeText}>{fullDate}</Text>
+            </View>
+            <View style={styles.statusBubblePremium}>
+              <Text style={styles.statusBubbleText}>{statusMessage}</Text>
             </View>
           </View>
         </View>
@@ -615,6 +695,32 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     color: colors.text,
     letterSpacing: -0.5,
     lineHeight: 30,
+  },
+  statusBubblePremium: {
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ffffff',
+    borderColor: colors.primary,
+    borderWidth: 1.5,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    maxWidth: '50%',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statusBubbleText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 10,
+    color: isDarkMode ? '#ffffff' : colors.text,
+    fontStyle: 'italic',
+    lineHeight: 14,
+    textAlign: 'right',
+  },
+  headerRightWrapper: {
+    alignItems: 'flex-end',
+    gap: 4,
   },
   usernameBoldSmall: {
     fontFamily: theme.fonts.bold,

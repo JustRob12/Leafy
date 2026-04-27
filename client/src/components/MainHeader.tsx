@@ -6,7 +6,12 @@ import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { navigationRef } from '../navigation/navigationUtils';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, User, Settings, LogOut, Info, ChevronRight, Moon, Sun, Flame, Sprout, TreeDeciduous, Egg, X, Image as ImageIcon, HelpCircle, Bell, Target, AlertCircle, ShoppingCart } from 'lucide-react-native';
+import { Plus, User, Settings, LogOut, Info, ChevronRight, Moon, Sun, Flame, Sprout, TreeDeciduous, Egg, X, Image as ImageIcon, HelpCircle, Bell, Target, AlertCircle, ShoppingCart, Coins } from 'lucide-react-native';
+import { Dimensions } from 'react-native';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = SCREEN_WIDTH / 375;
+const rf = (size: number) => Math.round(size * scale);
 
 
 export interface MainHeaderProps {
@@ -29,7 +34,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
       try {
         const stored = await AsyncStorage.getItem('@dismissedNotifications');
         if (stored) setDismissedIds(JSON.parse(stored));
-      } catch (e) {}
+      } catch (e) { }
     };
     loadDismissed();
   }, []);
@@ -40,14 +45,14 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
     setDismissedIds(newDismissed);
     try {
       await AsyncStorage.setItem('@dismissedNotifications', JSON.stringify(newDismissed));
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const notifications = useMemo(() => {
     const list = [];
     const todayStr = currentDate.toISOString().split('T')[0];
     const todayIndex = currentDate.getDay();
-    
+
     // Goals at 100%
     if (goals && wallets) {
       goals.forEach(g => {
@@ -74,8 +79,8 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
         list.push({
           id: `debts-urgent-${todayStr}-${dueToday}-${overdue}`,
           title: dueToday > 0 ? 'Debt Due Today!' : 'Overdue Debt!',
-          message: dueToday > 0 
-            ? `You have ${dueToday} debt${dueToday > 1 ? 's' : ''} to pay today.` 
+          message: dueToday > 0
+            ? `You have ${dueToday} debt${dueToday > 1 ? 's' : ''} to pay today.`
             : `You have ${overdue} overdue debt${overdue > 1 ? 's' : ''}.`,
           icon: AlertCircle,
           color: '#ef4444',
@@ -148,14 +153,14 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
 
     // 4. Goal Encouragement
     const nearGoal = goals.find(g => {
-        const wallet = wallets.find(w => w.id === g.walletId);
-        const progress = wallet ? (wallet.balance / g.targetAmount) : 0;
-        return progress > 0.8 && progress < 1;
+      const wallet = wallets.find(w => w.id === g.walletId);
+      const progress = wallet ? (wallet.balance / g.targetAmount) : 0;
+      return progress > 0.8 && progress < 1;
     });
-    if (nearGoal) return `You're so close! Just a little more and "${nearGoal.title}" will be fully blooming. ✨`;
+    if (nearGoal) return `You're so close! Just a little more and "${nearGoal.title}" will be fully blooming.`;
 
     // 5. Positive Reinforcement
-    if (monthSavings > monthSpent * 1.5 && monthSavings > 0) return "Wow, your savings are booming! You're really good at this. Keep it up! 🌲";
+    if (monthSavings > monthSpent * 1.5 && monthSavings > 0) return "Wow, your savings are booming! You're really good at this. Keep it up!";
 
     // Default Nature Wisdom
     const wisdom = [
@@ -218,73 +223,73 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
-        <View style={styles.headerContent}>
-          {/* First Row: Streak (Left) and Notification/Profile (Right) */}
-          <View style={styles.topRow}>
+      <View style={styles.headerContent}>
+        {/* First Row: Streak (Left) and Notification/Profile (Right) */}
+        <View style={styles.topRow}>
+          <TouchableOpacity
+            style={[
+              styles.streakBadgeCompact,
+              streakCount >= 8 ? styles.streakBadgeTree :
+                streakCount >= 3 ? styles.streakBadgeSapling :
+                  styles.streakBadgeSeed
+            ]}
+            onPress={() => setStreakModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            {(() => {
+              if (streakCount >= 8) return <TreeDeciduous size={14} color="#15803d" fill="#15803d" />;
+              if (streakCount >= 3) return <Sprout size={14} color="#22c55e" fill="#22c55e" />;
+              return <Egg size={14} color="#92400e" fill="#92400e" />;
+            })()}
+            <Text style={[
+              styles.streakTextSmall,
+              streakCount >= 8 ? { color: '#15803d' } :
+                streakCount >= 3 ? { color: '#16a34a' } :
+                  { color: '#92400e' }
+            ]}>
+              Growth {streakCount}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.rightActionsSmall}>
             <TouchableOpacity
-              style={[
-                styles.streakBadgeCompact,
-                streakCount >= 8 ? styles.streakBadgeTree :
-                  streakCount >= 3 ? styles.streakBadgeSapling :
-                    styles.streakBadgeSeed
-              ]}
-              onPress={() => setStreakModalVisible(true)}
-              activeOpacity={0.7}
+              style={styles.iconActionSmall}
+              onPress={() => setNotificationModalVisible(true)}
             >
-              {(() => {
-                if (streakCount >= 8) return <TreeDeciduous size={14} color="#15803d" fill="#15803d" />;
-                if (streakCount >= 3) return <Sprout size={14} color="#22c55e" fill="#22c55e" />;
-                return <Egg size={14} color="#92400e" fill="#92400e" />;
-              })()}
-              <Text style={[
-                styles.streakTextSmall,
-                streakCount >= 8 ? { color: '#15803d' } :
-                  streakCount >= 3 ? { color: '#16a34a' } :
-                    { color: '#92400e' }
-              ]}>
-                Growth {streakCount}
-              </Text>
+              <Bell size={18} color={colors.text} />
+              {notifications.length > 0 && (
+                <View style={styles.notificationBadgeSmall}>
+                  <Text style={styles.notificationCountText}>{notifications.length}</Text>
+                </View>
+              )}
             </TouchableOpacity>
 
-            <View style={styles.rightActionsSmall}>
-              <TouchableOpacity 
-                style={styles.iconActionSmall} 
-                onPress={() => setNotificationModalVisible(true)}
-              >
-                <Bell size={18} color={colors.text} />
-                {notifications.length > 0 && (
-                  <View style={styles.notificationBadgeSmall}>
-                    <Text style={styles.notificationCountText}>{notifications.length}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.profileCircleSmall}
-                onPress={() => setDropdownVisible(true)}
-                activeOpacity={0.8}
-              >
-                {userImage ? (
-                  <Image source={{ uri: userImage }} style={styles.headerProfileImage} />
-                ) : (
-                  <User size={18} color={colors.primary} />
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Second Row: Greeting and Calendar Date (Right) */}
-          <View style={styles.bottomRow}>
-            <View style={styles.greetingWrapper}>
-              <Text style={styles.welcomeLabel}>Welcome to Leafy</Text>
-              <Text style={styles.greetingSmall}>{username || 'User'}</Text>
-              <Text style={styles.timeText}>{fullDate}</Text>
-            </View>
-            <View style={styles.statusBubblePremium}>
-              <Text style={styles.statusBubbleText}>{statusMessage}</Text>
-            </View>
+            <TouchableOpacity
+              style={styles.profileCircleSmall}
+              onPress={() => setDropdownVisible(true)}
+              activeOpacity={0.8}
+            >
+              {userImage ? (
+                <Image source={{ uri: userImage }} style={styles.headerProfileImage} />
+              ) : (
+                <User size={18} color={colors.primary} />
+              )}
+            </TouchableOpacity>
           </View>
         </View>
+
+        {/* Second Row: Greeting and Calendar Date (Right) */}
+        <View style={styles.bottomRow}>
+          <View style={styles.greetingWrapper}>
+            <Text style={styles.welcomeLabel} numberOfLines={1} adjustsFontSizeToFit>Welcome to Leafy</Text>
+            <Text style={styles.greetingSmall} numberOfLines={1} adjustsFontSizeToFit>{username || 'User'}</Text>
+            <Text style={styles.timeText} numberOfLines={1}>{fullDate}</Text>
+          </View>
+          <View style={styles.statusBubblePremium}>
+            <Text style={styles.statusBubbleText}>{statusMessage}</Text>
+          </View>
+        </View>
+      </View>
 
       <Modal
         visible={dropdownVisible}
@@ -384,7 +389,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                     </TouchableOpacity>
                   )}
                 </View>
-                
+
                 {notifications.length > 0 ? (
                   <FlatList
                     data={notifications}
@@ -392,7 +397,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                     scrollEnabled={notifications.length > 4}
                     style={{ maxHeight: 350 }}
                     renderItem={({ item }) => (
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         style={styles.notifDropdownItem}
                         onPress={() => {
                           setNotificationModalVisible(false);
@@ -619,7 +624,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   welcomeLabel: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 11,
+    fontSize: rf(10),
     color: colors.primary,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -691,31 +696,26 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   greetingSmall: {
     fontFamily: theme.fonts.bold,
-    fontSize: 24,
+    fontSize: rf(24),
     color: colors.text,
     letterSpacing: -0.5,
-    lineHeight: 30,
+    lineHeight: rf(30),
   },
   statusBubblePremium: {
-    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ffffff',
+    backgroundColor: 'transparent',
     borderColor: colors.primary,
-    borderWidth: 1.5,
-    borderRadius: 18,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    maxWidth: '50%',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    maxWidth: '60%',
   },
   statusBubbleText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 10,
+    fontSize: rf(10),
     color: isDarkMode ? '#ffffff' : colors.text,
     fontStyle: 'italic',
-    lineHeight: 14,
+    lineHeight: rf(14),
     textAlign: 'right',
   },
   headerRightWrapper: {

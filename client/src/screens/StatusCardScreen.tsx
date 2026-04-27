@@ -10,6 +10,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
+import AdvancedColorPicker from '../components/AdvancedColorPicker';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.92;
@@ -233,19 +234,12 @@ export default function StatusCardScreen() {
         <View style={styles.exportPanel}>
           <View style={styles.controlSection}>
             <Text style={[styles.selectorLabel, { color: colors.text }]}>Accent Color</Text>
-            <View style={styles.colorRow}>
-              {PRESET_COLORS.map((c) => (
-                <TouchableOpacity
-                  key={c}
-                  style={[
-                    styles.colorCircle, 
-                    { backgroundColor: c },
-                    textColor === c && { borderWidth: 3, borderColor: colors.text }
-                  ]}
-                  onPress={() => setTextColor(c)}
-                />
-              ))}
-            </View>
+            <AdvancedColorPicker 
+              color={textColor} 
+              onColorChange={setTextColor} 
+              colors={colors} 
+              isDarkMode={isDarkMode} 
+            />
           </View>
 
           <View style={styles.controlsRow}>

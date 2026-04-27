@@ -3,15 +3,12 @@ import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './src/navigation/navigationUtils';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
-import * as Notifications from 'expo-notifications';
 import { View, StyleSheet, Platform } from 'react-native';
 import * as QuickActions from 'expo-quick-actions';
-
+import * as Notifications from 'expo-notifications';
+import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { AppProvider, useAppContext } from './src/context/AppContext';
 import LoadingScreen from './src/screens/LoadingScreen';
-
-// Set up foreground notification behavior
 try {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -58,21 +55,25 @@ import FeedbackModal from './src/components/FeedbackModal';
 import ConfirmModal from './src/components/ConfirmModal';
 import LoadingOverlay from './src/components/LoadingOverlay';
 import BottomTabNavigator from './src/navigation/BottomTabNavigator';
+import CurrencyConverterScreen from './src/screens/CurrencyConverterScreen';
 
 const Stack = createNativeStackNavigator();
 
 function MainNavigation() {
-  const { username, colors, isDarkMode, isSecurityEnabled, isUnlocked } = useAppContext();
-
-  if (username && isSecurityEnabled && !isUnlocked) {
-    return <SecurityScreen />;
-  }
+  const { username, colors, isDarkMode } = useAppContext();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
 
-      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'none' }}>
+      <Stack.Navigator 
+        screenOptions={{ 
+          headerShown: false, 
+          animation: 'slide_from_right',
+          animationDuration: 250,
+          contentStyle: { backgroundColor: colors.background }
+        }}
+      >
 
         {!username ? (
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
@@ -107,11 +108,34 @@ function MainNavigation() {
             <Stack.Screen name="AddDebt" component={AddDebtScreen} />
             <Stack.Screen name="Subscription" component={SubscriptionScreen} />
             <Stack.Screen name="AddSubscription" component={AddSubscriptionScreen} />
+            <Stack.Screen name="CurrencyConverter" component={CurrencyConverterScreen} />
+            
+            {/* Fallback Aliases that redirect into the Tab Navigator to keep Tabs and Header */}
+            <Stack.Screen name="Goals">
+              {(props) => <TabRedirect {...props} target="Goals" />}
+            </Stack.Screen>
+            <Stack.Screen name="Wallets">
+              {(props) => <TabRedirect {...props} target="Wallets" />}
+            </Stack.Screen>
+            <Stack.Screen name="History">
+              {(props) => <TabRedirect {...props} target="History" />}
+            </Stack.Screen>
+            <Stack.Screen name="Home">
+              {(props) => <TabRedirect {...props} target="Home" />}
+            </Stack.Screen>
           </Stack.Group>
         )}
       </Stack.Navigator>
     </View>
   );
+}
+
+// Simple redirect component to ensure tabs and headers are preserved
+function TabRedirect({ navigation, target }: any) {
+  useEffect(() => {
+    navigation.replace('Main', { screen: target });
+  }, []);
+  return <View style={{ flex: 1, backgroundColor: 'transparent' }} />;
 }
 
 // We need to move NavigationContainer outside to manage the ref
@@ -141,13 +165,20 @@ const linking = {
     screens: {
       Main: {
         screens: {
-          HomeTab: 'home',
+          Home: 'home',
+          Wallets: 'wallets',
+          Goals: 'goals',
+          History: 'history',
         },
       },
       Deposit: 'deposit',
       Withdraw: 'withdraw',
-      AddSavings: 'deposit', // Alias
+      AddSavings: 'deposit',
       AddTravel: 'add-travel',
+      Debts: 'debts',
+      Receivables: 'receivables',
+      GroceryDetail: 'grocery/:listId',
+      CurrencyConverter: 'currency-converter',
     },
   },
 };
@@ -168,7 +199,7 @@ export default function App() {
 }
 
 function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
-  const { isLoaded, isSecurityEnabled, isUnlocked } = useAppContext();
+  const { isLoaded, username, isSecurityEnabled, isUnlocked } = useAppContext();
   const [showSplash, setShowSplash] = useState(true);
   const [didTimeout, setDidTimeout] = useState(false);
   const [pendingWidgetAction, setPendingWidgetAction] = useState<string | null>(null);
@@ -192,12 +223,6 @@ function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
             title: 'Withdraw',
             icon: Platform.OS === 'ios' ? 'symbol:arrow.up.right.circle.fill' : 'shortcut_withdraw',
             params: { href: 'leafy://withdraw' }
-          },
-          {
-            id: 'add_goal',
-            title: 'Add Goal',
-            icon: Platform.OS === 'ios' ? 'symbol:target' : 'shortcut_add_goal',
-            params: { href: 'leafy://add-goal' }
           }
         ]);
       } catch (e) {
@@ -241,6 +266,42 @@ function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
     return () => deviceSubscription.remove();
   }, [isLoaded]); // Re-run when app data is ready
 
+  // Notification Response Handling
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data as any;
+      const target = data.path || data.screen;
+      
+      if (data && target) {
+        // Wait for both fonts and data to be ready before navigating
+        const checkReady = setInterval(() => {
+          if (navigationRef.isReady() && isLoaded && fontsLoaded) {
+            clearInterval(checkReady);
+            
+            if (data.params && data.params.screen) {
+              // @ts-ignore
+              navigationRef.navigate(target, data.params);
+            } else if (target === 'Goals' || target === 'Wallets' || target === 'History' || target === 'Home') {
+              // @ts-ignore
+              navigationRef.navigate('Main', { screen: target });
+            } else if (target === 'GroceryDetail') {
+              // @ts-ignore
+              navigationRef.navigate('GroceryDetail', { listId: data.listId });
+            } else {
+              // @ts-ignore
+              navigationRef.navigate(target);
+            }
+          }
+        }, 100);
+        
+        // Safety timeout to prevent infinite interval
+        setTimeout(() => clearInterval(checkReady), 5000);
+      }
+    });
+
+    return () => subscription.remove();
+  }, [isLoaded, fontsLoaded]);
+
   // Handle pending widget action after unlock
   useEffect(() => {
     if (isUnlocked && pendingWidgetAction) {
@@ -279,6 +340,13 @@ function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
       <NavigationContainer ref={navigationRef} linking={linking}>
          <MainNavigation />
       </NavigationContainer>
+      
+      {username && isSecurityEnabled && !isUnlocked && (
+        <View style={StyleSheet.absoluteFill}>
+          <SecurityScreen />
+        </View>
+      )}
+
       <FeedbackModal />
       <ConfirmModal />
       <LoadingOverlay />

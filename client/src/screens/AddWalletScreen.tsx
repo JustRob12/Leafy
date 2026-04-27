@@ -6,6 +6,7 @@ import { ChevronLeft, User, AlertTriangle, ShoppingBag, Plane, Wallet as WalletI
 import { useAppContext, WalletCategory } from '../context/AppContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import AdvancedColorPicker from '../components/AdvancedColorPicker';
 
 const { height } = Dimensions.get('window');
 
@@ -179,24 +180,6 @@ export default function AddWalletScreen() {
           ))}
         </View>
 
-        <Text style={styles.inputLabel}>Accent Theme</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.colorRow}>
-          {walletPresets.map((wp) => (
-            <TouchableOpacity
-              key={wp.name}
-              style={[
-                styles.colorOption,
-                { backgroundColor: wp.color },
-                walletColor === wp.color && styles.colorOptionSelected
-              ]}
-              onPress={() => setWalletColor(wp.color)}
-            >
-              {walletColor === wp.color && (
-                <View style={styles.colorSelectedIndicator} />
-              )}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
 
         <Text style={styles.inputLabel}>Wallet Icon</Text>
         <View style={styles.iconTypeRow}>
@@ -302,6 +285,14 @@ export default function AddWalletScreen() {
             </View>
           )}
         </TouchableOpacity>
+
+        <Text style={styles.inputLabel}>Accent Theme</Text>
+        <AdvancedColorPicker 
+          color={walletColor} 
+          onColorChange={setWalletColor} 
+          colors={colors} 
+          isDarkMode={isDarkMode} 
+        />
 
         {isEditing && (
           <TouchableOpacity

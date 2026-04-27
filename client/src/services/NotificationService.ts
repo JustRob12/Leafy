@@ -65,7 +65,7 @@ export const syncAllNotifications = async (debts: DebtType[], groceryLists: Groc
         content: {
           title: "💸 Debt Reminder",
           body: `Don't forget to pay ${debt.personName}: ₱${debt.amount.toLocaleString()} for ${debt.taskName}`,
-          data: { screen: 'Debts' },
+          data: { path: 'Debts' },
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -87,7 +87,7 @@ export const syncAllNotifications = async (debts: DebtType[], groceryLists: Groc
               content: {
                   title: "🛒 Grocery Day!",
                   body: `Time to buy your items for: ${list.title}`,
-                  data: { screen: 'GroceryDetail', listId: list.id },
+                  data: { path: 'GroceryDetail', listId: list.id },
               },
               trigger: {
                   type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
@@ -106,7 +106,7 @@ export const syncAllNotifications = async (debts: DebtType[], groceryLists: Groc
                       content: {
                           title: "🛒 Grocery Day (Reminder)",
                           body: `Don't forget your grocery items for: ${list.title}`,
-                          data: { screen: 'GroceryDetail', listId: list.id },
+                          data: { path: 'GroceryDetail', listId: list.id },
                       },
                       trigger: {
                           type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -128,7 +128,7 @@ export const notifyGoalCompletion = async (goalTitle: string) => {
             content: {
                 title: "🎯 Goal Reached! 🎉",
                 body: `Congratulations! You've successfully reached 100% of your target for: ${goalTitle}`,
-                data: { screen: 'Goals' },
+                data: { path: 'Main', params: { screen: 'Goals' } },
                 sound: true,
             },
             trigger: null, // Send immediately

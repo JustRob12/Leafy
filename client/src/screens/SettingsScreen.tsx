@@ -11,7 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 
 export default function SettingsScreen() {
-  const { username, userImage, setUserImage, clearData, showConfirm, isDarkMode, toggleTheme, treeType, setTreeType, colors, appPin, setAppPin, isSecurityEnabled, toggleSecurity, isBiometricsEnabled, toggleBiometrics, isNotificationsEnabled, toggleNotifications } = useAppContext();
+  const { username, setUsername, userImage, setUserImage, clearData, showConfirm, isDarkMode, toggleTheme, treeType, setTreeType, colors, appPin, setAppPin, isSecurityEnabled, toggleSecurity, isBiometricsEnabled, toggleBiometrics, isNotificationsEnabled, toggleNotifications } = useAppContext();
   const navigation = useNavigation<any>();
 
   const styles = getStyles(colors, isDarkMode);
@@ -374,6 +374,7 @@ export default function SettingsScreen() {
               style={{ padding: 16, fontFamily: theme.fonts.medium, fontSize: 16, color: colors.text }}
               value={editName}
               onChangeText={setEditName}
+              maxLength={6}
               placeholder="Your Name"
               placeholderTextColor={colors.textMuted}
             />
@@ -382,8 +383,7 @@ export default function SettingsScreen() {
             style={styles.closeBtn}
             onPress={async () => {
               if (editName.trim().length > 0) {
-                // @ts-ignore
-                await useAppContext().setUsername(editName.trim());
+                await setUsername(editName.trim());
                 setAccountModalVisible(false);
               }
             }}

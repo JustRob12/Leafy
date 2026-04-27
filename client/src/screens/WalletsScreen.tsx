@@ -93,68 +93,69 @@ export default function WalletsScreen() {
                 <Text style={styles.categoryLabel}>{group.title}</Text>
                 <View style={styles.gridContainer}>
                   {group.data.map((wallet) => (
-                    <View key={wallet.id} style={styles.premiumCardWrapper}>
-                      <View style={[styles.premiumCard, { backgroundColor: wallet.color || colors.primary }]}>
-                        <View style={styles.cardHeader}>
-                          <View style={styles.cardHeaderLeft}>
-                            <View style={styles.cardIconBox}>
-                              <View style={styles.headerGlow} />
-                              {(() => {
-                                if (wallet.iconType === 'custom' && wallet.customIcon) {
-                                  return <RNImage source={{ uri: wallet.customIcon }} style={styles.cardIconImage as any} />;
-                                }
-                                if (wallet.iconType === 'preset' && wallet.presetLogo) {
-                                  return <RNImage source={brandLogos[wallet.presetLogo]} style={[styles.cardIconImage as any, { resizeMode: 'contain' }]} />;
-                                }
-                                const PurposeIcon = purposes.find(p => p.label === wallet.purpose)?.icon || WalletIcon;
-                                return <PurposeIcon size={16} color="#ffffff" />;
-                              })()}
+                      <View key={wallet.id} style={styles.premiumCardWrapper}>
+                        <TouchableOpacity 
+                          style={[styles.premiumCard, { backgroundColor: wallet.color || colors.primary }]}
+                          onPress={() => navigation.navigate('AddWallet', { wallet })}
+                          activeOpacity={0.9}
+                        >
+                          <View style={styles.cardHeader}>
+                            <View style={styles.cardHeaderLeft}>
+                              <View style={styles.cardIconBox}>
+                                <View style={styles.headerGlow} />
+                                {(() => {
+                                  if (wallet.iconType === 'custom' && wallet.customIcon) {
+                                    return <RNImage source={{ uri: wallet.customIcon }} style={styles.cardIconImage as any} />;
+                                  }
+                                  if (wallet.iconType === 'preset' && wallet.presetLogo) {
+                                    return <RNImage source={brandLogos[wallet.presetLogo]} style={[styles.cardIconImage as any, { resizeMode: 'contain' }]} />;
+                                  }
+                                  const PurposeIcon = purposes.find(p => p.label === wallet.purpose)?.icon || WalletIcon;
+                                  return <PurposeIcon size={16} color="#ffffff" />;
+                                })()}
+                              </View>
+                              <Text style={[styles.cardName, { color: '#ffffff' }]} numberOfLines={1}>{wallet.name}</Text>
                             </View>
-                            <Text style={[styles.cardName, { color: '#ffffff' }]} numberOfLines={1}>{wallet.name}</Text>
+
+                            <View style={styles.cardHeaderRight}>
+                              <View style={styles.moreActionBtn}>
+                                <MoreHorizontal size={14} color="rgba(255, 255, 255, 0.7)" />
+                              </View>
+                            </View>
                           </View>
 
-                          <View style={styles.cardHeaderRight}>
-                            <TouchableOpacity
-                              onPress={() => navigation.navigate('AddWallet', { wallet })}
-                              style={styles.moreActionBtn}
+                          <View style={styles.cardBody}>
+                            <Text 
+                              style={[
+                                styles.cardBalanceText, 
+                                wallet.balance >= 1000000 ? { fontSize: 13 } : wallet.balance >= 100000 ? { fontSize: 15 } : {}
+                              ]} 
+                              numberOfLines={1} 
+                              adjustsFontSizeToFit
                             >
-                              <MoreHorizontal size={14} color="rgba(255, 255, 255, 0.7)" />
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-
-                        <View style={styles.cardBody}>
-                          <Text 
-                            style={[
-                              styles.cardBalanceText, 
-                              wallet.balance >= 1000000 ? { fontSize: 13 } : wallet.balance >= 100000 ? { fontSize: 15 } : {}
-                            ]} 
-                            numberOfLines={1} 
-                            adjustsFontSizeToFit
-                          >
-                            {showBalances 
-                              ? `₱${wallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                              : '₱*****'
-                            }
-                          </Text>
-                        </View>
-
-                        <View style={styles.cardFooter}>
-                          <View style={[styles.purposePill, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
-                            <Text style={[styles.purposePillText, { color: '#ffffff' }]}>{wallet.purpose}</Text>
+                              {showBalances 
+                                ? `₱${wallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                : '₱*****'
+                              }
+                            </Text>
                           </View>
 
-                          {wallet.qrCodeImage && (
-                            <TouchableOpacity
-                              onPress={(e) => { e.stopPropagation(); setViewingQrCode(wallet.qrCodeImage || null); }}
-                              style={[styles.qrActionBtn, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
-                            >
-                              <QrCode size={14} color="#ffffff" />
-                            </TouchableOpacity>
-                          )}
-                        </View>
+                          <View style={styles.cardFooter}>
+                            <View style={[styles.purposePill, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
+                              <Text style={[styles.purposePillText, { color: '#ffffff' }]}>{wallet.purpose}</Text>
+                            </View>
+
+                            {wallet.qrCodeImage && (
+                              <TouchableOpacity
+                                onPress={(e) => { e.stopPropagation(); setViewingQrCode(wallet.qrCodeImage || null); }}
+                                style={[styles.qrActionBtn, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
+                              >
+                                <QrCode size={14} color="#ffffff" />
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </TouchableOpacity>
                       </View>
-                    </View>
                   ))}
                 </View>
               </View>

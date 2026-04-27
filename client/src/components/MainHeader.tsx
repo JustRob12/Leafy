@@ -142,14 +142,14 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
 
     // 1. Critical Debt Check
     const overdueDebts = debts.filter(d => d.dueDate && d.dueDate < today.toISOString().split('T')[0]).length;
-    if (overdueDebts > 0) return "Hey, I noticed a few overdue debts. Shall we clear those first? 🌿";
+    if (overdueDebts > 0) return "Hey, I noticed a few overdue debts. Shall we clear those first? ";
 
     // 2. Low Balance Check
-    if (totalBalance < 500 && totalBalance > 0) return "Your balance is looking a bit thin! Time for some fresh seeds? 🌱";
-    if (totalBalance <= 0 && wallets.length > 0) return "Your garden is a bit dry! Let's add some water to those wallets. 🥀";
+    if (totalBalance < 500 && totalBalance > 0) return "Your balance is looking a bit thin! Time for some fresh seeds? ";
+    if (totalBalance <= 0 && wallets.length > 0) return "Your garden is a bit dry! Let's add some water to those wallets. ";
 
     // 3. Spending Check
-    if (monthSpent > monthSavings && monthSpent > 0) return "Whoa, you're spending a bit fast! Let's be extra careful today, okay? 🍃";
+    if (monthSpent > monthSavings && monthSpent > 0) return "Whoa, you're spending a bit fast! Let's be extra careful today, okay?";
 
     // 4. Goal Encouragement
     const nearGoal = goals.find(g => {

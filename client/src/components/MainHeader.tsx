@@ -236,11 +236,13 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
             onPress={() => setStreakModalVisible(true)}
             activeOpacity={0.7}
           >
-            {(() => {
-              if (streakCount >= 8) return <TreeDeciduous size={14} color="#15803d" fill="#15803d" />;
-              if (streakCount >= 3) return <Sprout size={14} color="#22c55e" fill="#22c55e" />;
-              return <Egg size={14} color="#92400e" fill="#92400e" />;
-            })()}
+            <View style={{ transform: [{ rotate: '-20deg' }] }}>
+              {(() => {
+                if (streakCount >= 8) return <TreeDeciduous size={10} color="#15803d" fill="#15803d" />;
+                if (streakCount >= 3) return <Sprout size={10} color="#22c55e" fill="#22c55e" />;
+                return <Egg size={10} color="#92400e" fill="#92400e" />;
+              })()}
+            </View>
             <Text style={[
               styles.streakTextSmall,
               streakCount >= 8 ? { color: '#15803d' } :
@@ -501,7 +503,9 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                   <View style={styles.guideRow}>
                     <View style={styles.guideItem}>
                       <View style={[styles.guideIconCircle, { backgroundColor: isDarkMode ? 'rgba(146, 64, 14, 0.1)' : '#fffbeb' }]}>
-                        <Egg size={20} color="#92400e" fill="#92400e" />
+                        <View style={{ transform: [{ rotate: '-20deg' }] }}>
+                          <Egg size={20} color="#92400e" fill="#92400e" />
+                        </View>
                       </View>
                       <Text style={styles.guideStageName}>Seed</Text>
                       <Text style={styles.guideStageDesc}>Day 1-2</Text>
@@ -618,9 +622,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   timeText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 12,
+    fontSize: 10,
     color: colors.textMuted,
-    marginTop: 2,
+    marginTop: 1,
   },
   welcomeLabel: {
     fontFamily: theme.fonts.semiBold,
@@ -696,10 +700,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   greetingSmall: {
     fontFamily: theme.fonts.bold,
-    fontSize: rf(24),
+    fontSize: rf(18),
     color: colors.text,
     letterSpacing: -0.5,
-    lineHeight: rf(30),
+    lineHeight: rf(24),
   },
   statusBubblePremium: {
     backgroundColor: 'transparent',
@@ -712,10 +716,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   statusBubbleText: {
     fontFamily: theme.fonts.medium,
-    fontSize: rf(10),
+    fontSize: rf(9),
     color: isDarkMode ? '#ffffff' : colors.text,
     fontStyle: 'italic',
-    lineHeight: rf(14),
+    lineHeight: rf(13),
     textAlign: 'right',
   },
   headerRightWrapper: {
@@ -728,15 +732,15 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   streakBadgeCompact: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
     borderWidth: 1,
   },
   streakTextSmall: {
     fontFamily: theme.fonts.bold,
-    fontSize: 12,
+    fontSize: 10,
   },
   modalOverlay: {
     flex: 1,

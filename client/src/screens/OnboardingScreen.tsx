@@ -112,7 +112,7 @@ export default function OnboardingScreen() {
                   <Text style={styles.inputLabel}>What should we call you?</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="e.g., Alex Johnson"
+                    placeholder="Your Name"
                     placeholderTextColor={colors.textMuted}
                     value={name}
                     onChangeText={setName}

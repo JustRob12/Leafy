@@ -554,8 +554,6 @@ export default function HomeScreen() {
                       }
                     ]}
                   >
-                    <View style={styles.goalGlowBig} />
-                    <View style={styles.goalGlowSmall} />
                     <TouchableOpacity
                       activeOpacity={0.9}
                       onPress={() => navigation.navigate('GoalDetail', { goal })}
@@ -566,7 +564,7 @@ export default function HomeScreen() {
                             {goal.imageUrl ? (
                               <Image source={{ uri: goal.imageUrl }} style={{ width: '100%', height: '100%', borderRadius: 14 }} />
                             ) : (
-                              <Target size={20} color="#ffffff" />
+                              <Target size={20} color={colors.primary} />
                             )}
                           </View>
                           <View>
@@ -1219,29 +1217,13 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     justifyContent: 'center',
   },
   goalCard: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.card,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
     width: '100%',
     overflow: 'hidden',
-  },
-  goalGlowBig: {
-    position: 'absolute',
-    top: -40,
-    right: -40,
-    width: 140,
-    height: 140,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 70,
-  },
-  goalGlowSmall: {
-    position: 'absolute',
-    bottom: -20,
-    left: -20,
-    width: 80,
-    height: 80,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 40,
+    borderWidth: 1,
+    borderColor: colors.primary,
   },
   pagination: {
     flexDirection: 'row',
@@ -1277,19 +1259,19 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
     alignItems: 'center',
     justifyContent: 'center',
   },
   goalTitle: {
     fontFamily: theme.fonts.semiBold,
     fontSize: rf(16),
-    color: '#ffffff',
+    color: colors.text,
   },
   goalAmountText: {
     fontFamily: theme.fonts.medium,
     fontSize: rf(13),
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: colors.textMuted,
     marginTop: 2,
   },
   goalPercentage: {
@@ -1299,14 +1281,14 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   progressBarBg: {
     height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
     borderRadius: 4,
     width: '100%',
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.primary,
     borderRadius: 4,
   },
   transactionsList: {

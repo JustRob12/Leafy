@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './src/navigation/navigationUtils';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, Text, TextInput } from 'react-native';
 import * as QuickActions from 'expo-quick-actions';
 import * as Notifications from 'expo-notifications';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
@@ -58,6 +58,24 @@ import BottomTabNavigator from './src/navigation/BottomTabNavigator';
 import CurrencyConverterScreen from './src/screens/CurrencyConverterScreen';
 
 const Stack = createNativeStackNavigator();
+
+// Set global font
+type TextWithDefaultProps = typeof Text & {
+  defaultProps?: { style?: any; allowFontScaling?: boolean };
+};
+type TextInputWithDefaultProps = typeof TextInput & {
+  defaultProps?: { style?: any; allowFontScaling?: boolean };
+};
+const CustomText = Text as unknown as TextWithDefaultProps;
+const CustomTextInput = TextInput as unknown as TextInputWithDefaultProps;
+
+if (!CustomText.defaultProps) CustomText.defaultProps = {};
+CustomText.defaultProps.style = CustomText.defaultProps.style || {};
+CustomText.defaultProps.style.fontFamily = 'Inter_400Regular';
+
+if (!CustomTextInput.defaultProps) CustomTextInput.defaultProps = {};
+CustomTextInput.defaultProps.style = CustomTextInput.defaultProps.style || {};
+CustomTextInput.defaultProps.style.fontFamily = 'Inter_400Regular';
 
 function MainNavigation() {
   const { username, colors, isDarkMode } = useAppContext();
@@ -322,11 +340,12 @@ function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
     return () => clearTimeout(timer);
   }, []);
 
-  // Determine if we should stay on the loading screen
-  // We are "ready" if (fonts are loaded AND data is loaded) OR we hit the safety timeout
-  const isReady = (fontsLoaded && isLoaded) || didTimeout;
+  // For returning users: only wait for data to load (fonts are pre-bundled in the APK).
+  // For new users: wait for both fonts and data before showing onboarding.
+  const isReady = (isLoaded && (fontsLoaded || !!username)) || didTimeout;
 
-  if (showSplash || !isReady) {
+  // Only show splash for new users (one-time animation). Returning users skip straight to the app.
+  if (!isReady || (showSplash && !username)) {
     return (
       <View style={{ flex: 1, backgroundColor: '#10b981' }}>
         <StatusBar style="light" />

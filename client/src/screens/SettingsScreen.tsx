@@ -61,16 +61,36 @@ export default function SettingsScreen() {
     }
   };
 
-  const settingsOptions = [
-    { id: '1', title: 'Account Settings', icon: User, action: () => { setEditName(username || ''); setAccountModalVisible(true); } },
-    { id: '10', title: 'Appearance & Themes', icon: Palette, action: () => setAppearanceModalVisible(true) },
-    { id: '2', title: 'Backup & Restore', icon: Database, action: () => navigation.navigate('DataTransfer') },
-    { id: '3', title: 'Privacy & Security', icon: Shield, action: () => { setPrivacyModalVisible(true); } },
-    { id: '8', title: 'Notifications', icon: Bell, action: () => { setNotifModalVisible(true); } },
-    { id: '9', title: 'Widgets & Shortcuts', icon: Plus, action: () => { setWidgetModalVisible(true); } },
-    { id: '7', title: 'Security & PIN', icon: Lock, action: () => { setSecurityModalVisible(true); } },
-    { id: '4', title: 'Help & Support', icon: CircleHelp, action: () => { setHelpModalVisible(true); } },
-    { id: '6', title: 'About Leafy', icon: Leaf, action: () => { setAboutModalVisible(true); } },
+  const settingsSections = [
+    {
+      title: 'General',
+      options: [
+        { id: '1', title: 'Change Name', icon: User, action: () => { setEditName(username || ''); setAccountModalVisible(true); } },
+        { id: '10', title: 'Appearance & Themes', icon: Palette, action: () => setAppearanceModalVisible(true) },
+      ]
+    },
+    {
+      title: 'Security & Data',
+      options: [
+        { id: '7', title: 'Security & PIN', icon: Lock, action: () => { setSecurityModalVisible(true); } },
+        { id: '2', title: 'Backup & Restore', icon: Database, action: () => navigation.navigate('DataTransfer') },
+        { id: '3', title: 'Privacy & Security', icon: Shield, action: () => { setPrivacyModalVisible(true); } },
+      ]
+    },
+    {
+      title: 'Preferences',
+      options: [
+        { id: '8', title: 'Notifications', icon: Bell, action: () => { setNotifModalVisible(true); } },
+        { id: '9', title: 'Widgets & Shortcuts', icon: Plus, action: () => { setWidgetModalVisible(true); } },
+      ]
+    },
+    {
+      title: 'Support',
+      options: [
+        { id: '4', title: 'Help & Support', icon: CircleHelp, action: () => { setHelpModalVisible(true); } },
+        { id: '6', title: 'About Leafy', icon: Leaf, action: () => { setAboutModalVisible(true); } },
+      ]
+    }
   ];
 
   return (
@@ -105,28 +125,33 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View style={styles.settingsGroup}>
-          {settingsOptions.map((option, index) => {
-            const Icon = option.icon;
-            return (
-              <React.Fragment key={option.id}>
-                <View style={styles.settingItemWrapper}>
-                  <TouchableOpacity
-                    style={styles.settingItem}
-                    onPress={option.action as any}
-                  >
-                    <View style={styles.settingItemLeft}>
-                      <Icon size={20} color={colors.textMuted} />
-                      <Text style={styles.settingTitle}>{option.title}</Text>
+        {settingsSections.map((section, sectionIndex) => (
+          <View key={section.title} style={{ marginBottom: 16 }}>
+            <Text style={styles.sectionLabel}>{section.title}</Text>
+            <View style={styles.settingsGroup}>
+              {section.options.map((option, index) => {
+                const Icon = option.icon;
+                return (
+                  <React.Fragment key={option.id}>
+                    <View style={styles.settingItemWrapper}>
+                      <TouchableOpacity
+                        style={styles.settingItem}
+                        onPress={option.action as any}
+                      >
+                        <View style={styles.settingItemLeft}>
+                          <Icon size={20} color={colors.textMuted} />
+                          <Text style={styles.settingTitle}>{option.title}</Text>
+                        </View>
+                        <ChevronRight size={20} color={colors.border} />
+                      </TouchableOpacity>
                     </View>
-                    <ChevronRight size={20} color={colors.border} />
-                  </TouchableOpacity>
-                </View>
-                {index < settingsOptions.length - 1 && <View style={styles.divider} />}
-              </React.Fragment>
-            );
-          })}
-        </View>
+                    {index < section.options.length - 1 && <View style={styles.divider} />}
+                  </React.Fragment>
+                );
+              })}
+            </View>
+          </View>
+        ))}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -161,8 +186,8 @@ export default function SettingsScreen() {
               { id: 'maple', name: 'Autumn Maple', color: '#f97316' },
               { id: 'spruce', name: 'Blue Spruce', color: '#0284c7' },
             ].map((theme) => (
-              <TouchableOpacity 
-                key={theme.id} 
+              <TouchableOpacity
+                key={theme.id}
                 style={[styles.themeOption, treeType === theme.id && styles.themeOptionActive]}
                 onPress={() => setTreeType(theme.id as any)}
               >
@@ -365,7 +390,7 @@ export default function SettingsScreen() {
       <ActionSheet
         visible={accountModalVisible}
         onClose={() => setAccountModalVisible(false)}
-        title="Account Settings"
+        title="Change Name"
       >
         <View style={styles.modalContent}>
           <Text style={styles.infoTitle}>Update Name</Text>
@@ -445,19 +470,19 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.configGroup}>
-             <View style={styles.infoSection}>
-                <Text style={[styles.infoTitle, { fontSize: 16 }]}>How to use:</Text>
-                <Text style={styles.infoDescription}>
-                  1. Go to your phone's home screen.{"\n"}
-                  2. Long-press the Leafy app icon.{"\n"}
-                  3. Select "Add Savings" or "Withdraw".{"\n"}
-                  4. (Android) You can drag these items to your home screen as standalone widgets.
-                </Text>
-             </View>
+            <View style={styles.infoSection}>
+              <Text style={[styles.infoTitle, { fontSize: 16 }]}>How to use:</Text>
+              <Text style={styles.infoDescription}>
+                1. Go to your phone's home screen.{"\n"}
+                2. Long-press the Leafy app icon.{"\n"}
+                3. Select "Add Savings" or "Withdraw".{"\n"}
+                4. (Android) You can drag these items to your home screen as standalone widgets.
+              </Text>
+            </View>
           </View>
 
-          <TouchableOpacity 
-            style={styles.closeBtn} 
+          <TouchableOpacity
+            style={styles.closeBtn}
             onPress={() => {
               // Trigger a refresh/setup check
               Alert.alert("Shortcut Synchronized", "Your home screen shortcuts have been updated with the latest premium design.");
@@ -529,7 +554,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
   },
   avatarContainer: {
     position: 'relative',
@@ -582,6 +607,16 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     color: colors.textMuted,
     marginTop: 2,
   },
+  sectionLabel: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 12,
+    color: colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 4,
+    marginLeft: 4,
+    opacity: 0.7,
+  },
   settingsGroup: {
     backgroundColor: colors.card,
     borderRadius: theme.borderRadius.lg,
@@ -597,7 +632,8 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: theme.spacing.md,
+    paddingVertical: 12,
+    paddingHorizontal: theme.spacing.md,
   },
   settingItemLeft: {
     flexDirection: 'row',

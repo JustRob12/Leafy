@@ -14,6 +14,7 @@ export default function DataTransferScreen() {
   const {
     username, wallets, transactions, goals, userImage,
     receivables, debts, groceryLists, travels, appPin, isSecurityEnabled, isBiometricsEnabled, isDarkMode,
+    recursions, subscriptions, statusCardBg, treeType, isNotificationsEnabled, withdrawPresets,
     importData, clearData, showConfirm, colors
   } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
@@ -35,6 +36,12 @@ export default function DataTransferScreen() {
         isBiometricsEnabled,
         isDarkMode,
         userImage,
+        recursions,
+        subscriptions,
+        statusCardBg,
+        treeType,
+        isNotificationsEnabled,
+        withdrawPresets,
         exportDate: new Date().toISOString(),
         version: '1.1.0'
       };

@@ -74,7 +74,7 @@ export default function RecursionScreen() {
                   <Text style={styles.dateText}>
                     {item.frequency === 'weekly' && `Every ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][item.dayOfWeek ?? 1]}`}
                     {item.frequency === 'monthly' && `Every day ${item.dayOfMonth} of the month`}
-                    {item.frequency === 'bi-monthly' && 'Every 15th and 30th (15-Day Cycle)'}
+                    {item.frequency === 'bi-monthly' && (item.startDate ? `Every 15 days starting ${formatDate(item.startDate)}` : 'Every 15th and 30th (15-Day Cycle)')}
                     {!item.frequency && `Every day ${item.dayOfMonth} of the month`}
                   </Text>
                   <Text style={[styles.amountText, { marginTop: 4 }]}>₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>

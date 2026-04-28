@@ -37,10 +37,10 @@
         "expo-font",
         {
           "fonts": [
-            "./node_modules/@expo-google-fonts/inter/Inter_400Regular.ttf",
-            "./node_modules/@expo-google-fonts/inter/Inter_500Medium.ttf",
-            "./node_modules/@expo-google-fonts/inter/Inter_600SemiBold.ttf",
-            "./node_modules/@expo-google-fonts/inter/Inter_700Bold.ttf"
+            "./node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf",
+            "./node_modules/@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf",
+            "./node_modules/@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf",
+            "./node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf"
           ]
         }
       ],
@@ -57,7 +57,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "b35f4de6-8dc2-4d6a-b00a-a5f4fd2ed55a"
+        "projectId": "5e9fc6f5-d01c-4a2c-bd75-6e23e2441f6d"
       }
     }
   }

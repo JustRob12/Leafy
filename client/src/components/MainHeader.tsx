@@ -328,19 +328,6 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                   <ChevronRight size={16} color={colors.border} />
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() => {
-                    setDropdownVisible(false);
-                    navigation.navigate('StatusCard');
-                  }}
-                >
-                  <View style={styles.dropdownItemLeft}>
-                    <ImageIcon size={18} color={colors.textMuted} />
-                    <Text style={styles.dropdownItemText}>Generate Status Card</Text>
-                  </View>
-                  <ChevronRight size={16} color={colors.border} />
-                </TouchableOpacity>
 
                 <View style={styles.dropdownItem}>
                   <View style={styles.dropdownItemLeft}>

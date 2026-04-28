@@ -22,6 +22,11 @@ export default function AddRecursionScreen() {
   const [dayOfMonth, setDayOfMonth] = useState(editingRecursion?.dayOfMonth?.toString() || '1');
   const [dayOfWeek, setDayOfWeek] = useState<number>(editingRecursion?.dayOfWeek ?? 1); // Default to Monday
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(editingRecursion?.walletId || null);
+  
+  // Start Date for 15 Days
+  const [startDay, setStartDay] = useState(editingRecursion?.startDate ? editingRecursion.startDate.split('-')[2] : '');
+  const [startMonth, setStartMonth] = useState(editingRecursion?.startDate ? editingRecursion.startDate.split('-')[1] : '');
+  const [startYear, setStartYear] = useState(editingRecursion?.startDate ? editingRecursion.startDate.split('-')[0] : new Date().getFullYear().toString());
 
   const formatAmount = (text: string) => {
     const raw = text.replace(/,/g, '').replace(/[^0-9.]/g, '');
@@ -59,7 +64,12 @@ export default function AddRecursionScreen() {
 
     if (frequency === 'monthly') recursionData.dayOfMonth = dayNumeric;
     if (frequency === 'weekly') recursionData.dayOfWeek = dayOfWeek;
-    // Bi-monthly logic is predefined as 15/30 in the process engine
+    
+    if (frequency === 'bi-monthly') {
+      if (startDay && startMonth && startYear) {
+        recursionData.startDate = `${startYear}-${startMonth.padStart(2, '0')}-${startDay.padStart(2, '0')}`;
+      }
+    }
 
     if (isEditing) {
       await editRecursion(editingRecursion.id, recursionData);
@@ -70,7 +80,7 @@ export default function AddRecursionScreen() {
   };
 
   const isFormValid = companyName.trim() && amount && selectedWalletId && (
-    frequency === 'bi-monthly' || 
+    (frequency === 'bi-monthly' && startDay && startMonth && startYear) || 
     frequency === 'weekly' || 
     (frequency === 'monthly' && dayOfMonth && !isNaN(parseInt(dayOfMonth)))
   );
@@ -177,10 +187,48 @@ export default function AddRecursionScreen() {
         )}
 
         {frequency === 'bi-monthly' && (
-          <View style={styles.infoBox}>
-            <Calendar size={18} color={colors.primary} />
-            <Text style={styles.infoText}>This will automatically add to your wallet every 15th and 30th (or end of month).</Text>
-          </View>
+          <>
+            <Text style={styles.inputLabel}>Start Date</Text>
+            <View style={styles.dateInputRow}>
+              <View style={[styles.inputWrapper, { flex: 1, marginBottom: 0 }]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="DD"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="numeric"
+                  maxLength={2}
+                  value={startDay}
+                  onChangeText={setStartDay}
+                />
+              </View>
+              <View style={[styles.inputWrapper, { flex: 1, marginBottom: 0 }]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="MM"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="numeric"
+                  maxLength={2}
+                  value={startMonth}
+                  onChangeText={setStartMonth}
+                />
+              </View>
+              <View style={[styles.inputWrapper, { flex: 1.5, marginBottom: 0 }]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="YYYY"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="numeric"
+                  maxLength={4}
+                  value={startYear}
+                  onChangeText={setStartYear}
+                />
+              </View>
+            </View>
+            <View style={[styles.infoBox, { marginTop: 16 }]}>
+              <Calendar size={18} color={colors.primary} />
+              <Text style={styles.infoText}>This will automatically add to your wallet every 15 days starting from the date above.</Text>
+            </View>
+          </>
         )}
 
         <Text style={styles.inputLabel}>Select Target Wallet</Text>
@@ -354,5 +402,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize: 16,
     color: '#ffffff',
+  },
+  dateInputRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 4,
   },
 });

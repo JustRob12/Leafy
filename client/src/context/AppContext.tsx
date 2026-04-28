@@ -93,6 +93,7 @@ export type RecursionType = {
   frequency: 'monthly' | 'weekly' | 'bi-monthly';
   dayOfMonth?: number; // 1-31
   dayOfWeek?: number; // 0-6
+  startDate?: string; // e.g. "2024-04-22"
   lastProcessedDate?: string; // e.g. "2024-04-22"
   date: string;
 };
@@ -393,26 +394,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           shouldProcess = true;
         }
       } else if (r.frequency === 'bi-monthly') {
-        // 15th and 30th (or last day)
-        const lastDay = getLastDayOfMonth(today.getFullYear(), today.getMonth() + 1);
-        const targetDate1 = 15;
-        const targetDate2 = Math.min(30, lastDay);
-        
-        // We need to know which "half" we processed last
-        // If today is >= 15 and we haven't processed the 15th cycle yet
-        const lastProcessedDay = r.lastProcessedDate ? parseInt(r.lastProcessedDate.split('-')[2]) : 0;
-        const lastMonthProcessed = r.lastProcessedDate ? r.lastProcessedDate.substring(0, 7) : '';
-        const currentMonthStr = todayStr.substring(0, 7);
+        // If startDate is present, we count every 15 days from it
+        if (r.startDate) {
+          const start = new Date(r.startDate);
+          start.setHours(0, 0, 0, 0);
+          const now = new Date(today);
+          now.setHours(0, 0, 0, 0);
 
-        if (currentDay >= targetDate1 && currentDay < targetDate2) {
-          // First half check: processed in a different month OR processed in this month but before the 15th
-          if (lastMonthProcessed !== currentMonthStr || lastProcessedDay < targetDate1) {
-            shouldProcess = true;
+          if (now >= start) {
+            // Calculate days since start
+            const diffTime = Math.abs(now.getTime() - start.getTime());
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            // It should process if it's exactly on a 15-day interval
+            // OR if it missed an interval and hasn't been processed for that interval yet.
+            // Simplified: if current processed count is less than (diffDays / 15)
+            
+            // To be more robust in an offline app, we check if today is a multiple of 15 days from start
+            // and we haven't processed today yet.
+            if (diffDays % 15 === 0) {
+              shouldProcess = true;
+            }
           }
-        } else if (currentDay >= targetDate2) {
-          // Second half check: processed in a different month OR processed in this month but before the 30th
-          if (lastMonthProcessed !== currentMonthStr || lastProcessedDay < targetDate2) {
-            shouldProcess = true;
+        } else {
+          // Legacy 15th/30th logic if no startDate
+          const lastDay = getLastDayOfMonth(today.getFullYear(), today.getMonth() + 1);
+          const targetDate1 = 15;
+          const targetDate2 = Math.min(30, lastDay);
+          
+          const lastProcessedDay = r.lastProcessedDate ? parseInt(r.lastProcessedDate.split('-')[2]) : 0;
+          const lastMonthProcessed = r.lastProcessedDate ? r.lastProcessedDate.substring(0, 7) : '';
+          const currentMonthStr = todayStr.substring(0, 7);
+
+          if (currentDay >= targetDate1 && currentDay < targetDate2) {
+            if (lastMonthProcessed !== currentMonthStr || lastProcessedDay < targetDate1) {
+              shouldProcess = true;
+            }
+          } else if (currentDay >= targetDate2) {
+            if (lastMonthProcessed !== currentMonthStr || lastProcessedDay < targetDate2) {
+              shouldProcess = true;
+            }
           }
         }
       }
@@ -836,7 +857,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsSecurityEnabled(false);
     setIsBiometricsEnabled(false);
     setUserImageState(null);
-    setIsDarkMode(true);
+    setIsDarkMode(false);
+    setIsNotificationsEnabled(true);
+    setTreeTypeState('emerald');
+    setStatusCardBgState(null);
     showFeedback('delete', 'All Data Cleared');
   };
 
@@ -880,6 +904,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ['@isDarkMode', data.isDarkMode !== undefined ? String(data.isDarkMode) : null],
         ['@userImage', data.userImage || null],
         ['@statusCardBg', data.statusCardBg || null],
+        ['@treeType', data.treeType || null],
+        ['@isNotificationsEnabled', data.isNotificationsEnabled !== undefined ? String(data.isNotificationsEnabled) : null],
       ];
 
       for (const [key, value] of keysToSave) {
@@ -919,6 +945,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       setUserImageState(data.userImage || null);
       if (data.statusCardBg !== undefined) setStatusCardBgState(data.statusCardBg);
+      if (data.treeType) setTreeTypeState(data.treeType);
+      if (data.isNotificationsEnabled !== undefined) setIsNotificationsEnabled(!!data.isNotificationsEnabled);
+      if (data.subscriptions) setSubscriptions(data.subscriptions);
 
       showFeedback('success', 'Data Imported Successfully');
     } catch (e) {

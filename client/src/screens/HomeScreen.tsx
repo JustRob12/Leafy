@@ -6,7 +6,7 @@ import { AudioPlayer, createAudioPlayer } from 'expo-audio';
 
 
 import { theme } from '../theme';
-import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane, RefreshCw, Leaf, Eye, EyeOff, CreditCard, Coins } from 'lucide-react-native';
+import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane, RefreshCw, Leaf, Eye, EyeOff, CreditCard, Coins, Sparkles } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation, useScrollToTop } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
@@ -955,6 +955,13 @@ export default function HomeScreen() {
               <Coins size={22} color={colors.text} />
             </View>
             <Text style={styles.moreActionText}>Converter</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('StatusCard'); }}>
+            <View style={styles.moreActionIconBox}>
+              <Sparkles size={22} color={colors.text} />
+            </View>
+            <Text style={styles.moreActionText}>Story</Text>
           </TouchableOpacity>
         </View>
       </ActionSheet>

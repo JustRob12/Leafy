@@ -9,6 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { cacheDirectory, writeAsStringAsync, readAsStringAsync } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
+import { readImageAsBase64 } from '../services/FileService';
 
 export default function DataTransferScreen() {
   const {
@@ -22,28 +23,49 @@ export default function DataTransferScreen() {
 
   const handleExport = async () => {
     try {
+      // Process images to base64
+      const processedUserImage = await readImageAsBase64(userImage);
+      const processedStatusCardBg = await readImageAsBase64(statusCardBg);
+      
+      const processedWallets = await Promise.all(wallets.map(async w => ({
+        ...w,
+        qrCodeImage: await readImageAsBase64(w.qrCodeImage) || undefined,
+        customIcon: await readImageAsBase64(w.customIcon) || undefined,
+      })));
+
+      const processedGoals = await Promise.all(goals.map(async g => ({
+        ...g,
+        imageUrl: await readImageAsBase64(g.imageUrl) || undefined,
+      })));
+
+      const processedTravels = await Promise.all(travels.map(async t => ({
+        ...t,
+        images: t.images ? await Promise.all(t.images.map(img => readImageAsBase64(img)))
+          .then(res => res.filter((img): img is string => img !== null)) : [],
+      })));
+
       const backupData = {
         username,
-        wallets,
+        wallets: processedWallets,
         transactions,
-        goals,
+        goals: processedGoals,
         receivables,
         debts,
         groceryLists,
-        travels,
+        travels: processedTravels,
         appPin,
         isSecurityEnabled,
         isBiometricsEnabled,
         isDarkMode,
-        userImage,
+        userImage: processedUserImage,
         recursions,
         subscriptions,
-        statusCardBg,
+        statusCardBg: processedStatusCardBg,
         treeType,
         isNotificationsEnabled,
         withdrawPresets,
         exportDate: new Date().toISOString(),
-        version: '1.1.0'
+        version: '1.2.0' // Bumped version for image support
       };
 
       const jsonString = JSON.stringify(backupData);
@@ -183,7 +205,7 @@ export default function DataTransferScreen() {
         <View style={styles.warningBox}>
           <Info size={18} color={colors.textMuted} />
           <Text style={styles.warningText}>
-            Note: For security reasons, sensitive image files (like receipts) might need to be re-added if they were stored in external paths.
+            Note: Your images (receipts, profile, goal covers) are now included in the backup file as encrypted data.
           </Text>
         </View>
       </ScrollView>

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { palettes, TreeType } from '../theme';
 import { requestNotificationPermissions, syncAllNotifications, notifyGoalCompletion, updateBadgeCount } from '../services/NotificationService';
-import { saveImagePermanently } from '../services/FileService';
+import { saveImagePermanently, saveBase64Image } from '../services/FileService';
 
 export type WalletCategory = 'E-Wallet' | 'Banks' | 'Personal';
 
@@ -916,15 +916,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (typeof data !== 'object') throw new Error('Invalid data format');
 
+      // Process images back from base64 to local files
+      const importedUserImage = await saveBase64Image(data.userImage);
+      const importedStatusCardBg = await saveBase64Image(data.statusCardBg);
+
+      const importedWallets = data.wallets ? await Promise.all(data.wallets.map(async (w: WalletType) => ({
+        ...w,
+        qrCodeImage: await saveBase64Image(w.qrCodeImage) || undefined,
+        customIcon: await saveBase64Image(w.customIcon) || undefined,
+      }))) : [];
+
+      const importedGoals = data.goals ? await Promise.all(data.goals.map(async (g: GoalType) => ({
+        ...g,
+        imageUrl: await saveBase64Image(g.imageUrl) || undefined,
+      }))) : [];
+
+      const importedTravels = data.travels ? await Promise.all(data.travels.map(async (t: TravelType) => ({
+        ...t,
+        images: t.images ? await Promise.all(t.images.map(img => saveBase64Image(img)))
+          .then(res => res.filter((img): img is string => img !== null)) : [],
+      }))) : [];
+
       const keysToSave: [string, string | null][] = [
         ['@username', data.username || null],
-        ['@wallets', data.wallets ? JSON.stringify(data.wallets) : '[]'],
+        ['@wallets', importedWallets ? JSON.stringify(importedWallets) : '[]'],
         ['@transactions', data.transactions ? JSON.stringify(data.transactions) : '[]'],
-        ['@goals', data.goals ? JSON.stringify(data.goals) : '[]'],
+        ['@goals', importedGoals ? JSON.stringify(importedGoals) : '[]'],
         ['@receivables', data.receivables ? JSON.stringify(data.receivables) : '[]'],
         ['@debts', data.debts ? JSON.stringify(data.debts) : '[]'],
         ['@groceryLists', data.groceryLists ? JSON.stringify(data.groceryLists) : '[]'],
-        ['@travels', data.travels ? JSON.stringify(data.travels) : '[]'],
+        ['@travels', importedTravels ? JSON.stringify(importedTravels) : '[]'],
         ['@withdrawPresets', data.withdrawPresets ? JSON.stringify(data.withdrawPresets) : '[]'],
         ['@recursions', data.recursions ? JSON.stringify(data.recursions) : '[]'],
         ['@subscriptions', data.subscriptions ? JSON.stringify(data.subscriptions) : '[]'],
@@ -932,8 +953,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ['@isSecurityEnabled', data.isSecurityEnabled !== undefined ? String(data.isSecurityEnabled) : null],
         ['@isBiometricsEnabled', data.isBiometricsEnabled !== undefined ? String(data.isBiometricsEnabled) : null],
         ['@isDarkMode', data.isDarkMode !== undefined ? String(data.isDarkMode) : null],
-        ['@userImage', data.userImage || null],
-        ['@statusCardBg', data.statusCardBg || null],
+        ['@userImage', importedUserImage || null],
+        ['@statusCardBg', importedStatusCardBg || null],
         ['@treeType', data.treeType || null],
         ['@isNotificationsEnabled', data.isNotificationsEnabled !== undefined ? String(data.isNotificationsEnabled) : null],
       ];
@@ -948,13 +969,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Update local state
       setUserNameState(data.username || null);
-      setWallets(data.wallets || []);
+      setWallets(importedWallets);
       setTransactions(data.transactions || []);
-      setGoals(data.goals || []);
+      setGoals(importedGoals);
       setReceivables(data.receivables || []);
       setDebts(data.debts || []);
       setGroceryLists(data.groceryLists || []);
-      setTravels(data.travels || []);
+      setTravels(importedTravels);
       setWithdrawPresets(data.withdrawPresets || []);
       setRecursions(data.recursions || []);
       setAppPinState(data.appPin || null);
@@ -973,8 +994,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsDarkMode(!!data.isDarkMode);
       }
 
-      setUserImageState(data.userImage || null);
-      if (data.statusCardBg !== undefined) setStatusCardBgState(data.statusCardBg);
+      setUserImageState(importedUserImage);
+      if (data.statusCardBg !== undefined) setStatusCardBgState(importedStatusCardBg);
       if (data.treeType) setTreeTypeState(data.treeType);
       if (data.isNotificationsEnabled !== undefined) setIsNotificationsEnabled(!!data.isNotificationsEnabled);
       if (data.subscriptions) setSubscriptions(data.subscriptions);

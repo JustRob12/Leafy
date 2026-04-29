@@ -167,7 +167,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
       "Every small saving is a leaf on your tree of wealth. You're doing great!",
       "I love how you're nurturing your garden today. Keep it up!",
       "Ready for another day of growth? Let's make it count!",
-      "Patience is key! Just like a tree, your wealth grows slowly but surely.",
+      "Patience is the key! Just like a tree, your wealth grows slowly but surely.",
       "Your financial forest is looking beautiful today. Any new plans?",
       "Grow your wealth, one leaf at a time. I'm here to help!",
       "Did you know? Consistent savings are the best fertilizer for goals!"

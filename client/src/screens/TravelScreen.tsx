@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Image, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { theme } from '../theme';
@@ -8,6 +8,10 @@ import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import LeafyDatePicker from '../components/LeafyDatePicker';
 import { useNavigation } from '@react-navigation/native';
+import { X, Image as ImageIcon } from 'lucide-react-native';
+
+const { width } = Dimensions.get('window');
+const GRID_SIZE = (width - 48) / 3 - 0.2;
 
 export default function TravelScreen() {
   const travels = useAppContext().travels;
@@ -18,6 +22,8 @@ export default function TravelScreen() {
   
   const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation<any>();
+  const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const formatDisplayDate = (date: Date | null) => {
     if (!date) return '';
@@ -35,6 +41,11 @@ export default function TravelScreen() {
   const formatDate = (isoString: string) => {
     const d = new Date(isoString);
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const handleTripClick = (trip: any) => {
+    setSelectedTrip(trip);
+    setModalVisible(true);
   };
 
   return (
@@ -66,7 +77,12 @@ export default function TravelScreen() {
           </View>
         ) : (
           travels.map((trip) => (
-            <View key={trip.id} style={styles.travelCard}>
+            <TouchableOpacity 
+              key={trip.id} 
+              style={styles.travelCard}
+              onPress={() => handleTripClick(trip)}
+              activeOpacity={0.9}
+            >
               
               <View style={styles.cardHeader}>
                 <View style={styles.titleSection}>
@@ -101,7 +117,28 @@ export default function TravelScreen() {
                    <Text style={styles.expenseValue}>₱{trip.expenses.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
                 </View>
               </View>
-            </View>
+              
+              {trip.images && trip.images.length > 0 && (
+                <View style={styles.cardImagesPreview}>
+                  {trip.images.slice(0, 3).map((img: string, i: number) => (
+                    <Image key={i} source={{ uri: img }} style={styles.miniPreviewImage} />
+                  ))}
+                  {trip.images.length > 3 && (
+                    <View style={styles.moreImagesIndicator}>
+                      <Text style={styles.moreImagesText}>+{trip.images.length - 3}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              <TouchableOpacity 
+                style={styles.recordBtn} 
+                onPress={() => navigation.navigate('RecordMemories', { trip })}
+              >
+                <ImageIcon size={16} color="#ffffff" />
+                <Text style={styles.recordBtnText}>Record Memories</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>
@@ -114,6 +151,67 @@ export default function TravelScreen() {
       >
         <Plus size={30} color="#ffffff" />
       </TouchableOpacity>
+
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTripName}>{selectedTrip?.name}</Text>
+                <View style={styles.modalLocationRow}>
+                  <MapPin size={14} color={colors.textMuted} />
+                  <Text style={styles.modalLocationText}>{selectedTrip?.location}</Text>
+                </View>
+                <Text style={styles.modalDateText}>{selectedTrip?.startDate} - {selectedTrip?.endDate}</Text>
+              </View>
+              <TouchableOpacity style={styles.closeBtn} onPress={() => setModalVisible(false)}>
+                <X size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.modalImageGrid}>
+                {selectedTrip?.images && selectedTrip.images.length > 0 ? (
+                  <>
+                    {selectedTrip.images.slice(0, 9).map((img: string, i: number) => (
+                      <Image key={i} source={{ uri: img }} style={styles.modalGridImage} />
+                    ))}
+                    {selectedTrip.images.length < 9 && Array(9 - selectedTrip.images.length).fill(0).map((_, i) => (
+                      <View key={`fill-${i}`} style={styles.emptyGridSlot} />
+                    ))}
+                  </>
+                ) : (
+                  <View style={styles.noImagesBox}>
+                    <ImageIcon size={48} color={colors.border} />
+                    <Text style={styles.noImagesText}>No memories recorded yet</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.modalExpenseSection}>
+                 <Text style={styles.modalExpenseLabel}>Total Trip Expenses</Text>
+                 <Text style={styles.modalExpenseValue}>₱{selectedTrip?.expenses.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.recordBtn, { marginTop: 24 }]} 
+                onPress={() => {
+                  setModalVisible(false);
+                  navigation.navigate('RecordMemories', { trip: selectedTrip });
+                }}
+              >
+                <ImageIcon size={18} color="#ffffff" />
+                <Text style={styles.recordBtnText}>Add More Memories</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
     </SafeAreaView>
   );
@@ -357,5 +455,136 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
     zIndex: 10,
+  },
+  cardImagesPreview: {
+    flexDirection: 'row',
+    marginTop: 16,
+    gap: 8,
+  },
+  miniPreviewImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+  },
+  moreImagesIndicator: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moreImagesText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 12,
+    color: '#ffffff',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    height: '80%',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 32,
+  },
+  modalTripName: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 24,
+    color: colors.text,
+    marginBottom: 4,
+  },
+  modalLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  modalLocationText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 16,
+    color: colors.textMuted,
+  },
+  modalDateText: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  closeBtn: {
+    padding: 4,
+  },
+  modalImageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 32,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  modalGridImage: {
+    width: GRID_SIZE,
+    height: GRID_SIZE,
+  },
+  emptyGridSlot: {
+    width: GRID_SIZE,
+    height: GRID_SIZE,
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  noImagesBox: {
+    width: '100%',
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  noImagesText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  modalExpenseSection: {
+    backgroundColor: colors.card,
+    padding: 24,
+    borderRadius: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalExpenseLabel: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 14,
+    color: colors.textMuted,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  modalExpenseValue: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 32,
+    color: colors.primary,
+  },
+  recordBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    marginTop: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  recordBtnText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 14,
+    color: '#ffffff',
   },
 });

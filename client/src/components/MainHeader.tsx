@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Modal, Image, Alert, Switch, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Modal, Image, Alert, FlatList } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { navigationRef } from '../navigation/navigationUtils';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, User, Settings, LogOut, Info, ChevronRight, Moon, Sun, Flame, Sprout, TreeDeciduous, Egg, X, Image as ImageIcon, HelpCircle, Bell, Target, AlertCircle, ShoppingCart, Coins } from 'lucide-react-native';
+import { Plus, User, Settings, LogOut, Info, ChevronRight, Flame, Sprout, TreeDeciduous, Egg, X, Image as ImageIcon, HelpCircle, Bell, Target, AlertCircle, ShoppingCart, Coins } from 'lucide-react-native';
 import { Dimensions } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -83,7 +83,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
             ? `You have ${dueToday} debt${dueToday > 1 ? 's' : ''} to pay today.`
             : `You have ${overdue} overdue debt${overdue > 1 ? 's' : ''}.`,
           icon: AlertCircle,
-          color: '#ef4444',
+          color: colors.danger,
           screen: 'Debts'
         });
       } else {
@@ -92,7 +92,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
           title: 'Outstanding Debts',
           message: `You have ${debts.length} active debt${debts.length > 1 ? 's' : ''} to settle.`,
           icon: AlertCircle,
-          color: '#ef4444',
+          color: colors.danger,
           screen: 'Debts'
         });
       }
@@ -109,7 +109,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
           title: 'Shopping Day!',
           message: `You have ${scheduledToday} grocery list${scheduledToday > 1 ? 's' : ''} for today.`,
           icon: ShoppingCart,
-          color: '#3b82f6',
+          color: colors.primary,
           screen: 'Grocery'
         });
       } else if (activeLists > 0) {
@@ -118,7 +118,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
           title: 'Grocery Lists',
           message: `You have ${activeLists} active shopping list${activeLists > 1 ? 's' : ''}.`,
           icon: ShoppingCart,
-          color: '#3b82f6',
+          color: colors.primary,
           screen: 'Grocery'
         });
       }
@@ -329,18 +329,6 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                 </TouchableOpacity>
 
 
-                <View style={styles.dropdownItem}>
-                  <View style={styles.dropdownItemLeft}>
-                    {isDarkMode ? <Moon size={18} color={colors.textMuted} /> : <Sun size={18} color={colors.textMuted} />}
-                    <Text style={styles.dropdownItemText}>Dark Mode</Text>
-                  </View>
-                  <Switch
-                    value={isDarkMode}
-                    onValueChange={toggleTheme}
-                    trackColor={{ false: '#e2e8f0', true: colors.primary }}
-                    thumbColor={isDarkMode ? '#ffffff' : '#f4f3f4'}
-                  />
-                </View>
 
                 <View style={styles.dropdownDivider} />
 
@@ -349,8 +337,8 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                   onPress={handleLogout}
                 >
                   <View style={styles.dropdownItemLeft}>
-                    <LogOut size={18} color="#ef4444" />
-                    <Text style={[styles.dropdownItemText, { color: '#ef4444' }]}>Log Out</Text>
+                    <LogOut size={18} color={colors.danger} />
+                    <Text style={[styles.dropdownItemText, { color: colors.danger }]}>Log Out</Text>
                   </View>
                 </TouchableOpacity>
               </View>
@@ -511,8 +499,8 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                     <View style={styles.guideConnector} />
 
                     <View style={styles.guideItem}>
-                      <View style={[styles.guideIconCircle, { backgroundColor: isDarkMode ? 'rgba(21, 128, 61, 0.1)' : '#f0fdf4' }]}>
-                        <TreeDeciduous size={20} color="#15803d" fill="#15803d" />
+                      <View style={[styles.guideIconCircle, { backgroundColor: colors.primary + '15' }]}>
+                        <TreeDeciduous size={20} color={colors.primary} fill={colors.primary} />
                       </View>
                       <Text style={styles.guideStageName}>Tree</Text>
                       <Text style={styles.guideStageDesc}>Day 8+</Text>
@@ -639,7 +627,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     position: 'absolute',
     top: -2,
     right: -2,
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.danger,
     minWidth: 14,
     height: 14,
     borderRadius: 7,
@@ -667,11 +655,11 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
+    backgroundColor: colors.primary + '15',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.2)' : '#a7f3d0',
+    borderColor: colors.primary + '33',
     overflow: 'hidden',
   },
   headerProfileImage: {
@@ -760,7 +748,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
+    backgroundColor: colors.primary + '15',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

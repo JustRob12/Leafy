@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { palettes, TreeType } from '../theme';
 import { requestNotificationPermissions, syncAllNotifications, notifyGoalCompletion, updateBadgeCount } from '../services/NotificationService';
+import { saveImagePermanently } from '../services/FileService';
 
 export type WalletCategory = 'E-Wallet' | 'Banks' | 'Personal';
 
@@ -77,6 +78,7 @@ export type TravelType = {
   expenses: number;
   startDate: string;
   endDate: string;
+  images?: string[];
 };
 
 export type WithdrawPresetType = {
@@ -155,6 +157,7 @@ type AppContextType = {
   toggleGroceryItem: (listId: string, itemId: string) => Promise<void>;
   travels: TravelType[];
   addTravel: (travel: Omit<TravelType, 'id'>) => Promise<void>;
+  editTravel: (id: string, updates: Partial<TravelType>) => Promise<void>;
   deleteTravel: (id: string) => Promise<void>;
   appPin: string | null;
   isSecurityEnabled: boolean;
@@ -487,10 +490,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addWallet = async (walletData: Omit<WalletType, 'id' | 'balance'>) => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 800));
+    const permanentQr = await saveImagePermanently(walletData.qrCodeImage);
+    const permanentIcon = await saveImagePermanently(walletData.customIcon);
+
     const newWallet: WalletType = {
       ...walletData,
       id: Date.now().toString(),
       balance: 0,
+      qrCodeImage: permanentQr || undefined,
+      customIcon: permanentIcon || undefined,
     };
     const updated = [...wallets, newWallet];
     setWallets(updated);
@@ -552,9 +560,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addGoal = async (goalData: Omit<GoalType, 'id'>) => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 800));
+    const permanentImage = await saveImagePermanently(goalData.imageUrl);
+
     const newGoal: GoalType = {
       ...goalData,
       id: Date.now().toString(),
+      imageUrl: permanentImage || undefined,
     };
     const updated = [...goals, newGoal];
     setGoals(updated);
@@ -700,15 +711,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const setUserImage = async (image: string | null) => {
-    if (image) await AsyncStorage.setItem('@userImage', image);
+    const permanentImage = await saveImagePermanently(image);
+    if (permanentImage) await AsyncStorage.setItem('@userImage', permanentImage);
     else await AsyncStorage.removeItem('@userImage');
-    setUserImageState(image);
+    setUserImageState(permanentImage);
   };
 
   const setStatusCardBg = async (image: string | null) => {
-    if (image) await AsyncStorage.setItem('@statusCardBg', image);
+    const permanentImage = await saveImagePermanently(image);
+    if (permanentImage) await AsyncStorage.setItem('@statusCardBg', permanentImage);
     else await AsyncStorage.removeItem('@statusCardBg');
-    setStatusCardBgState(image);
+    setStatusCardBgState(permanentImage);
   };
 
   const addSubscription = async (subscriptionData: Omit<SubscriptionType, 'id' | 'date'>) => {
@@ -748,8 +761,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const editWallet = async (id: string, updates: Partial<WalletType>) => {
     setLoading(true);
+    
+    // Handle image persistence if images are being updated
+    const finalUpdates = { ...updates };
+    if (updates.qrCodeImage !== undefined) {
+      finalUpdates.qrCodeImage = await saveImagePermanently(updates.qrCodeImage) || undefined;
+    }
+    if (updates.customIcon !== undefined) {
+      finalUpdates.customIcon = await saveImagePermanently(updates.customIcon) || undefined;
+    }
+
     await new Promise(resolve => setTimeout(resolve, 800));
-    const updated = wallets.map(w => w.id === id ? { ...w, ...updates } : w);
+    const updated = wallets.map(w => w.id === id ? { ...w, ...finalUpdates } : w);
     setWallets(updated);
     await AsyncStorage.setItem('@wallets', JSON.stringify(updated));
     setLoading(false);
@@ -763,8 +786,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const editGoal = async (id: string, updates: Partial<GoalType>) => {
     setLoading(true);
+    
+    // Handle image persistence if image is being updated
+    const finalUpdates = { ...updates };
+    if (updates.imageUrl !== undefined) {
+      finalUpdates.imageUrl = await saveImagePermanently(updates.imageUrl) || undefined;
+    }
+
     await new Promise(resolve => setTimeout(resolve, 800));
-    const updated = goals.map(g => g.id === id ? { ...g, ...updates } : g);
+    const updated = goals.map(g => g.id === id ? { ...g, ...finalUpdates } : g);
     setGoals(updated);
     await AsyncStorage.setItem('@goals', JSON.stringify(updated));
     setLoading(false);
@@ -1037,14 +1067,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addTravel = async (travelData: Omit<TravelType, 'id'>) => {
+    setLoading(true);
+    // Save images permanently
+    const permanentImages = travelData.images 
+      ? await Promise.all(travelData.images.map(img => saveImagePermanently(img)))
+      : [];
+
     const newTravel: TravelType = {
       ...travelData,
       id: Date.now().toString(),
+      images: permanentImages.filter((img): img is string => img !== null),
     };
     const updated = [newTravel, ...travels];
     setTravels(updated);
     await AsyncStorage.setItem('@travels', JSON.stringify(updated));
+    setLoading(false);
     showFeedback('success', 'Travel Recorded');
+  };
+
+  const editTravel = async (id: string, updates: Partial<TravelType>) => {
+    setLoading(true);
+    
+    // Handle image persistence if images are being updated
+    let finalImages = updates.images;
+    if (updates.images) {
+      finalImages = await Promise.all(updates.images.map(img => saveImagePermanently(img)))
+        .then(res => res.filter((img): img is string => img !== null));
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const updated = travels.map(t => t.id === id ? { ...t, ...updates, images: finalImages || t.images } : t);
+    setTravels(updated);
+    await AsyncStorage.setItem('@travels', JSON.stringify(updated));
+    setLoading(false);
+    showFeedback('success', 'Trip Updated');
   };
 
   const deleteTravel = async (id: string) => {
@@ -1292,6 +1348,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleGroceryItem,
         travels,
         addTravel,
+        editTravel,
         deleteTravel,
         appPin,
         isSecurityEnabled,

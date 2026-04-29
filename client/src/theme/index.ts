@@ -1,4 +1,4 @@
-export type TreeType = 'emerald' | 'cherry' | 'maple' | 'spruce';
+export type TreeType = 'emerald' | 'cherry' | 'maple' | 'spruce' | 'violet' | 'pale' | 'onyx' | 'wood';
 
 export const palettes: Record<TreeType, { light: any, dark: any }> = {
   emerald: {
@@ -95,6 +95,102 @@ export const palettes: Record<TreeType, { light: any, dark: any }> = {
       success: '#38bdf8',
       danger: '#f87171',
       warning: '#7dd3fc',
+    }
+  },
+  violet: {
+    light: {
+      primary: '#8b5cf6', // Violet
+      background: '#f5f3ff',
+      card: '#ffffff',
+      text: '#4c1d95',
+      textMuted: '#7c3aed',
+      border: '#ddd6fe',
+      success: '#8b5cf6',
+      danger: '#ef4444',
+      warning: '#f59e0b',
+    },
+    dark: {
+      primary: '#a78bfa',
+      background: '#2e1065', // Deep purple
+      card: '#4c1d95',
+      text: '#f5f3ff',
+      textMuted: '#c4b5fd',
+      border: '#6d28d9',
+      success: '#a78bfa',
+      danger: '#f87171',
+      warning: '#fbbf24',
+    }
+  },
+  pale: {
+    light: {
+      primary: '#64748b', // Slate/Pale
+      background: '#f1f5f9',
+      card: '#ffffff',
+      text: '#334155',
+      textMuted: '#475569',
+      border: '#cbd5e1',
+      success: '#64748b',
+      danger: '#ef4444',
+      warning: '#f59e0b',
+    },
+    dark: {
+      primary: '#94a3b8',
+      background: '#0f172a',
+      card: '#1e293b',
+      text: '#f8fafc',
+      textMuted: '#64748b',
+      border: '#334155',
+      success: '#94a3b8',
+      danger: '#f87171',
+      warning: '#fbbf24',
+    }
+  },
+  onyx: {
+    light: {
+      primary: '#000000', // Black and White
+      background: '#ffffff',
+      card: '#f8fafc',
+      text: '#000000',
+      textMuted: '#64748b',
+      border: '#e2e8f0',
+      success: '#000000',
+      danger: '#ef4444',
+      warning: '#f59e0b',
+    },
+    dark: {
+      primary: '#ffffff',
+      background: '#000000',
+      card: '#121212',
+      text: '#ffffff',
+      textMuted: '#a1a1aa',
+      border: '#27272a',
+      success: '#ffffff',
+      danger: '#f87171',
+      warning: '#fbbf24',
+    }
+  },
+  wood: {
+    light: {
+      primary: '#78350f', // Dark Wood
+      background: '#fffbeb',
+      card: '#ffffff',
+      text: '#451a03',
+      textMuted: '#92400e',
+      border: '#fef3c7',
+      success: '#78350f',
+      danger: '#ef4444',
+      warning: '#f59e0b',
+    },
+    dark: {
+      primary: '#fbbf24',
+      background: '#1c0a00',
+      card: '#451a03',
+      text: '#fffbeb',
+      textMuted: '#d97706',
+      border: '#78350f',
+      success: '#fbbf24',
+      danger: '#f87171',
+      warning: '#fbbf24',
     }
   }
 };

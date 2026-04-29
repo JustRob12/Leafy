@@ -74,7 +74,7 @@ export default function WalletsScreen() {
         {wallets.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconWrapper}>
-              <WalletIcon size={32} color={theme.colors.textMuted} />
+              <WalletIcon size={32} color={colors.textMuted} />
             </View>
             <Text style={styles.emptyTitle}>No wallets yet</Text>
             <Text style={styles.emptySubtitle}>Create your first wallet to start tracking your finances.</Text>
@@ -238,7 +238,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       width: 64,
       height: 64,
       borderRadius: theme.borderRadius.full,
-      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+      backgroundColor: colors.card,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: theme.spacing.lg,
@@ -299,7 +299,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       elevation: 4,
     },
     premiumCard: {
-      backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+      backgroundColor: colors.card,
       borderRadius: 18,
       borderWidth: 1,
       borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#f1f5f9',
@@ -365,7 +365,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       paddingHorizontal: 10,
     },
     purposePill: {
-      backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.05)',
+      backgroundColor: colors.primary + '15',
       paddingHorizontal: 6,
       paddingVertical: 3,
       borderRadius: 6,
@@ -379,7 +379,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     qrActionBtn: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)',
+      backgroundColor: colors.primary + '26',
       paddingHorizontal: 6,
       paddingVertical: 4,
       borderRadius: 6,

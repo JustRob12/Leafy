@@ -21,7 +21,7 @@ export default function ConfirmModal() {
             <TouchableWithoutFeedback>
               <View style={styles.content}>
                 <View style={styles.header}>
-                  <View style={[styles.iconWrapper, confirmState.isDestructive ? { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2' } : { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5' }]}>
+                  <View style={[styles.iconWrapper, confirmState.isDestructive ? { backgroundColor: colors.danger + '15' } : { backgroundColor: colors.primary + '15' }]}>
                     <AlertTriangle size={24} color={confirmState.isDestructive ? colors.danger : colors.primary} />
                   </View>
                   <TouchableOpacity onPress={closeConfirm} style={styles.closeBtn}>

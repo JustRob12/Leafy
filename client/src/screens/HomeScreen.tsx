@@ -336,13 +336,13 @@ export default function HomeScreen() {
       if (wallet?.iconType === 'preset' && wallet.presetLogo) {
         return <Image source={BRAND_LOGOS[wallet.presetLogo]} style={styles.txBrandLogo as any} />;
       }
-      return <ArrowDownRight size={18} color={theme.colors.primary} />;
+      return <ArrowDownRight size={18} color={colors.primary} />;
     } else {
       if (tx.icon && ICON_MAP[tx.icon]) {
         const IconComp = ICON_MAP[tx.icon];
-        return <IconComp size={18} color="#ef4444" />;
+        return <IconComp size={18} color={colors.danger} />;
       }
-      return <ArrowUpRight size={18} color="#ef4444" />;
+      return <ArrowUpRight size={18} color={colors.danger} />;
     }
   };
 
@@ -423,7 +423,7 @@ export default function HomeScreen() {
               onPress={() => setIsBalanceHidden(!isBalanceHidden)}
               activeOpacity={0.7}
             >
-              {isBalanceHidden ? <EyeOff size={18} color="#d1fae5" /> : <Eye size={18} color="#d1fae5" />}
+              {isBalanceHidden ? <EyeOff size={18} color={isDarkMode ? "#ffffff" : "#ffffff"} opacity={0.8} /> : <Eye size={18} color={isDarkMode ? "#ffffff" : "#ffffff"} opacity={0.8} />}
             </TouchableOpacity>
           </View>
 
@@ -460,7 +460,7 @@ export default function HomeScreen() {
         {paydayInfo && (
           <View style={styles.paydayContainer}>
             <View style={styles.paydayIconWrapper}>
-              <RefreshCw size={16} color={isDarkMode ? '#4ade80' : '#166534'} />
+              <RefreshCw size={16} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.paydayText}>
@@ -665,7 +665,7 @@ export default function HomeScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <View style={[
                       styles.txIconWrapper,
-                      isDeposit ? { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#ecfdf5', borderColor: 'transparent' } : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#fef2f2', borderColor: 'transparent' }
+                      isDeposit ? { backgroundColor: colors.primary + '15', borderColor: 'transparent' } : { backgroundColor: colors.danger + '15', borderColor: 'transparent' }
                     ]}>
                       {getTxIcon(tx)}
                     </View>
@@ -785,7 +785,7 @@ export default function HomeScreen() {
                 return (
                   <>
                     <Text style={styles.insightDescription}>
-                      You've saved <Text style={{ color: colors.primary }}>₱{monthSavings.toLocaleString()}</Text> and spent <Text style={{ color: '#ef4444' }}>₱{monthSpent.toLocaleString()}</Text> this month.
+                      You've saved <Text style={{ color: colors.primary }}>₱{monthSavings.toLocaleString()}</Text> and spent <Text style={{ color: colors.danger }}>₱{monthSpent.toLocaleString()}</Text> this month.
                     </Text>
                     
                     <View style={styles.miniChartContainer}>
@@ -831,7 +831,7 @@ export default function HomeScreen() {
                           <Path
                             d={withdrawPath}
                             fill="none"
-                            stroke="#ef4444"
+                            stroke={colors.danger}
                             strokeWidth="3"
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -1200,7 +1200,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     marginBottom: theme.spacing.lg,
   },
   emptyGoalBtn: {
-    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
+    backgroundColor: colors.primary + '15',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: theme.borderRadius.full,
@@ -1266,7 +1266,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 14,
-    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
+    backgroundColor: colors.primary + '15',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1394,13 +1394,13 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   walletPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
+    backgroundColor: colors.primary + '15',
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 16,
     gap: 4,
     borderWidth: 1,
-    borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.1)',
+    borderColor: colors.primary + '33',
     width: '95%',
     justifyContent: 'center',
   },
@@ -1449,7 +1449,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.05)' : '#f0fdf4',
+    backgroundColor: colors.primary + '15',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
@@ -1640,8 +1640,8 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     marginBottom: 0,
   },
   homeSubCardDueSoon: {
-    backgroundColor: '#ef4444',
-    borderColor: '#ef4444',
+    backgroundColor: colors.danger,
+    borderColor: colors.danger,
   },
   homeSubIconWrapper: {
     width: 40,
@@ -1683,7 +1683,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     position: 'absolute',
     top: -4,
     right: -4,
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.danger,
     borderRadius: 10,
     minWidth: 18,
     height: 18,
@@ -1702,7 +1702,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     position: 'absolute',
     top: -2,
     right: -2,
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.danger,
     borderRadius: 10,
     minWidth: 20,
     height: 20,

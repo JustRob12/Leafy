@@ -67,6 +67,12 @@ export default function SettingsScreen() {
       options: [
         { id: '1', title: 'Change Name', icon: User, action: () => { setEditName(username || ''); setAccountModalVisible(true); } },
         { id: '10', title: 'Appearance & Themes', icon: Palette, action: () => setAppearanceModalVisible(true) },
+        { 
+          id: '11', 
+          title: isDarkMode ? 'Dark Mode: On' : 'Dark Mode: Off', 
+          icon: isDarkMode ? Moon : Sun, 
+          action: toggleTheme 
+        },
       ]
     },
     {
@@ -185,6 +191,10 @@ export default function SettingsScreen() {
               { id: 'cherry', name: 'Cherry Tree', color: '#f472b6' },
               { id: 'maple', name: 'Autumn Maple', color: '#f97316' },
               { id: 'spruce', name: 'Blue Spruce', color: '#0284c7' },
+              { id: 'violet', name: 'Violet Gem', color: '#8b5cf6' },
+              { id: 'pale', name: 'Pale Slate', color: '#64748b' },
+              { id: 'onyx', name: 'Black & White', color: '#000000' },
+              { id: 'wood', name: 'Dark Wood', color: '#78350f' },
             ].map((theme) => (
               <TouchableOpacity
                 key={theme.id}
@@ -749,8 +759,8 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderColor: colors.border,
   },
   securityIconBoxActive: {
-    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.05)',
-    borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: colors.primary + '15',
+    borderColor: colors.primary + '33',
   },
   securityHeaderTitle: {
     fontFamily: theme.fonts.bold,
@@ -876,7 +886,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   themeOptionActive: {
     borderColor: colors.primary,
-    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.05)' : 'rgba(16, 185, 129, 0.02)',
+    backgroundColor: colors.primary + '15',
   },
   themeColor: {
     width: 40,

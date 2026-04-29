@@ -173,12 +173,12 @@ export default function HistoryScreen() {
             return (
               <View key={tx.id} style={styles.txItem}>
                 <View style={styles.txLeft}>
-                  <View style={[
-                    styles.txIconWrapper,
-                    isDeposit ? 
-                      { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5', borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.2)' : '#ecfdf5' } : 
-                      { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2', borderColor: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : '#fef2f2' }
-                  ]}>
+                    <View style={[
+                      styles.txIconWrapper,
+                      isDeposit ? 
+                        { backgroundColor: colors.primary + '15', borderColor: colors.primary + '33' } : 
+                        { backgroundColor: colors.danger + '15', borderColor: colors.danger + '33' }
+                    ]}>
                     {getTxIcon(tx)}
                   </View>
                   <View>
@@ -229,12 +229,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
+    backgroundColor: colors.primary + '15',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 25,
     borderWidth: 1,
-    borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.2)' : '#a7f3d0',
+    borderColor: colors.primary + '33',
   },
   filterBadgeText: {
     fontFamily: theme.fonts.semiBold,

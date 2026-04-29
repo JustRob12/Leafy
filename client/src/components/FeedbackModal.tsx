@@ -81,10 +81,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     marginBottom: theme.spacing.lg,
   },
   successBg: {
-    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
+    backgroundColor: colors.primary + '15',
   },
   deleteBg: {
-    backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2',
+    backgroundColor: colors.danger + '15',
   },
   errorBg: {
     backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2',

@@ -1,24 +1,31 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Image, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { Plus, ChevronLeft, Calendar, Plane, MapPin } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import LeafyDatePicker from '../components/LeafyDatePicker';
 import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
+import { Camera, Image as ImageIcon, X } from 'lucide-react-native';
 
-export default function AddTravelScreen() {
-  const { addTravel, colors, isDarkMode } = useAppContext();
+const { width } = Dimensions.get('window');
+const GRID_SIZE = (width - 64) / 3;
+
+export default function AddTravelScreen({ route }: any) {
+  const { addTravel, editTravel, colors, isDarkMode, showFeedback } = useAppContext();
+  const tripToEdit = route.params?.trip;
   const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation<any>();
 
-  const [tripName, setTripName] = useState('');
-  const [location, setLocation] = useState('');
-  const [expenses, setExpenses] = useState('');
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [tripName, setTripName] = useState(tripToEdit?.name || '');
+  const [location, setLocation] = useState(tripToEdit?.location || '');
+  const [expenses, setExpenses] = useState(tripToEdit?.expenses ? tripToEdit.expenses.toString() : '');
+  const [startDate, setStartDate] = useState<Date | null>(tripToEdit?.startDate ? new Date(tripToEdit.startDate) : null);
+  const [endDate, setEndDate] = useState<Date | null>(tripToEdit?.endDate ? new Date(tripToEdit.endDate) : null);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerMode, setPickerMode] = useState<'start' | 'end' | null>(null);
+  const [images, setImages] = useState<string[]>([]);
 
   const formatAmount = (text: string) => {
     const raw = text.replace(/,/g, '').replace(/[^0-9.]/g, '');
@@ -30,13 +37,25 @@ export default function AddTravelScreen() {
   const handleAddTravel = async () => {
     const numericExpenses = parseFloat(expenses.replace(/,/g, ''));
     if (tripName.trim() && location.trim() && !isNaN(numericExpenses) && startDate && endDate) {
-      await addTravel({
-        name: tripName.trim(),
-        location: location.trim(),
-        expenses: numericExpenses,
-        startDate: formatDisplayDate(startDate),
-        endDate: formatDisplayDate(endDate),
-      });
+      if (tripToEdit) {
+        await editTravel(tripToEdit.id, {
+          name: tripName.trim(),
+          location: location.trim(),
+          expenses: numericExpenses,
+          startDate: formatDisplayDate(startDate),
+          endDate: formatDisplayDate(endDate),
+          images: images,
+        });
+      } else {
+        await addTravel({
+          name: tripName.trim(),
+          location: location.trim(),
+          expenses: numericExpenses,
+          startDate: formatDisplayDate(startDate),
+          endDate: formatDisplayDate(endDate),
+          images: images,
+        });
+      }
       navigation.goBack();
     }
   };
@@ -63,7 +82,9 @@ export default function AddTravelScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Adventure</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          {tripToEdit ? 'Edit Adventure' : 'New Adventure'}
+        </Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -141,11 +162,13 @@ export default function AddTravelScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.saveBtn, (!tripName.trim() || !location.trim() || !expenses || !startDate || !endDate) && styles.saveBtnDisabled]}
+            style={[styles.saveBtn, { backgroundColor: colors.primary }, (!tripName.trim() || !location.trim() || !expenses || !startDate || !endDate) && styles.saveBtnDisabled]}
             onPress={handleAddTravel}
             disabled={!tripName.trim() || !location.trim() || !expenses || !startDate || !endDate}
           >
-            <Text style={styles.saveBtnText}>Save Trip Record</Text>
+            <Text style={styles.saveBtnText}>
+              {tripToEdit ? 'Save Changes' : 'Record Trip'}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

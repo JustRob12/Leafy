@@ -1,14 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Animated, Dimensions, Platform, KeyboardAvoidingView, FlatList, Easing, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Animated, Dimensions, Platform, KeyboardAvoidingView, FlatList, Easing, Keyboard, Image as RNImage } from 'react-native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
 import { 
-  ChevronLeft, Plus, Search, Check
+  ChevronLeft, Plus, Search, Check, CreditCard
 } from 'lucide-react-native';
 import MainHeader from '../components/MainHeader';
 
 const { width, height } = Dimensions.get('window');
+
+const BRAND_LOGOS: { [key: string]: any } = {
+  'gcash.png': require('../../public/walletimages/gcash.png'),
+  'maya.png': require('../../public/walletimages/maya.png'),
+  'paypal.png': require('../../public/walletimages/paypal.png'),
+  'wise.png': require('../../public/walletimages/wise.png'),
+  'maribank.png': require('../../public/walletimages/maribank.png'),
+  'gotyme.png': require('../../public/walletimages/gotyme.png'),
+};
 
 export default function DepositScreen() {
   const { colors, isDarkMode, wallets, addTransaction, showFeedback } = useAppContext();
@@ -104,6 +113,14 @@ export default function DepositScreen() {
                       <Check size={10} color="#ffffff" strokeWidth={3} />
                     </View>
                   )}
+                  <View style={styles.miniWalletIconBox}>
+                    {(() => {
+                      if (wallet.iconType === 'preset' && wallet.presetLogo) {
+                        return <RNImage source={BRAND_LOGOS[wallet.presetLogo]} style={styles.miniWalletLogo as any} />;
+                      }
+                      return <CreditCard size={14} color="#ffffff" />;
+                    })()}
+                  </View>
                   <Text style={[styles.miniWalletName, { color: '#ffffff' }]} numberOfLines={1}>
                     {wallet.name}
                   </Text>
@@ -171,7 +188,8 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+    backgroundColor: colors.card,
+    opacity: 0.8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -234,7 +252,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     width: (width - 80) / 3.5,
     aspectRatio: 1,
     borderRadius: 20,
-    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+    backgroundColor: colors.card,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -273,7 +291,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     maxHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+    backgroundColor: colors.card,
     borderRadius: 14,
   },
   keypadButtonTextCompact: {
@@ -339,5 +357,21 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     height: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 10,
+  },
+  miniWalletIconBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    overflow: 'hidden',
+  },
+  miniWalletLogo: {
+    width: 18,
+    height: 18,
+    resizeMode: 'contain',
   },
 });

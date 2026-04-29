@@ -185,7 +185,7 @@ export default function AddGoalScreen() {
         title="Select Image Source"
       >
         <TouchableOpacity style={styles.sourceOption} onPress={handleTakePhoto}>
-          <View style={[styles.sourceIcon, { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5' }]}>
+          <View style={[styles.sourceIcon, { backgroundColor: colors.primary + '15' }]}>
             <Camera size={24} color={colors.primary} />
           </View>
           <View>
@@ -195,8 +195,8 @@ export default function AddGoalScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.sourceOption} onPress={handleSelectImage}>
-          <View style={[styles.sourceIcon, { backgroundColor: '#eff6ff' }]}>
-            <ImageIcon size={24} color="#3b82f6" />
+          <View style={[styles.sourceIcon, { backgroundColor: colors.primary + '15' }]}>
+            <ImageIcon size={24} color={colors.primary} />
           </View>
           <View>
             <Text style={styles.sourceTitle}>Choose from Library</Text>

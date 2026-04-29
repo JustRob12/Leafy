@@ -1,7 +1,7 @@
 import React, { useRef, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Download, Share2, Info, ShoppingBag, Utensils, Car, LayoutGrid, Leaf } from 'lucide-react-native';
+import { ChevronLeft, Download, Share2, Info, ShoppingBag, Utensils, Car, LayoutGrid, Leaf, Plane, MapPin, Image as ImageIcon } from 'lucide-react-native';
 
 import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
@@ -33,11 +33,13 @@ const CAT_KEYWORDS = {
 };
 
 export default function StatusCardScreen() {
-  const { totalBalance, transactions, username, colors, isDarkMode, showFeedback } = useAppContext();
+  const { totalBalance, transactions, username, colors, isDarkMode, showFeedback, travels } = useAppContext();
   const navigation = useNavigation();
   const viewShotRef = useRef<any>(null);
   
   const [textColor, setTextColor] = useState(PRESET_COLORS[0]);
+  const [storyType, setStoryType] = useState<'financial' | 'travel'>('financial');
+  const [selectedTravelId, setSelectedTravelId] = useState<string | null>(null);
   
   // DATA PROCESSING
   const stats = useMemo(() => {
@@ -118,6 +120,11 @@ export default function StatusCardScreen() {
     };
   }, [transactions]);
 
+  const selectedTravel = useMemo(() => {
+    if (!selectedTravelId) return travels[0] || null;
+    return travels.find(t => t.id === selectedTravelId) || travels[0] || null;
+  }, [travels, selectedTravelId]);
+
   const dateStr = useMemo(() => {
     return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
   }, []);
@@ -175,56 +182,144 @@ export default function StatusCardScreen() {
           </Text>
         </View>
 
+        {/* Story Type Selector */}
+        <View style={styles.typeSelector}>
+          <TouchableOpacity 
+            style={[styles.typeBtn, storyType === 'financial' && { backgroundColor: colors.primary }]}
+            onPress={() => setStoryType('financial')}
+          >
+            <Text style={[styles.typeBtnText, { color: storyType === 'financial' ? '#fff' : colors.textMuted }]}>Financial</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.typeBtn, storyType === 'travel' && { backgroundColor: colors.primary }]}
+            onPress={() => setStoryType('travel')}
+          >
+            <Text style={[styles.typeBtnText, { color: storyType === 'travel' ? '#fff' : colors.textMuted }]}>Travel</Text>
+          </TouchableOpacity>
+        </View>
+
+        {storyType === 'travel' && travels.length > 0 && (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.travelSelectorScroll}
+          >
+            {travels.map(t => (
+              <TouchableOpacity 
+                key={t.id} 
+                style={[
+                  styles.travelSelectorItem, 
+                  selectedTravelId === t.id && { borderColor: colors.primary, borderWidth: 2 }
+                ]}
+                onPress={() => setSelectedTravelId(t.id)}
+              >
+                <Text style={[styles.travelSelectorName, { color: colors.text }]}>{t.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
         {/* Card Preview Area */}
         <View style={styles.previewContainer}>
           <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }} style={styles.viewShot}>
             <View style={styles.premiumCard}>
               <View style={styles.cardContent}>
-
-                {/* GREETING & HERO SECTION */}
-                <View style={styles.heroSection}>
-                  <View style={[styles.brandHeader, { justifyContent: 'flex-start', marginBottom: 10 }]}>
-                      <Leaf size={20} color={textColor} fill={textColor + '22'} />
-                      <Text style={[styles.brandName, { color: textColor, fontSize: 16 }]}>Leafy</Text>
-                  </View>
-                  <View>
-                    <Text style={[styles.greeting, { color: textColor }]}>Hello {username || 'Buddy'},</Text>
-                    <Text style={[styles.dateLabel, { color: textColor + '88' }]}>{dateStr}</Text>
-                  </View>
-                  
-                  <View style={styles.savingsHero}>
-                    <Text style={[styles.headline, { color: textColor }]}>{stats.savedPercent}%</Text>
-                    <Text style={[styles.subHeadline, { color: textColor + 'bb' }]}>SAVED THIS MONTH</Text>
-                  </View>
-
-                </View>
-
-
-
-                {/* MOTIVATION SECTION */}
-                <View style={styles.middleSection}>
-                  <Text style={[styles.motivation, { color: textColor + '99' }]}>
-                    {stats.savedPercent > 40 ? 'You\'re crushing your savings goals this month! Keep it up.' : 'Every peso counts. Try to trim some non-essential spending.'}
-                  </Text>
-                </View>
-
-
-                {/* BREAKDOWN SECTION */}
-                <View style={styles.breakdownSection}>
-                  <Text style={[styles.sectionTitle, { color: textColor }]}>Monthly Expenses</Text>
-                  <View style={styles.totalExpenseCard}>
-                    <Text style={[styles.totalExpensePercent, { color: textColor }]}>{stats.expenseRatio}%</Text>
-                    <Text style={[styles.totalExpenseSub, { color: textColor + '99' }]}>TOTAL SPENT THIS MONTH</Text>
-                    <View style={[styles.progressTrack, { backgroundColor: textColor + '22', height: 8, borderRadius: 4, marginTop: 12 }]}>
-                      <View style={[styles.progressFill, { width: `${Math.min(stats.expenseRatio, 100)}%`, backgroundColor: textColor, height: 8, borderRadius: 4 }]} />
+                {storyType === 'financial' ? (
+                  <>
+                    {/* GREETING & HERO SECTION */}
+                    <View style={styles.heroSection}>
+                      <View style={[styles.brandHeader, { justifyContent: 'flex-start', marginBottom: 10 }]}>
+                          <Leaf size={20} color={textColor} fill={textColor + '22'} />
+                          <Text style={[styles.brandName, { color: textColor, fontSize: 16 }]}>Leafy</Text>
+                      </View>
+                      <View>
+                        <Text style={[styles.greeting, { color: textColor }]}>Hello {username || 'Buddy'},</Text>
+                        <Text style={[styles.dateLabel, { color: textColor + '88' }]}>{dateStr}</Text>
+                      </View>
+                      
+                      <View style={styles.savingsHero}>
+                        <Text style={[styles.headline, { color: textColor }]}>{stats.savedPercent}%</Text>
+                        <Text style={[styles.subHeadline, { color: textColor + 'bb' }]}>SAVED THIS MONTH</Text>
+                      </View>
                     </View>
+
+                    {/* MOTIVATION SECTION */}
+                    <View style={styles.middleSection}>
+                      <Text style={[styles.motivation, { color: textColor + '99' }]}>
+                        {stats.savedPercent > 40 ? 'You\'re crushing your savings goals this month! Keep it up.' : 'Every peso counts. Try to trim some non-essential spending.'}
+                      </Text>
+                    </View>
+
+                    {/* BREAKDOWN SECTION */}
+                    <View style={styles.breakdownSection}>
+                      <Text style={[styles.sectionTitle, { color: textColor }]}>Monthly Expenses</Text>
+                      <View style={styles.totalExpenseCard}>
+                        <Text style={[styles.totalExpensePercent, { color: textColor }]}>{stats.expenseRatio}%</Text>
+                        <Text style={[styles.totalExpenseSub, { color: textColor + '99' }]}>TOTAL SPENT THIS MONTH</Text>
+                        <View style={[styles.progressTrack, { backgroundColor: textColor + '22', height: 8, borderRadius: 4, marginTop: 12 }]}>
+                          <View style={[styles.progressFill, { width: `${Math.min(stats.expenseRatio, 100)}%`, backgroundColor: textColor, height: 8, borderRadius: 4 }]} />
+                        </View>
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.travelStoryLayout}>
+                    <View style={[styles.brandHeader, { justifyContent: 'flex-start', marginBottom: 20 }]}>
+                        <Leaf size={20} color={textColor} fill={textColor + '22'} />
+                        <Text style={[styles.brandName, { color: textColor, fontSize: 16 }]}>Leafy Travel</Text>
+                    </View>
+                    
+                    {selectedTravel ? (
+                      <>
+                        <View style={styles.travelStoryHeader}>
+                          <Text style={[styles.travelStoryName, { color: textColor }]}>{selectedTravel.name}</Text>
+                          <Text style={[styles.travelStoryDate, { color: textColor + '88' }]}>{selectedTravel.startDate} - {selectedTravel.endDate}</Text>
+                        </View>
+
+                        <View style={styles.travelStoryImageGrid}>
+                          {(selectedTravel.images && selectedTravel.images.length > 0) ? (
+                            <>
+                              {selectedTravel.images.slice(0, 9).map((img: string, i: number) => (
+                                <Image 
+                                  key={i} 
+                                  source={{ uri: img }} 
+                                  style={styles.travelStoryImage}
+                                  resizeMode="cover"
+                                />
+                              ))}
+                              {/* Filler to complete the 9-grid visually if needed */}
+                              {selectedTravel.images.length < 9 && Array(9 - selectedTravel.images.length).fill(0).map((_, i) => (
+                                <View key={`fill-${i}`} style={[styles.travelStoryImageFiller, { backgroundColor: textColor + '08' }]} />
+                              ))}
+                            </>
+                          ) : (
+                            <View style={[styles.travelStoryNoImages, { borderColor: textColor + '33' }]}>
+                               <ImageIcon size={48} color={textColor + '33'} />
+                               <Text style={[styles.travelStoryNoImagesText, { color: textColor + '66' }]}>No memories yet</Text>
+                            </View>
+                          )}
+                        </View>
+
+                        <View style={styles.travelStoryFooter}>
+                          <View style={styles.travelStoryLocationRow}>
+                            <MapPin size={18} color={textColor} />
+                            <Text style={[styles.travelStoryLocation, { color: textColor, fontSize: 24 }]}>
+                              {selectedTravel.location}
+                            </Text>
+                          </View>
+                        </View>
+                      </>
+                    ) : (
+                      <View style={styles.noTravelState}>
+                         <Plane size={64} color={textColor + '22'} />
+                         <Text style={[styles.noTravelText, { color: textColor + '66' }]}>No trips recorded yet</Text>
+                      </View>
+                    )}
                   </View>
-                </View>
+                )}
 
-                {/* FOOTER: Empty or can be used for extra padding */}
+                {/* FOOTER */}
                 <View style={styles.footer} />
-
-
               </View>
             </View>
           </ViewShot>
@@ -534,5 +629,112 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.5,
     marginTop: -5,
+  },
+  typeSelector: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 12,
+    padding: 4,
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  typeBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  typeBtnText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 14,
+  },
+  travelSelectorScroll: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    gap: 12,
+  },
+  travelSelectorItem: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  travelSelectorName: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 13,
+  },
+  travelStoryLayout: {
+    flex: 1,
+  },
+  travelStoryHeader: {
+    marginBottom: 20,
+  },
+  travelStoryName: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 32,
+    marginBottom: 4,
+  },
+   travelStoryLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  travelStoryLocation: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 16,
+  },
+  travelStoryDate: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 14,
+  },
+  travelStoryImageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -25, // Stretches to card edges
+    marginBottom: 20,
+    overflow: 'hidden',
+  },
+  travelStoryImage: {
+    width: CARD_WIDTH / 3 - 0.5,
+    height: CARD_WIDTH / 3 - 0.5,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  travelStoryImageFiller: {
+    width: CARD_WIDTH / 3 - 0.5,
+    height: CARD_WIDTH / 3 - 0.5,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  travelStoryNoImages: {
+    width: '100%',
+    height: 200,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  travelStoryNoImagesText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 14,
+  },
+  travelStoryFooter: {
+    marginTop: 10,
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  noTravelState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  noTravelText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 16,
   },
 });

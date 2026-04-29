@@ -39,6 +39,7 @@ import GroceryScreen from './src/screens/GroceryScreen';
 import GroceryDetailScreen from './src/screens/GroceryDetailScreen';
 import TravelScreen from './src/screens/TravelScreen';
 import AddTravelScreen from './src/screens/AddTravelScreen';
+import RecordMemoriesScreen from './src/screens/RecordMemoriesScreen';
 import StatusCardScreen from './src/screens/StatusCardScreen';
 import WithdrawScreen from './src/screens/WithdrawScreen';
 import DepositScreen from './src/screens/DepositScreen';
@@ -113,6 +114,7 @@ function MainNavigation() {
             <Stack.Screen name="GroceryDetail" component={GroceryDetailScreen} />
             <Stack.Screen name="Travel" component={TravelScreen} />
             <Stack.Screen name="AddTravel" component={AddTravelScreen} />
+            <Stack.Screen name="RecordMemories" component={RecordMemoriesScreen} />
             <Stack.Screen name="Security" component={SecurityScreen} />
             <Stack.Screen name="StatusCard" component={StatusCardScreen} />
             <Stack.Screen name="Withdraw" component={WithdrawScreen} />

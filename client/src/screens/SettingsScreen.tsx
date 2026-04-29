@@ -69,7 +69,7 @@ export default function SettingsScreen() {
         { id: '10', title: 'Appearance & Themes', icon: Palette, action: () => setAppearanceModalVisible(true) },
         { 
           id: '11', 
-          title: isDarkMode ? 'Dark Mode: On' : 'Dark Mode: Off', 
+          title: 'Dark Mode', 
           icon: isDarkMode ? Moon : Sun, 
           action: toggleTheme 
         },
@@ -148,7 +148,15 @@ export default function SettingsScreen() {
                           <Icon size={20} color={colors.textMuted} />
                           <Text style={styles.settingTitle}>{option.title}</Text>
                         </View>
-                        <ChevronRight size={20} color={colors.border} />
+                        {option.id === '11' ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Sun size={16} color={!isDarkMode ? colors.primary : colors.textMuted} />
+                            <Text style={{ color: colors.border, fontSize: 12 }}>|</Text>
+                            <Moon size={16} color={isDarkMode ? colors.primary : colors.textMuted} />
+                          </View>
+                        ) : (
+                          <ChevronRight size={20} color={colors.border} />
+                        )}
                       </TouchableOpacity>
                     </View>
                     {index < section.options.length - 1 && <View style={styles.divider} />}
@@ -176,9 +184,12 @@ export default function SettingsScreen() {
                 <View style={[styles.checkbox, isDarkMode && styles.checkboxActive]}>
                   {isDarkMode && <Check size={14} color="#ffffff" />}
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  {isDarkMode ? <Moon size={18} color={colors.textMuted} /> : <Sun size={18} color={colors.textMuted} />}
-                  <Text style={styles.configText}>{isDarkMode ? 'Dark Mode On' : 'Dark Mode Off'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Sun size={18} color={!isDarkMode ? colors.primary : colors.textMuted} />
+                    <Moon size={18} color={isDarkMode ? colors.primary : colors.textMuted} />
+                  </View>
+                  <Text style={styles.configText}>Dark Mode</Text>
                 </View>
               </View>
             </TouchableOpacity>

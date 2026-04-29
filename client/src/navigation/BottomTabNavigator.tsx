@@ -5,6 +5,7 @@ import { Home, Wallet, Target, Clock } from 'lucide-react-native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { globalTabBarTranslateY } from '../hooks/useScrollHideTabBar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 import HomeScreen from '../screens/HomeScreen';
@@ -22,6 +23,7 @@ interface CustomTabBarProps extends BottomTabBarProps {
 const CustomTabBar = ({ state, descriptors, navigation, colors, isDarkMode }: CustomTabBarProps) => {
   const [containerWidth, setContainerWidth] = React.useState(0);
   const translateX = React.useRef(new Animated.Value(0)).current;
+  const insets = useSafeAreaInsets();
   const tabWidth = containerWidth / state.routes.length;
 
   React.useEffect(() => {
@@ -40,9 +42,9 @@ const CustomTabBar = ({ state, descriptors, navigation, colors, isDarkMode }: Cu
       onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
       style={{ 
         flexDirection: 'row', 
-        height: 70, 
+        height: 70 + (insets.bottom > 0 ? insets.bottom - 10 : 0), 
         alignItems: 'center',
-        paddingBottom: 5,
+        paddingBottom: insets.bottom > 0 ? insets.bottom : 5,
       }}
     >
       {/* Solid green bar across the entire top */}

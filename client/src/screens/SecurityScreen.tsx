@@ -347,6 +347,8 @@ const getStyles = (colors: any) => StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     width: '100%',
+    maxWidth: 260, // Restrict width to force 3-column layout
+    alignSelf: 'center',
     gap: 16,
   },
   key: {

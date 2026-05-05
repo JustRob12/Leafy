@@ -6,7 +6,7 @@ import { AudioPlayer, createAudioPlayer } from 'expo-audio';
 
 
 import { theme } from '../theme';
-import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane, RefreshCw, Leaf, Eye, EyeOff, CreditCard, Coins, Sparkles } from 'lucide-react-native';
+import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane, RefreshCw, Leaf, Eye, EyeOff, CreditCard, Coins, Sparkles, ArrowRightLeft, TrendingUp } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation, useScrollToTop } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
@@ -125,12 +125,12 @@ export default function HomeScreen() {
 
   const paydayInfo = useMemo(() => {
     if (recursions.length === 0) return null;
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth();
-    
+
     const countdowns = recursions.map(r => {
       let targetDate: Date;
 
@@ -160,7 +160,7 @@ export default function HomeScreen() {
       const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       return { days, company: r.companyName, amount: r.amount };
     }).filter(c => !isNaN(c.days));
-    
+
     if (countdowns.length === 0) return null;
     return countdowns.sort((a, b) => a.days - b.days)[0];
   }, [recursions]);
@@ -181,7 +181,7 @@ export default function HomeScreen() {
   const addSavingsRef = useRef<View>(null);
   const withdrawRef = useRef<View>(null);
   const calculatorRef = useRef<View>(null);
-  const subscriptionRef = useRef<View>(null);
+  const transferRef = useRef<View>(null);
   const pendingRef = useRef<View>(null);
   const debtRef = useRef<View>(null);
   const groceryRef = useRef<View>(null);
@@ -190,16 +190,16 @@ export default function HomeScreen() {
 
   const tutorialRefs = [
     balanceRef, addSavingsRef, withdrawRef, calculatorRef,
-    subscriptionRef, pendingRef, debtRef, groceryRef, travelRef,
+    transferRef, pendingRef, debtRef, groceryRef, travelRef,
     recursionRef
   ];
 
   const tutorialSteps = [
     { title: 'Total Balance', description: 'View your combined net worth across all active wallets in one real-time total.', borderRadius: 24 },
-    { title: 'Add Savings', description: 'Quickly record new deposits and watch your individual wallet balances grow.', borderRadius: 16 },
-    { title: 'Withdraw', description: 'Log your daily expenses and outgoings to keep your spending habits on track.', borderRadius: 16 },
+    { title: 'Income', description: 'Quickly record new income and watch your individual wallet balances grow.', borderRadius: 16 },
+    { title: 'Expense', description: 'Log your daily expenses and outgoings to keep your spending habits on track.', borderRadius: 16 },
     { title: 'Calculator', description: 'Use the built-in math tool to instantly calculate totals without leaving the app.', borderRadius: 16 },
-    { title: 'Subscription', description: 'Track your recurring bills and digital subscriptions to stay ahead of upcoming payments.', borderRadius: 16 },
+    { title: 'Transfer', description: 'Move funds seamlessly between your different wallets with just a few taps.', borderRadius: 16 },
     { title: 'Pending', description: 'Track the money people owe you and stay updated on all incoming receivables.', borderRadius: 16 },
     { title: 'Debt', description: 'Monitor your outstanding balances and stay organized as you work toward being debt-free.', borderRadius: 16 },
     { title: 'Grocery', description: 'Create and manage shopping lists to streamline your errands and stay within budget.', borderRadius: 16 },
@@ -330,7 +330,15 @@ export default function HomeScreen() {
 
   const getTxIcon = (tx: any) => {
     const isDeposit = tx.type === 'deposit';
-    
+
+    if (tx.category === 'transfer') {
+      return <ArrowRightLeft size={18} color={isDeposit ? colors.primary : colors.danger} />;
+    }
+
+    if (tx.category === 'interest') {
+      return <TrendingUp size={18} color={colors.primary} />;
+    }
+
     if (isDeposit) {
       const wallet = wallets.find(w => w.id === tx.walletId);
       if (wallet?.iconType === 'preset' && wallet.presetLogo) {
@@ -363,7 +371,7 @@ export default function HomeScreen() {
 
   const getThemeDecorIcon = (size: number, rotation: string) => {
     const iconProps = { size, color: "#ffffff", opacity: 0.3, style: { transform: [{ rotate: rotation }] } as any };
-    
+
     switch (treeType) {
       case 'cherry':
         return <LucideIcons.Flower2 {...iconProps} />;
@@ -380,7 +388,7 @@ export default function HomeScreen() {
   const todayIndex = new Date().getDay();
   const pendingDebts = debts.filter(d => d.dueDate === todayStr).length;
   const pendingGroceries = groceryLists.filter(list => list.scheduledDays && list.scheduledDays.includes(todayIndex)).length;
-  
+
   // Subscription due soon count
   const pendingSubscriptions = subscriptions.filter(sub => {
     const today = new Date();
@@ -467,7 +475,9 @@ export default function HomeScreen() {
                 You have <Text style={styles.paydayHighlight}>{paydayInfo.days} days</Text> until your payday from <Text style={styles.paydayHighlight}>{paydayInfo.company}</Text>
               </Text>
             </View>
-            <Text style={styles.paydayAmount}>+₱{paydayInfo.amount.toLocaleString()}</Text>
+            <Text style={styles.paydayAmount}>
+              {isBalanceHidden ? "₱ ******" : `+₱${paydayInfo.amount.toLocaleString()}`}
+            </Text>
           </View>
         )}
 
@@ -481,26 +491,21 @@ export default function HomeScreen() {
             <View ref={addSavingsRef} collapsable={false} style={styles.actionIconBorder}>
               <Plus size={20} color={colors.text} />
             </View>
-            <Text style={styles.actionText}>Add Savings</Text>
+            <Text style={styles.actionText}>Income</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Withdraw')}>
             <View ref={withdrawRef} collapsable={false} style={styles.actionIconBorder}>
               <ArrowUpRight size={20} color={colors.text} />
             </View>
-            <Text style={styles.actionText}>Withdraw</Text>
+            <Text style={styles.actionText}>Expense</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Subscription')}>
-            <View ref={subscriptionRef} collapsable={false} style={styles.actionIconBorder}>
-              <CreditCard size={20} color={colors.text} />
-              {pendingSubscriptions > 0 && (
-                <View style={styles.badgeContainer}>
-                  <Text style={styles.badgeText}>{pendingSubscriptions}</Text>
-                </View>
-              )}
+          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Transfer')}>
+            <View ref={transferRef} collapsable={false} style={styles.actionIconBorder}>
+              <ArrowRightLeft size={20} color={colors.text} />
             </View>
-            <Text style={styles.actionText}>Subscription</Text>
+            <Text style={styles.actionText}>Transfer</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionItem} onPress={() => setMoreActionsVisible(true)}>
@@ -569,7 +574,9 @@ export default function HomeScreen() {
                           </View>
                           <View>
                             <Text style={styles.goalTitle}>{goal.title}</Text>
-                            <Text style={styles.goalAmountText}>₱{currentAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })} / ₱{goal.targetAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
+                            <Text style={styles.goalAmountText}>
+                              {isBalanceHidden ? "₱ ****** / ₱ ******" : `₱${currentAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })} / ₱${goal.targetAmount.toLocaleString('en-PH', { minimumFractionDigits: 0 })}`}
+                            </Text>
                           </View>
                         </View>
                       </View>
@@ -609,8 +616,8 @@ export default function HomeScreen() {
                 const isDueSoon = daysRemaining <= 3;
 
                 return (
-                  <TouchableOpacity 
-                    key={sub.id} 
+                  <TouchableOpacity
+                    key={sub.id}
                     style={[styles.homeSubCard, isDueSoon && styles.homeSubCardDueSoon]}
                     onPress={() => navigation.navigate('Subscription')}
                   >
@@ -627,7 +634,9 @@ export default function HomeScreen() {
                         {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
                       </Text>
                     </View>
-                    <Text style={[styles.homeSubAmount, isDueSoon && styles.homeSubAmountDueSoon]}>₱{sub.amount.toLocaleString()}</Text>
+                    <Text style={[styles.homeSubAmount, isDueSoon && styles.homeSubAmountDueSoon]}>
+                      {isBalanceHidden ? "₱ ******" : `₱${sub.amount.toLocaleString()}`}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
@@ -654,11 +663,11 @@ export default function HomeScreen() {
               return (
                 <View key={tx.id} style={styles.txItem}>
                   <View style={styles.txLeft}>
-                    <View>
-                      <Text style={styles.txTitle}>{tx.title}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.txTitle} numberOfLines={2}>{tx.title}</Text>
                       <Text style={styles.txDate}>{formatTxDate(tx.date)}</Text>
                       <Text style={[isDeposit ? styles.txAmountPositive : styles.txAmountNegative, { marginTop: 4 }]}>
-                        {isDeposit ? '+' : '-'}₱{tx.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {isBalanceHidden ? "₱ ******" : `${isDeposit ? '+' : '-'}₱${tx.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       </Text>
                     </View>
                   </View>
@@ -688,11 +697,11 @@ export default function HomeScreen() {
                 const now = new Date();
                 const thisMonth = now.getMonth();
                 const thisYear = now.getFullYear();
-                
+
                 const monthSavings = transactions
                   .filter(t => t.type === 'deposit' && new Date(t.date).getMonth() === thisMonth && new Date(t.date).getFullYear() === thisYear)
                   .reduce((acc, curr) => acc + curr.amount, 0);
-                  
+
                 const monthSpent = transactions
                   .filter(t => t.type === 'withdrawal' && new Date(t.date).getMonth() === thisMonth && new Date(t.date).getFullYear() === thisYear)
                   .reduce((acc, curr) => acc + curr.amount, 0);
@@ -709,7 +718,7 @@ export default function HomeScreen() {
 
                 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
                 const currentWeekTitle = `Week ${getWeekOfMonth(new Date())} of ${monthNames[new Date().getMonth()]}`;
-                
+
                 // Current Week Activity (Monday to Sunday)
                 const getMonday = (d: Date) => {
                   const day = d.getDay();
@@ -730,7 +739,7 @@ export default function HomeScreen() {
                   return transactions
                     .filter(t => {
                       const tDate = new Date(t.date);
-                      tDate.setHours(0,0,0,0);
+                      tDate.setHours(0, 0, 0, 0);
                       return tDate.getTime() === day.getTime() && t.type === 'deposit';
                     })
                     .reduce((acc, curr) => acc + curr.amount, 0);
@@ -740,7 +749,7 @@ export default function HomeScreen() {
                   return transactions
                     .filter(t => {
                       const tDate = new Date(t.date);
-                      tDate.setHours(0,0,0,0);
+                      tDate.setHours(0, 0, 0, 0);
                       return tDate.getTime() === day.getTime() && t.type === 'withdrawal';
                     })
                     .reduce((acc, curr) => acc + curr.amount, 0);
@@ -750,7 +759,7 @@ export default function HomeScreen() {
                 const chartHeight = 80;
                 const chartWidth = Dimensions.get('window').width - 80;
 
-                const getSmoothPath = (pts: {x: number, y: number}[]) => {
+                const getSmoothPath = (pts: { x: number, y: number }[]) => {
                   if (pts.length === 0) return '';
                   let d = `M ${pts[0].x} ${pts[0].y}`;
                   for (let i = 0; i < pts.length - 1; i++) {
@@ -785,16 +794,16 @@ export default function HomeScreen() {
                 return (
                   <>
                     <Text style={styles.insightDescription}>
-                      You've saved <Text style={{ color: colors.primary }}>₱{monthSavings.toLocaleString()}</Text> and spent <Text style={{ color: colors.danger }}>₱{monthSpent.toLocaleString()}</Text> this month.
+                      You've saved <Text style={{ color: colors.primary }}>{isBalanceHidden ? "₱ ******" : `₱${monthSavings.toLocaleString()}`}</Text> and spent <Text style={{ color: colors.danger }}>{isBalanceHidden ? "₱ ******" : `₱${monthSpent.toLocaleString()}`}</Text> this month.
                     </Text>
-                    
+
                     <View style={styles.miniChartContainer}>
                       <View style={styles.miniChartHeader}>
                         <View style={styles.chartLegend}>
                           <Text style={styles.legendText}>{currentWeekTitle}</Text>
                         </View>
                       </View>
-                      
+
                       <View style={styles.lineChartWrapper}>
                         <Svg height={chartHeight} width={chartWidth}>
                           <Defs>
@@ -809,10 +818,10 @@ export default function HomeScreen() {
                           </Defs>
 
                           {/* Zero Line */}
-                          <Path 
-                            d={`M 0 ${chartHeight} L ${chartWidth} ${chartHeight}`} 
-                            stroke={isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'} 
-                            strokeWidth="1" 
+                          <Path
+                            d={`M 0 ${chartHeight} L ${chartWidth} ${chartHeight}`}
+                            stroke={isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}
+                            strokeWidth="1"
                           />
 
                           {/* Area Fills */}
@@ -838,23 +847,23 @@ export default function HomeScreen() {
                           />
 
                           {savingsPts.map((p, i) => (
-                            <Circle 
-                              key={`sav-${i}`} 
-                              cx={p.x} 
-                              cy={p.y} 
-                              r="3.5" 
-                              fill={colors.primary} 
+                            <Circle
+                              key={`sav-${i}`}
+                              cx={p.x}
+                              cy={p.y}
+                              r="3.5"
+                              fill={colors.primary}
                               stroke={colors.card}
                               strokeWidth="2"
                             />
                           ))}
                           {withdrawPts.map((p, i) => (
-                            <Circle 
-                              key={`wit-${i}`} 
-                              cx={p.x} 
-                              cy={p.y} 
-                              r="3.5" 
-                              fill="#ef4444" 
+                            <Circle
+                              key={`wit-${i}`}
+                              cx={p.x}
+                              cy={p.y}
+                              r="3.5"
+                              fill="#ef4444"
                               stroke={colors.card}
                               strokeWidth="2"
                             />
@@ -866,7 +875,7 @@ export default function HomeScreen() {
                           ))}
                         </View>
                       </View>
-                      
+
                       <View style={styles.chartValues}>
                         <Text style={styles.chartValueText}>{currentWeekDays[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</Text>
                         <Text style={styles.chartValueText}>{currentWeekDays[6].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</Text>
@@ -962,6 +971,18 @@ export default function HomeScreen() {
               <Sparkles size={22} color={colors.text} />
             </View>
             <Text style={styles.moreActionText}>Story</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Subscription'); }}>
+            <View style={styles.moreActionIconBox}>
+              <CreditCard size={22} color={colors.text} />
+              {pendingSubscriptions > 0 && (
+                <View style={styles.gridBadge}>
+                  <Text style={styles.gridBadgeText}>{pendingSubscriptions}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.moreActionText}>Subscription</Text>
           </TouchableOpacity>
         </View>
       </ActionSheet>
@@ -1315,8 +1336,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderBottomColor: colors.border,
   },
   txLeft: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    marginRight: 12,
   },
   txIconWrapper: {
     width: 40,
@@ -1331,14 +1354,15 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   txTitle: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: rf(15),
+    fontSize: rf(13),
     color: colors.text,
+    lineHeight: 18,
   },
   txDate: {
     fontFamily: theme.fonts.regular,
-    fontSize: rf(13),
+    fontSize: rf(11),
     color: colors.textMuted,
-    marginTop: 2,
+    marginTop: 1,
   },
   txAmountNegative: {
     fontFamily: theme.fonts.semiBold,

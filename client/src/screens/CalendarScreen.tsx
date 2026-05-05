@@ -150,11 +150,11 @@ export default function CalendarScreen() {
         <View style={styles.legend}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
-            <Text style={styles.legendText}>Savings</Text>
+            <Text style={styles.legendText}>Income</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: colors.danger }]} />
-            <Text style={styles.legendText}>Withdraw</Text>
+            <Text style={styles.legendText}>Expense</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />

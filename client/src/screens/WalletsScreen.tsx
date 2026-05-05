@@ -7,9 +7,9 @@ import { useNavigation, useRoute, useScrollToTop } from '@react-navigation/nativ
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 
 export default function WalletsScreen() {
-  const [viewingQrCode, setViewingQrCode] = useState<string | null>(null);
+  const [selectedWalletDetail, setSelectedWalletDetail] = useState<any | null>(null);
   const [showBalances, setShowBalances] = useState(true);
-  const { wallets, addWallet, editWallet, deleteWallet, showFeedback, showConfirm, colors, isDarkMode } = useAppContext();
+  const { wallets, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const { handleScroll } = useScrollHideTabBar();
 
@@ -49,6 +49,11 @@ export default function WalletsScreen() {
         .sort((a, b) => b.balance - a.balance)
     })).filter(group => group.data.length > 0);
   }, [wallets]);
+
+  const handleEditWallet = (wallet: any) => {
+    setSelectedWalletDetail(null);
+    navigation.navigate('AddWallet', { wallet });
+  };
 
   return (
     <View style={styles.container}>
@@ -96,7 +101,7 @@ export default function WalletsScreen() {
                       <View key={wallet.id} style={styles.premiumCardWrapper}>
                         <TouchableOpacity 
                           style={[styles.premiumCard, { backgroundColor: wallet.color || colors.primary }]}
-                          onPress={() => navigation.navigate('AddWallet', { wallet })}
+                          onPress={() => navigation.navigate('WalletDetail', { wallet })}
                           activeOpacity={0.9}
                         >
                           <View style={styles.cardHeader}>
@@ -145,9 +150,15 @@ export default function WalletsScreen() {
                               <Text style={[styles.purposePillText, { color: '#ffffff' }]}>{wallet.purpose}</Text>
                             </View>
 
+                            {(wallet.interestRate ?? 0) > 0 && (
+                               <View style={[styles.interestPill, { backgroundColor: 'rgba(255, 255, 255, 0.2)', marginLeft: 8 }]}>
+                                 <Text style={[styles.interestPillText, { color: '#ffffff' }]}>{wallet.interestRate}%</Text>
+                               </View>
+                            )}
+
                             {wallet.qrCodeImage && (
                               <TouchableOpacity
-                                onPress={(e) => { e.stopPropagation(); setViewingQrCode(wallet.qrCodeImage || null); }}
+                                onPress={(e) => { e.stopPropagation(); navigation.navigate('WalletDetail', { wallet }); }}
                                 style={[styles.qrActionBtn, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
                               >
                                 <QrCode size={14} color="#ffffff" />
@@ -172,41 +183,6 @@ export default function WalletsScreen() {
       >
         <Plus size={28} color="#ffffff" />
       </TouchableOpacity>
-
-      <Modal
-        visible={!!viewingQrCode}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setViewingQrCode(null)}
-      >
-        <TouchableOpacity
-          style={styles.qrModalOverlay}
-          activeOpacity={1}
-          onPress={() => setViewingQrCode(null)}
-        >
-          <View style={styles.qrModalContent}>
-            <View style={styles.qrModalHeader}>
-              <Text style={styles.qrModalTitle}>Wallet QR Code</Text>
-              <TouchableOpacity onPress={() => setViewingQrCode(null)} style={styles.qrModalClose}>
-                <X size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-            {viewingQrCode && (
-              <RNImage
-                source={{ uri: viewingQrCode }}
-                style={styles.qrModalImage as any}
-                resizeMode="contain"
-              />
-            )}
-            <TouchableOpacity
-              style={styles.qrModalCloseBtn}
-              onPress={() => setViewingQrCode(null)}
-            >
-              <Text style={styles.qrModalCloseBtnText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </View>
   );
 }
@@ -375,6 +351,15 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       fontSize: 9,
       color: colors.primary,
       textTransform: 'uppercase',
+    },
+    interestPill: {
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: 6,
+    },
+    interestPillText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: 9,
     },
     qrActionBtn: {
       flexDirection: 'row',
@@ -740,6 +725,115 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       fontFamily: theme.fonts.semiBold,
       fontSize: rf(16),
       color: '#ffffff',
+    },
+    detailModalContent: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 32,
+      borderTopRightRadius: 32,
+      width: '100%',
+      padding: 24,
+      paddingBottom: 40,
+      alignItems: 'center',
+    },
+    detailModalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      width: '100%',
+      marginBottom: 24,
+    },
+    detailTitleBox: {
+      flex: 1,
+    },
+    detailModalLabel: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(10),
+      color: colors.primary,
+      letterSpacing: 1,
+      marginBottom: 4,
+    },
+    detailModalTitle: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(22),
+      color: colors.text,
+    },
+    detailQrSection: {
+      alignItems: 'center',
+      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc',
+      borderRadius: 24,
+      padding: 20,
+      marginBottom: 24,
+      width: '100%',
+    },
+    detailSectionTitle: {
+      fontFamily: theme.fonts.semiBold,
+      fontSize: rf(12),
+      color: colors.textMuted,
+      marginBottom: 16,
+    },
+    detailQrImage: {
+      width: 200,
+      height: 200,
+      borderRadius: 16,
+      backgroundColor: '#ffffff',
+    },
+    detailInfoGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+      marginBottom: 32,
+    },
+    detailInfoItem: {
+      width: (Dimensions.get('window').width - 48 - 12) / 2,
+      backgroundColor: colors.card,
+      padding: 16,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    detailInfoLabel: {
+      fontFamily: theme.fonts.medium,
+      fontSize: rf(11),
+      color: colors.textMuted,
+      marginBottom: 4,
+    },
+    detailInfoValue: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(15),
+      color: colors.text,
+    },
+    detailActions: {
+      flexDirection: 'row',
+      gap: 12,
+      width: '100%',
+    },
+    detailEditBtn: {
+      flex: 1,
+      backgroundColor: colors.primary,
+      height: 56,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    detailEditBtnText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(16),
+      color: '#ffffff',
+    },
+    detailCloseBtn: {
+      flex: 1,
+      backgroundColor: colors.card,
+      height: 56,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    detailCloseBtnText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(16),
+      color: colors.text,
     },
     fab: {
       position: 'absolute',

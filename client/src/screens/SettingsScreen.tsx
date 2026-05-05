@@ -486,7 +486,7 @@ export default function SettingsScreen() {
           <View style={styles.infoSection}>
             <Text style={styles.infoTitle}>Home Screen Shortcuts</Text>
             <Text style={styles.infoDescription}>
-              Quickly access Add Savings and Withdraw screens directly from your home screen icon.
+              Quickly access Income and Expense screens directly from your home screen icon.
             </Text>
           </View>
 
@@ -496,7 +496,7 @@ export default function SettingsScreen() {
               <Text style={styles.infoDescription}>
                 1. Go to your phone's home screen.{"\n"}
                 2. Long-press the Leafy app icon.{"\n"}
-                3. Select "Add Savings" or "Withdraw".{"\n"}
+                3. Select "Income" or "Expense".{"\n"}
                 4. (Android) You can drag these items to your home screen as standalone widgets.
               </Text>
             </View>

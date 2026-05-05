@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
-import { ArrowLeft, ArrowUpRight, ArrowDownRight, Calendar, Filter, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, ArrowUpRight, ArrowDownRight, Calendar, Filter, Trash2, ArrowRightLeft, TrendingUp } from 'lucide-react-native';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 import { useScrollToTop } from '@react-navigation/native';
 import * as LucideIcons from 'lucide-react-native';
@@ -95,6 +95,14 @@ export default function HistoryScreen() {
   const getTxIcon = (tx: any) => {
     const isDeposit = tx.type === 'deposit';
     
+    if (tx.category === 'transfer') {
+      return <ArrowRightLeft size={18} color={isDeposit ? colors.success : colors.danger} />;
+    }
+
+    if (tx.category === 'interest') {
+      return <TrendingUp size={18} color={colors.success} />;
+    }
+
     if (isDeposit) {
       const wallet = wallets.find(w => w.id === tx.walletId);
       if (wallet?.iconType === 'preset' && wallet.presetLogo) {
@@ -142,7 +150,7 @@ export default function HistoryScreen() {
           onPress={() => setTypeFilter('deposit')}
         >
           <ArrowDownRight size={14} color={typeFilter === 'deposit' ? '#ffffff' : colors.success} style={{ marginRight: 4 }} />
-          <Text style={[styles.typeChipText, typeFilter === 'deposit' && styles.typeChipTextActive]}>Deposits</Text>
+          <Text style={[styles.typeChipText, typeFilter === 'deposit' && styles.typeChipTextActive]}>Incomes</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -150,7 +158,7 @@ export default function HistoryScreen() {
           onPress={() => setTypeFilter('withdrawal')}
         >
           <ArrowUpRight size={14} color={typeFilter === 'withdrawal' ? '#ffffff' : colors.danger} style={{ marginRight: 4 }} />
-          <Text style={[styles.typeChipText, typeFilter === 'withdrawal' && styles.typeChipTextActive]}>Withdrawals</Text>
+          <Text style={[styles.typeChipText, typeFilter === 'withdrawal' && styles.typeChipTextActive]}>Expenses</Text>
         </TouchableOpacity>
       </View>
 
@@ -181,8 +189,8 @@ export default function HistoryScreen() {
                     ]}>
                     {getTxIcon(tx)}
                   </View>
-                  <View>
-                    <Text style={styles.txTitle}>{tx.title}</Text>
+                  <View style={styles.txInfo}>
+                    <Text style={styles.txTitle} numberOfLines={2}>{tx.title}</Text>
                     <Text style={styles.txDate}>{formatTxDate(tx.date)}</Text>
                     <Text style={[isDeposit ? styles.txAmountPositive : styles.txAmountNegative, { marginTop: 4 }]}>
                       {isDeposit ? '+' : '-'}₱{tx.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -260,19 +268,25 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   txItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: colors.card,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    marginBottom: 6,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDarkMode ? 0.2 : 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
   txLeft: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.md,
+    gap: 14,
+    marginRight: 10,
   },
   txIconWrapper: {
     width: 44,
@@ -282,16 +296,20 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
+  txInfo: {
+    flex: 1,
+  },
   txTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: rf(14),
+    fontSize: rf(13),
     color: colors.text,
+    lineHeight: 18,
   },
   txDate: {
     fontFamily: theme.fonts.regular,
     fontSize: rf(11),
     color: colors.textMuted,
-    marginTop: 2,
+    marginTop: 1,
   },
   txAmountPositive: {
     fontFamily: theme.fonts.bold,

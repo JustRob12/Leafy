@@ -33,7 +33,7 @@ export default function DepositScreen() {
     // No keyboard search listeners needed
   }, []);
 
-  const handleDeposit = async () => {
+  const handleIncome = async () => {
     const numericAmount = parseFloat(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) return;
     if (!selectedWalletId) {
@@ -42,7 +42,7 @@ export default function DepositScreen() {
     }
 
     await addTransaction({
-      title: 'Added Savings',
+      title: 'Added Income',
       amount: numericAmount,
       type: 'deposit',
       walletId: selectedWalletId
@@ -66,7 +66,7 @@ export default function DepositScreen() {
           <ChevronLeft color={colors.text} size={28} />
         </TouchableOpacity>
         <View style={styles.headerTitleWrapper}>
-          <Text style={styles.headerTitle}>Add Savings</Text>
+          <Text style={styles.headerTitle}>Income</Text>
         </View>
         <View style={{ width: 40 }} />
       </View>
@@ -152,11 +152,11 @@ export default function DepositScreen() {
               </View>
 
             <TouchableOpacity 
-                style={[styles.depositBtnFinal, (!amount || !selectedWalletId) && styles.depositBtnDisabled]}
-                onPress={handleDeposit}
+                style={[styles.incomeBtnFinal, (!amount || !selectedWalletId) && styles.incomeBtnDisabled]}
+                onPress={handleIncome}
                 disabled={!amount || !selectedWalletId}
               >
-                <Text style={styles.depositBtnText}>Confirm Deposit</Text>
+                <Text style={styles.incomeBtnText}>Confirm Income</Text>
               </TouchableOpacity>
           </>
         )}
@@ -299,7 +299,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: rf(18),
     color: colors.text,
   },
-  depositBtnFinal: {
+  incomeBtnFinal: {
     backgroundColor: colors.primary,
     paddingVertical: 18,
     borderRadius: 18,
@@ -311,12 +311,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     elevation: 8,
     marginTop: 10,
   },
-  depositBtnDisabled: {
+  incomeBtnDisabled: {
     backgroundColor: colors.textMuted + '44',
     shadowOpacity: 0,
     elevation: 0,
   },
-  depositBtnText: {
+  incomeBtnText: {
     fontFamily: theme.fonts.bold,
     fontSize: rf(16),
     color: '#fff',

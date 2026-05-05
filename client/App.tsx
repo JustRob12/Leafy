@@ -45,6 +45,7 @@ import WithdrawScreen from './src/screens/WithdrawScreen';
 import DepositScreen from './src/screens/DepositScreen';
 import RecursionScreen from './src/screens/RecursionScreen';
 import AddWalletScreen from './src/screens/AddWalletScreen';
+import WalletDetailScreen from './src/screens/WalletDetailScreen';
 import AddGoalScreen from './src/screens/AddGoalScreen';
 import AddRecursionScreen from './src/screens/AddRecursionScreen';
 import AddReceivableScreen from './src/screens/AddReceivableScreen';
@@ -57,6 +58,7 @@ import ConfirmModal from './src/components/ConfirmModal';
 import LoadingOverlay from './src/components/LoadingOverlay';
 import BottomTabNavigator from './src/navigation/BottomTabNavigator';
 import CurrencyConverterScreen from './src/screens/CurrencyConverterScreen';
+import TransferScreen from './src/screens/TransferScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -121,6 +123,7 @@ function MainNavigation() {
             <Stack.Screen name="Deposit" component={DepositScreen} />
             <Stack.Screen name="Recursion" component={RecursionScreen} />
             <Stack.Screen name="AddWallet" component={AddWalletScreen} />
+            <Stack.Screen name="WalletDetail" component={WalletDetailScreen} />
             <Stack.Screen name="AddGoal" component={AddGoalScreen} />
             <Stack.Screen name="GoalDetail" component={GoalDetailScreen} />
             <Stack.Screen name="AddRecursion" component={AddRecursionScreen} />
@@ -129,6 +132,7 @@ function MainNavigation() {
             <Stack.Screen name="Subscription" component={SubscriptionScreen} />
             <Stack.Screen name="AddSubscription" component={AddSubscriptionScreen} />
             <Stack.Screen name="CurrencyConverter" component={CurrencyConverterScreen} />
+            <Stack.Screen name="Transfer" component={TransferScreen} />
             
             {/* Fallback Aliases that redirect into the Tab Navigator to keep Tabs and Header */}
             <Stack.Screen name="Goals">
@@ -234,13 +238,13 @@ function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
         await QuickActions.setItems([
           {
             id: 'deposit',
-            title: 'Add Savings',
+            title: 'Income',
             icon: Platform.OS === 'ios' ? 'symbol:plus.circle.fill' : 'shortcut_add_savings', 
             params: { href: 'leafy://deposit' }
           },
           {
             id: 'withdraw',
-            title: 'Withdraw',
+            title: 'Expense',
             icon: Platform.OS === 'ios' ? 'symbol:arrow.up.right.circle.fill' : 'shortcut_withdraw',
             params: { href: 'leafy://withdraw' }
           }

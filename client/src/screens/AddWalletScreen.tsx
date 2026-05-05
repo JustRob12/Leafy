@@ -103,8 +103,11 @@ export default function AddWalletScreen() {
     }
   };
 
+  const [interestRate, setInterestRate] = useState(editingWallet?.interestRate?.toString() || '');
+
   const handleSave = async () => {
     if (walletName.trim()) {
+      const rateNum = parseFloat(interestRate) || 0;
       if (isEditing) {
         await editWallet(editingWallet.id, {
           name: walletName.trim(),
@@ -114,7 +117,8 @@ export default function AddWalletScreen() {
           presetLogo: selectedPreset || undefined,
           customIcon: customIcon || undefined,
           color: walletColor,
-          category: category
+          category: category,
+          interestRate: rateNum,
         });
       } else {
         await addWallet({
@@ -125,7 +129,9 @@ export default function AddWalletScreen() {
           presetLogo: selectedPreset || undefined,
           customIcon: customIcon || undefined,
           color: walletColor,
-          category: category
+          category: category,
+          interestRate: rateNum,
+          lastInterestDate: new Date().toISOString()
         });
       }
       navigation.goBack();
@@ -286,7 +292,21 @@ export default function AddWalletScreen() {
           )}
         </TouchableOpacity>
 
-        <Text style={styles.inputLabel}>Accent Theme</Text>
+        <Text style={styles.inputLabel}>Daily Interest Rate (% p.a.)</Text>
+        <View style={styles.interestInputContainer}>
+          <TextInput
+            style={[styles.input, { flex: 1, marginBottom: 0 }]}
+            placeholder="e.g., 3.5, 6.0..."
+            placeholderTextColor={colors.textMuted}
+            value={interestRate}
+            onChangeText={setInterestRate}
+            keyboardType="decimal-pad"
+          />
+          <View style={styles.percentBadge}>
+            <Text style={styles.percentBadgeText}>% p.a.</Text>
+          </View>
+        </View>
+        <Text style={styles.inputSubtitle}>Interest will be calculated and credited daily based on your balance.</Text>
         <AdvancedColorPicker 
           color={walletColor} 
           onColorChange={setWalletColor} 
@@ -405,17 +425,43 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     marginBottom: 12,
     marginTop: 8,
   },
-  input: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
-    padding: 16,
-    fontFamily: theme.fonts.regular,
-    fontSize: 16,
-    color: colors.text,
-    marginBottom: 24,
-  },
+    input: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 16,
+      padding: 16,
+      fontFamily: theme.fonts.regular,
+      fontSize: 16,
+      color: colors.text,
+      marginBottom: 24,
+    },
+    interestInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 8,
+    },
+    percentBadge: {
+      backgroundColor: colors.primary + '15',
+      paddingHorizontal: 12,
+      paddingVertical: 16,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.primary + '33',
+    },
+    percentBadgeText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: 14,
+      color: colors.primary,
+    },
+    inputSubtitle: {
+      fontFamily: theme.fonts.medium,
+      fontSize: 12,
+      color: colors.textMuted,
+      marginBottom: 24,
+      marginLeft: 4,
+    },
   categoryRow: {
     flexDirection: 'row',
     gap: 10,

@@ -6,7 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import { 
   ChevronLeft, Plus, Utensils, Car, Receipt, Heart, ShoppingBag, 
   MoreHorizontal, Coffee, Home, Gift, Smartphone, Gamepad, 
-  CreditCard, Briefcase, Camera, Film, Music, Globe, Map, Search, Check
+  CreditCard, Briefcase, Camera, Film, Music, Globe, Map, Search, Check, ArrowRight
 } from 'lucide-react-native';
 import WalletDropdown from '../components/WalletDropdown';
 import MainHeader from '../components/MainHeader';
@@ -65,33 +65,45 @@ export default function WithdrawScreen() {
 
   const handleSelectPreset = (preset: any) => {
     setSelectedPreset(preset);
-    setStep(1);
+    if (step === 1) {
+      // Finalize if on the presets step
+      handleExpense(preset);
+    } else {
+      setStep(1);
+    }
   };
 
-  const handleWithdraw = async () => {
+  const handleExpense = async (presetOverride?: any) => {
     const numericAmount = parseFloat(amount);
-    if (isNaN(numericAmount) || numericAmount <= 0) return;
+    const preset = presetOverride || selectedPreset;
+
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      showFeedback('error', 'Please enter a valid amount');
+      return;
+    }
     if (!selectedWalletId) {
       showFeedback('error', 'Please select a wallet');
       return;
     }
-
-    if (selectedPreset) {
-      const wallet = wallets.find(w => w.id === selectedWalletId);
-      if (wallet && numericAmount > wallet.balance) {
-        showFeedback('error', 'Insufficient Balance');
-        return;
-      }
-
-      await addTransaction({
-        title: selectedPreset.name,
-        amount: numericAmount,
-        type: 'withdrawal',
-        walletId: selectedWalletId,
-        icon: selectedPreset.iconName
-      });
-      navigation.navigate('Main');
+    if (!preset) {
+      showFeedback('error', 'Please select an expense reason');
+      return;
     }
+
+    const wallet = wallets.find(w => w.id === selectedWalletId);
+    if (wallet && numericAmount > wallet.balance) {
+      showFeedback('error', 'Insufficient Balance');
+      return;
+    }
+
+    await addTransaction({
+      title: preset.name,
+      amount: numericAmount,
+      type: 'withdrawal',
+      walletId: selectedWalletId,
+      icon: preset.iconName
+    });
+    navigation.navigate('Main');
   };
 
   const handleAddPreset = async () => {
@@ -117,51 +129,10 @@ export default function WithdrawScreen() {
   };
 
   const renderStep0 = () => {
-    const defaultIds = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
-    const defaultPresets = withdrawPresets.filter(p => defaultIds.includes(p.id));
-    const customPresets = withdrawPresets.filter(p => !defaultIds.includes(p.id));
-
-    return (
-      <View style={{ flex: 1 }}>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <Text style={styles.stepTitle}>Withdraw Reason</Text>
-          
-          <Text style={styles.sectionLabel}>QUICK PRESETS</Text>
-          <View style={styles.simpleGrid}>
-            {defaultPresets.map(renderPresetItem)}
-          </View>
-
-          <Text style={[styles.sectionLabel, { marginTop: 24 }]}>YOUR PRESETS</Text>
-          <View style={styles.simpleGrid}>
-            {customPresets.map(renderPresetItem)}
-            <TouchableOpacity 
-              style={styles.addSimpleItem}
-              onPress={() => setShowAddPreset(true)}
-            >
-              <Plus color={colors.textMuted} size={28} />
-              <Text style={[styles.simplePresetText, { color: colors.textMuted }]}>Add New</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      </View>
-    );
-  };
-
-  const renderStep1 = () => {
     const filteredWallets = wallets;
 
     return (
       <View style={styles.stepContainer}>
-        <View style={styles.compactHeader}>
-          <View style={styles.summaryTag}>
-            <View style={styles.summaryIcon}>
-              {ICON_MAP[selectedPreset?.iconName] && React.createElement(ICON_MAP[selectedPreset?.iconName], { size: 14, color: '#fff' })}
-            </View>
-            <Text style={styles.summaryText}>{selectedPreset?.name}</Text>
-          </View>
-        </View>
-
         <View style={styles.amountDisplayWrapperCompact}>
           <Text style={styles.currencyPrefixCompact}>₱</Text>
           <Text style={[styles.amountTextCompact, !amount && { color: colors.textMuted + '44' }]}>
@@ -169,7 +140,7 @@ export default function WithdrawScreen() {
           </Text>
         </View>
 
-
+        <Text style={styles.sectionLabelSmall}>SELECT WALLET</Text>
         <FlatList 
           data={filteredWallets}
           horizontal
@@ -183,7 +154,7 @@ export default function WithdrawScreen() {
                 { backgroundColor: wallet.color || (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)') },
                 selectedWalletId === wallet.id && styles.miniWalletItemSelected
               ]}
-              onPress={() => setSelectedWalletId(wallet.id)}
+              onPress={() => setSelectedWalletId(prev => prev === wallet.id ? null : wallet.id)}
             >
               {selectedWalletId === wallet.id && (
                 <View style={styles.selectedIndicator}>
@@ -219,6 +190,7 @@ export default function WithdrawScreen() {
                   } else if (key === '.') {
                     if (!amount.includes('.')) setAmount(prev => prev + '.');
                   } else {
+                    if (amount.includes('.') && amount.split('.')[1].length >= 2) return;
                     setAmount(prev => prev + key);
                   }
                 }}
@@ -229,13 +201,61 @@ export default function WithdrawScreen() {
           </View>
         
         <TouchableOpacity 
-            style={[styles.withdrawBtnFinal, (!amount || !selectedWalletId) && styles.withdrawBtnDisabled]}
-            onPress={handleWithdraw}
+            style={[styles.expenseBtnFinal, (!amount || !selectedWalletId) && styles.expenseBtnDisabled]}
+            onPress={() => setStep(1)}
             disabled={!amount || !selectedWalletId}
           >
-            <Text style={styles.withdrawBtnText}>Confirm Withdrawal</Text>
+            <Text style={styles.expenseBtnText}>Next: Select Reason</Text>
           </TouchableOpacity>
         <View style={{ height: 30 }} />
+      </View>
+    );
+  };
+
+  const renderStep1 = () => {
+    const defaultIds = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+    const defaultPresets = withdrawPresets.filter(p => defaultIds.includes(p.id));
+    const customPresets = withdrawPresets.filter(p => !defaultIds.includes(p.id));
+
+    return (
+      <View style={{ flex: 1 }}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={styles.summaryRow}>
+             <Text style={styles.summaryTextMain}>₱{formatDisplayAmount(amount)}</Text>
+             <ArrowRight size={14} color={colors.textMuted} />
+             <Text style={styles.summaryTextWallet}>{wallets.find(w => w.id === selectedWalletId)?.name}</Text>
+          </View>
+
+          <Text style={styles.stepTitle}>Expense Reason</Text>
+          
+          <Text style={styles.sectionLabel}>QUICK PRESETS</Text>
+          <View style={styles.simpleGrid}>
+            {defaultPresets.map(renderPresetItem)}
+          </View>
+
+          <Text style={[styles.sectionLabel, { marginTop: 24 }]}>YOUR PRESETS</Text>
+          <View style={styles.simpleGrid}>
+            {customPresets.map(renderPresetItem)}
+            <TouchableOpacity 
+              style={styles.addSimpleItem}
+              onPress={() => setShowAddPreset(true)}
+            >
+              <Plus color={colors.textMuted} size={28} />
+              <Text style={[styles.simplePresetText, { color: colors.textMuted }]}>Add New</Text>
+            </TouchableOpacity>
+          </View>
+
+          {selectedPreset && (
+            <TouchableOpacity 
+              style={[styles.expenseBtnFinal, { marginTop: 30 }]}
+              onPress={() => handleExpense()}
+            >
+              <Text style={styles.expenseBtnText}>Confirm {selectedPreset.name}</Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
       </View>
     );
   };
@@ -247,7 +267,7 @@ export default function WithdrawScreen() {
           <ChevronLeft color={colors.text} size={28} />
         </TouchableOpacity>
         <View style={styles.headerTitleWrapper}>
-          <Text style={styles.headerTitle}>Withdraw</Text>
+          <Text style={styles.headerTitle}>Expense</Text>
           <View style={styles.progressDots}>
             {[0, 1].map((i) => (
               <View key={i} style={[styles.dot, step >= i && styles.activeDot, step === i && styles.currentDot]} />
@@ -405,7 +425,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   simplePresetItem: {
     width: (width - 76) / 4,
     aspectRatio: 1,
-    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
@@ -536,7 +555,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: rf(20),
     color: colors.text,
   },
-  withdrawBtn: {
+  expenseBtn: {
     backgroundColor: colors.danger,
     paddingVertical: 18,
     borderRadius: 18,
@@ -547,12 +566,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  withdrawBtnDisabled: {
+  expenseBtnDisabled: {
     backgroundColor: colors.textMuted + '44',
     shadowOpacity: 0,
     elevation: 0,
   },
-  withdrawBtnText: {
+  expenseBtnText: {
     fontFamily: theme.fonts.bold,
     fontSize: rf(16),
     color: '#fff',
@@ -749,7 +768,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     marginTop: 10,
     marginBottom: 20,
   },
-  withdrawBtnFinal: {
+  expenseBtnFinal: {
     backgroundColor: colors.danger,
     paddingVertical: 18,
     borderRadius: 18,
@@ -801,6 +820,27 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.semiBold,
     fontSize: rf(16),
     color: '#fff',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    marginBottom: 20,
+    gap: 12,
+  },
+  summaryTextMain: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 20,
+    color: colors.primary,
+  },
+  summaryTextWallet: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 16,
+    color: colors.text,
   },
   selectedIndicator: {
     position: 'absolute',

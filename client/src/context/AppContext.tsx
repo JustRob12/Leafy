@@ -17,6 +17,8 @@ export type WalletType = {
   customIcon?: string;
   color?: string;
   category: WalletCategory;
+  interestRate?: number; // Annual interest rate in %
+  lastInterestDate?: string; // ISO date of last interest credit
 };
 
 export type TransactionType = {
@@ -27,6 +29,7 @@ export type TransactionType = {
   type: 'deposit' | 'withdrawal';
   walletId: string;
   icon?: string; // Optional icon name for withdrawals
+  category?: 'transfer' | 'expense' | 'income' | 'interest';
 };
 
 export type GoalType = {
@@ -190,6 +193,7 @@ type AppContextType = {
   addSubscription: (subscription: Omit<SubscriptionType, 'id' | 'date'>) => Promise<void>;
   editSubscription: (id: string, updates: Partial<Omit<SubscriptionType, 'id' | 'date'>>) => Promise<void>;
   deleteSubscription: (id: string) => Promise<void>;
+  transferMoney: (fromWalletId: string, toWalletId: string, amount: number, tax?: number) => Promise<void>;
 };
 
 
@@ -239,7 +243,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loadData = async () => {
     try {
       const storedName = await AsyncStorage.getItem('@username');
-      const storedWallets = await AsyncStorage.getItem('@wallets');
       const storedTransactions = await AsyncStorage.getItem('@transactions');
       const storedGoals = await AsyncStorage.getItem('@goals');
       const storedReceivables = await AsyncStorage.getItem('@receivables');
@@ -247,7 +250,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const storedImage = await AsyncStorage.getItem('@userImage');
 
       if (storedName) setUserNameState(storedName);
-      if (storedWallets) setWallets(JSON.parse(storedWallets));
       if (storedTransactions) setTransactions(JSON.parse(storedTransactions));
       if (storedGoals) setGoals(JSON.parse(storedGoals));
       if (storedReceivables) setReceivables(JSON.parse(storedReceivables));
@@ -258,8 +260,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (storedSubscriptions) setSubscriptions(JSON.parse(storedSubscriptions));
       const storedGrocery = await AsyncStorage.getItem('@groceryLists');
       if (storedGrocery) setGroceryLists(JSON.parse(storedGrocery));
-      const storedTravels = await AsyncStorage.getItem('@travels');
-      if (storedTravels) setTravels(JSON.parse(storedTravels));
+      const storedWallets = await AsyncStorage.getItem('@wallets');
+      if (storedWallets) {
+        const parsedWallets: WalletType[] = JSON.parse(storedWallets);
+        const { updatedWallets, newTransactions } = processDailyInterest(parsedWallets);
+        
+        setWallets(updatedWallets);
+        if (newTransactions.length > 0) {
+          const allTransactions = [...newTransactions, ...transactions];
+          setTransactions(allTransactions);
+          await AsyncStorage.setItem('@transactions', JSON.stringify(allTransactions));
+        }
+
+        if (JSON.stringify(updatedWallets) !== JSON.stringify(parsedWallets)) {
+           await AsyncStorage.setItem('@wallets', JSON.stringify(updatedWallets));
+        }
+      }
       const storedPresets = await AsyncStorage.getItem('@withdrawPresets');
       if (storedPresets && JSON.parse(storedPresets).length > 0) {
         setWithdrawPresets(JSON.parse(storedPresets));
@@ -317,8 +333,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {
       console.error('Failed to load data', e);
     } finally {
-      // Ensure we mark as loaded even if there's an error, 
-      // preventing the app from getting stuck on the splash screen
       setIsLoaded(true);
     }
   };
@@ -329,7 +343,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         checkAndProcessRecursions();
       }
       
-      // Initialize notifications
       const setupNotifications = async () => {
         if (isNotificationsEnabled) {
           const hasPermission = await requestNotificationPermissions();
@@ -344,14 +357,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [isLoaded, recursions.length]);
 
-  // Sync notifications whenever debts or grocery lists change
   useEffect(() => {
     if (isLoaded) {
       syncAllNotifications(debts, groceryLists, isNotificationsEnabled);
     }
   }, [debts, groceryLists, isNotificationsEnabled]);
 
-  // Sync app badge count whenever debts or grocery lists change
   useEffect(() => {
     if (isLoaded) {
       const todayStr = new Date().toISOString().split('T')[0];
@@ -371,16 +382,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const todayStr = today.toISOString().split('T')[0];
     const currentDay = today.getDate();
     const currentDayOfWeek = today.getDay();
-    const currentMonthYear = `${today.getFullYear()}-${today.getMonth() + 1}`;
     
     let hasChanges = false;
     const newTransactions: TransactionType[] = [];
     
-    // Helper to get last day of month
     const getLastDayOfMonth = (y: number, m: number) => new Date(y, m, 0).getDate();
     
     const updatedRecursions = recursions.map((r) => {
-      // Skip if already processed today
       if (r.lastProcessedDate === todayStr) return r;
 
       let shouldProcess = false;
@@ -390,14 +398,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           shouldProcess = true;
         }
       } else if (r.frequency === 'monthly') {
-        // If day of month matched, and not processed this month
         const lastMonthProcessed = r.lastProcessedDate ? r.lastProcessedDate.substring(0, 7) : '';
         const currentMonthStr = todayStr.substring(0, 7);
         if (currentDay >= (r.dayOfMonth || 1) && lastMonthProcessed !== currentMonthStr) {
           shouldProcess = true;
         }
       } else if (r.frequency === 'bi-monthly') {
-        // If startDate is present, we count every 15 days from it
         if (r.startDate) {
           const start = new Date(r.startDate);
           start.setHours(0, 0, 0, 0);
@@ -405,22 +411,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           now.setHours(0, 0, 0, 0);
 
           if (now >= start) {
-            // Calculate days since start
             const diffTime = Math.abs(now.getTime() - start.getTime());
             const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
             
-            // It should process if it's exactly on a 15-day interval
-            // OR if it missed an interval and hasn't been processed for that interval yet.
-            // Simplified: if current processed count is less than (diffDays / 15)
-            
-            // To be more robust in an offline app, we check if today is a multiple of 15 days from start
-            // and we haven't processed today yet.
             if (diffDays % 15 === 0) {
               shouldProcess = true;
             }
           }
         } else {
-          // Legacy 15th/30th logic if no startDate
           const lastDay = getLastDayOfMonth(today.getFullYear(), today.getMonth() + 1);
           const targetDate1 = 15;
           const targetDate2 = Math.min(30, lastDay);
@@ -460,16 +458,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (hasChanges) {
-      // 1. Update Recursions
       setRecursions(updatedRecursions);
       await AsyncStorage.setItem('@recursions', JSON.stringify(updatedRecursions));
       
-      // 2. Update Transactions
       const allTx = [...newTransactions, ...transactions];
       setTransactions(allTx);
       await AsyncStorage.setItem('@transactions', JSON.stringify(allTx));
       
-      // 3. Update Wallets
       const updatedWallets = wallets.map(w => {
         const matchingTxs = newTransactions.filter(tx => tx.walletId === w.id);
         const addedAmount = matchingTxs.reduce((sum, tx) => sum + tx.amount, 0);
@@ -480,6 +475,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       showFeedback('success', `Auto-processed ${newTransactions.length} recurring incomes`);
     }
+  };
+
+  const processDailyInterest = (currentWallets: WalletType[]) => {
+    const now = new Date();
+    const newTransactions: TransactionType[] = [];
+    
+    const updatedWallets = currentWallets.map(wallet => {
+      if (!wallet.interestRate || wallet.interestRate <= 0) return wallet;
+
+      const lastDate = wallet.lastInterestDate ? new Date(wallet.lastInterestDate) : new Date();
+      
+      const diffTime = Math.abs(now.getTime() - lastDate.getTime());
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays > 0) {
+        const dailyRate = (wallet.interestRate / 100) / 365;
+        const interestEarned = wallet.balance * dailyRate * diffDays;
+        
+        if (interestEarned > 0.01) {
+          const txId = `int-${Date.now()}-${wallet.id}`;
+          newTransactions.push({
+            id: txId,
+            title: `Daily Interest - ${wallet.name}`,
+            amount: interestEarned,
+            date: now.toISOString(),
+            type: 'deposit',
+            walletId: wallet.id,
+            category: 'interest'
+          });
+
+          return {
+            ...wallet,
+            balance: wallet.balance + interestEarned,
+            lastInterestDate: now.toISOString()
+          };
+        }
+      }
+      return wallet;
+    });
+
+    return { updatedWallets, newTransactions };
   };
 
   const setUsername = async (name: string) => {
@@ -520,7 +556,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTransactions(updatedTx);
     await AsyncStorage.setItem('@transactions', JSON.stringify(updatedTx));
 
-    // Update wallet balance
     let completedGoalTitle: string | null = null;
 
     const updatedWallets = wallets.map(w => {
@@ -528,13 +563,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const oldBalance = w.balance;
         const newBalance = w.balance + (txData.type === 'deposit' ? txData.amount : -txData.amount);
         
-        // Check for goal completion
         if (txData.type === 'deposit') {
           const associatedGoals = goals.filter(g => g.walletId === w.id);
           for (const goal of associatedGoals) {
             if (oldBalance < goal.targetAmount && newBalance >= goal.targetAmount) {
               completedGoalTitle = goal.title;
-              break; // Only notify for one goal at a time to avoid spam
+              break; 
             }
           }
         }
@@ -613,7 +647,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const currentDay = today.getDate();
     const currentDayOfWeek = today.getDay();
     
-    // Determine if we should mark it as processed today to avoid immediate "catch-up" processing
     let lastProcessedDate: string | undefined = undefined;
     
     if (recursionData.frequency === 'monthly') {
@@ -621,7 +654,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         lastProcessedDate = todayStr;
       }
     } else if (recursionData.frequency === 'weekly') {
-      // For weekly, we only process on the exact day, but let's be safe
       if (currentDayOfWeek > (recursionData.dayOfWeek ?? 0)) {
         lastProcessedDate = todayStr;
       }
@@ -630,9 +662,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
       const day2 = Math.min(30, lastDay);
       if (currentDay >= day2 || (currentDay >= day1 && currentDay < day2)) {
-        // If we passed either 15th or 30th, we mark as processed to wait for the next specific one
-        // but bi-monthly logic in checkAndProcessRecursions is complex, 
-        // so setting it to today is safest to skip current "catch-up"
         lastProcessedDate = todayStr;
       }
     }
@@ -679,7 +708,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    // Add as a deposit transaction
     const newTx: TransactionType = {
       id: Date.now().toString(),
       title: `${recursion.companyName} (Recurring)`,
@@ -693,7 +721,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTransactions(updatedTx);
     await AsyncStorage.setItem('@transactions', JSON.stringify(updatedTx));
 
-    // Update wallet balance
     const updatedWallets = wallets.map(w => {
       if (w.id === recursion.walletId) {
         return {
@@ -759,10 +786,70 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showFeedback('delete', 'Subscription Removed');
   };
 
+  const transferMoney = async (fromWalletId: string, toWalletId: string, amount: number, tax: number = 0) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    const fromWallet = wallets.find(w => w.id === fromWalletId);
+    const toWallet = wallets.find(w => w.id === toWalletId);
+
+    if (!fromWallet || !toWallet) {
+      setLoading(false);
+      showFeedback('error', 'Wallet not found');
+      return;
+    }
+
+    if (amount <= tax && tax > 0) {
+      setLoading(false);
+      showFeedback('error', 'Amount must be greater than the fee');
+      return;
+    }
+
+    const txId1 = Date.now().toString();
+    const txId2 = (Date.now() + 1).toString();
+    const date = new Date().toISOString();
+
+    const withdrawalTx: TransactionType = {
+      id: txId1,
+      title: `Transfer to ${toWallet.name}${tax > 0 ? ` (₱${tax} fee deducted)` : ''}`,
+      amount: amount,
+      date: date,
+      type: 'withdrawal',
+      walletId: fromWalletId,
+      category: 'transfer',
+    };
+
+    const depositAmount = amount - tax;
+    const depositTx: TransactionType = {
+      id: txId2,
+      title: `Transfer from ${fromWallet.name}`,
+      amount: depositAmount,
+      date: date,
+      type: 'deposit',
+      walletId: toWalletId,
+      category: 'transfer',
+    };
+
+    const updatedTx = [withdrawalTx, depositTx, ...transactions];
+    setTransactions(updatedTx);
+    await AsyncStorage.setItem('@transactions', JSON.stringify(updatedTx));
+
+    const updatedWallets = wallets.map(w => {
+      if (w.id === fromWalletId) return { ...w, balance: w.balance - amount };
+      if (w.id === toWalletId) return { ...w, balance: w.balance + depositAmount };
+      return w;
+    });
+
+    setWallets(updatedWallets);
+    await AsyncStorage.setItem('@wallets', JSON.stringify(updatedWallets));
+
+    setLoading(false);
+    showFeedback('success', 'Transfer Successful');
+  };
+
   const editWallet = async (id: string, updates: Partial<WalletType>) => {
     setLoading(true);
     
-    // Handle image persistence if images are being updated
     const finalUpdates = { ...updates };
     if (updates.qrCodeImage !== undefined) {
       finalUpdates.qrCodeImage = await saveImagePermanently(updates.qrCodeImage) || undefined;
@@ -787,7 +874,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const editGoal = async (id: string, updates: Partial<GoalType>) => {
     setLoading(true);
     
-    // Handle image persistence if image is being updated
     const finalUpdates = { ...updates };
     if (updates.imageUrl !== undefined) {
       finalUpdates.imageUrl = await saveImagePermanently(updates.imageUrl) || undefined;
@@ -809,7 +895,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await AsyncStorage.setItem('@wallets', JSON.stringify(updated));
     setLoading(false);
     showFeedback('delete', 'Wallet Removed');
-    // Optional: could delete associated transactions and goals here
   };
 
   const deleteGoal = async (id: string) => {
@@ -855,7 +940,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTransactions(updatedTx);
     await AsyncStorage.setItem('@transactions', JSON.stringify(updatedTx));
 
-    // Reverse balance
     const updatedWallets = wallets.map(w => {
       if (w.id === txToDelete.walletId) {
         return {
@@ -916,7 +1000,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (typeof data !== 'object') throw new Error('Invalid data format');
 
-      // Process images back from base64 to local files
       const importedUserImage = await saveBase64Image(data.userImage);
       const importedStatusCardBg = await saveBase64Image(data.statusCardBg);
 
@@ -967,7 +1050,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
-      // Update local state
       setUserNameState(data.username || null);
       setWallets(importedWallets);
       setTransactions(data.transactions || []);
@@ -1012,7 +1094,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setFeedback({ visible: true, type, message });
     setTimeout(() => {
       setFeedback(prev => ({ ...prev, visible: false }));
-    }, 1500); // Hide modal after 1.5 seconds
+    }, 1500); 
   };
 
   const showConfirm = (title: string, message: string, onConfirm: () => void, isDestructive = true) => {
@@ -1089,7 +1171,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addTravel = async (travelData: Omit<TravelType, 'id'>) => {
     setLoading(true);
-    // Save images permanently
     const permanentImages = travelData.images 
       ? await Promise.all(travelData.images.map(img => saveImagePermanently(img)))
       : [];
@@ -1109,7 +1190,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const editTravel = async (id: string, updates: Partial<TravelType>) => {
     setLoading(true);
     
-    // Handle image persistence if images are being updated
     let finalImages = updates.images;
     if (updates.images) {
       finalImages = await Promise.all(updates.images.map(img => saveImagePermanently(img)))
@@ -1169,7 +1249,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    // 1. Update Receivables (Partial or Full)
     let updatedReceivables;
     let isFullPayment = amount >= receivable.amount;
 
@@ -1183,7 +1262,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setReceivables(updatedReceivables);
     await AsyncStorage.setItem('@receivables', JSON.stringify(updatedReceivables));
 
-    // 2. Add Transaction
     const newTx: TransactionType = {
       id: Date.now().toString(),
       title: `Payment from ${receivable.personName}`,
@@ -1196,7 +1274,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTransactions(updatedTx);
     await AsyncStorage.setItem('@transactions', JSON.stringify(updatedTx));
 
-    // 3. Update Wallet Balance
     const updatedWallets = wallets.map(w => {
       if (w.id === walletId) {
         return { ...w, balance: w.balance + amount };
@@ -1220,7 +1297,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    // 1. Update Debts (Partial or Full)
     let updatedDebts;
     let isFullPayment = amount >= debt.amount;
 
@@ -1234,14 +1310,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDebts(updatedDebts);
     await AsyncStorage.setItem('@debts', JSON.stringify(updatedDebts));
 
-    // 2. Add Transaction to History (but don't touch wallets)
     const newTx: TransactionType = {
       id: Date.now().toString(),
       title: `Settled debt to ${debt.personName}`,
       amount: amount,
       date: new Date().toISOString(),
       type: 'withdrawal',
-      walletId: 'external', // Marks it as not affecting any local wallet balance
+      walletId: 'external', 
     };
     const updatedTx = [newTx, ...transactions];
     setTransactions(updatedTx);
@@ -1258,7 +1333,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const calculateStreak = () => {
     if (transactions.length === 0) return 0;
 
-    // Get unique dates in YYYY-MM-DD format
     const uniqueDates = new Set(
       transactions.map(tx => new Date(tx.date).toISOString().split('T')[0])
     );
@@ -1268,7 +1342,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-    // Check if streak is broken (neither today nor yesterday has a transaction)
     if (!uniqueDates.has(todayStr) && !uniqueDates.has(yesterdayStr)) {
       return 0;
     }
@@ -1402,6 +1475,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addSubscription,
         editSubscription,
         deleteSubscription,
+        transferMoney,
       }}
     >
       {children}

@@ -366,10 +366,10 @@ export default function SettingsScreen() {
         title="Set Application PIN"
       >
         <View style={styles.modalContent}>
-          <Text style={styles.pinDesc}>Enter a 4-digit PIN to secure your application. You will be asked for this PIN every time you open Leapon.</Text>
+          <Text style={styles.pinDesc}>Enter a 6-digit PIN to secure your application. You will be asked for this PIN every time you open Leapon.</Text>
 
           <View style={styles.pinVisual}>
-            {[1, 2, 3, 4].map((_, i) => (
+            {[1, 2, 3, 4, 5, 6].map((_, i) => (
               <View key={i} style={[styles.pinCircle, newPin.length > i && styles.pinCircleFilled]} />
             ))}
           </View>
@@ -382,10 +382,10 @@ export default function SettingsScreen() {
                 disabled={k === ''}
                 onPress={() => {
                   if (k === 'DEL') setNewPin(prev => prev.slice(0, -1));
-                  else if (newPin.length < 4) {
+                  else if (newPin.length < 6) {
                     const p = newPin + k;
                     setNewPin(p);
-                    if (p.length === 4) {
+                    if (p.length === 6) {
                       setTimeout(async () => {
                         await setAppPin(p);
                         if (!isSecurityEnabled) await toggleSecurity(true);

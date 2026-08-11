@@ -359,7 +359,11 @@ export default function StatusCardScreen() {
                         <>
                           <View style={styles.travelStoryHeader}>
                             <Text style={[styles.travelStoryName, { color: textColor }]}>{selectedTravel.name}</Text>
-                            <Text style={[styles.travelStoryDate, { color: textColor + '88' }]}>{selectedTravel.startDate} - {selectedTravel.endDate}</Text>
+                            <Text style={[styles.travelStoryDate, { color: textColor + '88' }]}>
+                              {selectedTravel.isSingleDay || selectedTravel.startDate === selectedTravel.endDate
+                                ? selectedTravel.startDate
+                                : `${selectedTravel.startDate} - ${selectedTravel.endDate}`}
+                            </Text>
                           </View>
 
                           <View style={styles.travelStoryImageGrid}>

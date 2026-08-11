@@ -59,11 +59,11 @@ export default function OnboardingScreen() {
     if (key === 'delete') {
       setPin(prev => prev.slice(0, -1));
     } else if (key !== '') {
-      if (pin.length < 4) {
+      if (pin.length < 6) {
         const newPin = pin + key;
         setPin(newPin);
 
-        if (newPin.length === 4) {
+        if (newPin.length === 6) {
           setTimeout(() => {
             checkBiometricsAndProceed();
           }, 300);
@@ -74,7 +74,7 @@ export default function OnboardingScreen() {
 
   const finalizeOnboarding = async (useBiometrics: boolean) => {
     try {
-      if (pin.length === 4) {
+      if (pin.length === 6) {
         await setAppPin(pin);
         await toggleSecurity(true);
       }
@@ -143,10 +143,10 @@ export default function OnboardingScreen() {
                   <Lock size={32} color={colors.primary} />
                 </View>
                 <Text style={styles.titleCenter}>Secure your Vault</Text>
-                <Text style={styles.subtitleCenter}>Create a 4-digit PIN to protect your local financial data.</Text>
+                <Text style={styles.subtitleCenter}>Create a 6-digit PIN to protect your local financial data.</Text>
 
                 <View style={styles.pinContainer}>
-                  {[1, 2, 3, 4].map((_, i) => (
+                  {[1, 2, 3, 4, 5, 6].map((_, i) => (
                     <View
                       key={i}
                       style={[

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Animated, Dimensions, Platform, KeyboardAvoidingView, FlatList, Easing, Keyboard, Image as RNImage } from 'react-native';
 import { theme } from '../theme';
-import { useAppContext } from '../context/AppContext';
+import { useAppContext, DEFAULT_WITHDRAW_PRESETS } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
 import { 
   ChevronLeft, Plus, Utensils, Car, Receipt, Heart, ShoppingBag, 
@@ -128,6 +128,8 @@ export default function WithdrawScreen() {
     );
   };
 
+  const effectivePresets = (withdrawPresets && withdrawPresets.length > 0) ? withdrawPresets : DEFAULT_WITHDRAW_PRESETS;
+
   const renderStep0 = () => {
     const filteredWallets = wallets;
 
@@ -179,6 +181,28 @@ export default function WithdrawScreen() {
           )}
         />
 
+        <Text style={[styles.sectionLabelSmall, { marginTop: 12 }]}>PRESET / REASON (OPTIONAL)</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetSliderContent}>
+          {effectivePresets.map((preset) => {
+            const Icon = ICON_MAP[preset.iconName] || MoreHorizontal;
+            const isSelected = selectedPreset?.id === preset.id;
+            return (
+              <TouchableOpacity
+                key={preset.id}
+                style={[
+                  styles.miniPresetChip,
+                  { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderColor: colors.border },
+                  isSelected && { backgroundColor: colors.primary, borderColor: colors.primary }
+                ]}
+                onPress={() => setSelectedPreset((prev: any) => prev?.id === preset.id ? null : preset)}
+              >
+                <Icon size={14} color={isSelected ? '#ffffff' : colors.text} />
+                <Text style={[styles.miniPresetChipText, { color: isSelected ? '#ffffff' : colors.text }]}>{preset.name}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
         <View style={styles.keypadBottom}>
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, '.', 0, 'DEL'].map((key) => (
               <TouchableOpacity 
@@ -202,10 +226,18 @@ export default function WithdrawScreen() {
         
         <TouchableOpacity 
             style={[styles.expenseBtnFinal, (!amount || !selectedWalletId) && styles.expenseBtnDisabled]}
-            onPress={() => setStep(1)}
+            onPress={() => {
+              if (selectedPreset) {
+                handleExpense();
+              } else {
+                setStep(1);
+              }
+            }}
             disabled={!amount || !selectedWalletId}
           >
-            <Text style={styles.expenseBtnText}>Next: Select Reason</Text>
+            <Text style={styles.expenseBtnText}>
+              {selectedPreset ? `Confirm ${selectedPreset.name} Expense` : 'Next: Select Reason'}
+            </Text>
           </TouchableOpacity>
         <View style={{ height: 30 }} />
       </View>
@@ -214,8 +246,8 @@ export default function WithdrawScreen() {
 
   const renderStep1 = () => {
     const defaultIds = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
-    const defaultPresets = withdrawPresets.filter(p => defaultIds.includes(p.id));
-    const customPresets = withdrawPresets.filter(p => !defaultIds.includes(p.id));
+    const defaultPresets = effectivePresets.filter(p => defaultIds.includes(p.id));
+    const customPresets = effectivePresets.filter(p => !defaultIds.includes(p.id));
 
     return (
       <View style={{ flex: 1 }}>
@@ -759,6 +791,24 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     paddingRight: 20,
     marginBottom: 0,
     paddingVertical: 4,
+  },
+  presetSliderContent: {
+    paddingRight: 20,
+    paddingVertical: 4,
+    gap: 8,
+  },
+  miniPresetChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+  },
+  miniPresetChipText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: rf(12),
   },
   keypadBottom: {
     flexDirection: 'row',

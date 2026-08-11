@@ -49,13 +49,23 @@ export default function SecurityScreen() {
     }
   };
 
+  useEffect(() => {
+    if (isBiometricsEnabled) {
+      // Auto pop-up fingerprint when opening the app
+      const timer = setTimeout(() => {
+        handleBiometrics();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   const handlePress = (key: string) => {
     if (key === 'delete') {
       setPin(prev => prev.slice(0, -1));
       setError(false);
     } else if (key === '') {
     } else {
-      if (pin.length < 4) {
+      if (pin.length < 6) {
         setPin(prev => prev + key);
         setError(false);
       }
@@ -63,7 +73,7 @@ export default function SecurityScreen() {
   };
 
   useEffect(() => {
-    if (pin.length === 4) {
+    if (pin.length === 6) {
       if (pin === appPin) {
         setTimeout(() => unlockApp(), 150);
       } else {
@@ -145,14 +155,14 @@ export default function SecurityScreen() {
                 </View>
                 <View style={styles.choiceTextBox}>
                   <Text style={styles.choiceTitle}>Unlock with PIN</Text>
-                  <Text style={styles.choiceSub}>Enter your 4-digit code</Text>
+                  <Text style={styles.choiceSub}>Enter your 6-digit code</Text>
                 </View>
               </TouchableOpacity>
             </View>
           ) : (
             <>
               <Animated.View style={[styles.pinContainer, { transform: [{ translateX: shakeAnim }] }]}>
-                {[1, 2, 3, 4].map((_, i) => (
+                {[1, 2, 3, 4, 5, 6].map((_, i) => (
                   <View
                     key={i}
                     style={[

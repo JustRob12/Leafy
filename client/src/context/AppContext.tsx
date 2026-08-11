@@ -81,6 +81,7 @@ export type TravelType = {
   expenses: number;
   startDate: string;
   endDate: string;
+  isSingleDay?: boolean;
   images?: string[];
 };
 
@@ -89,6 +90,21 @@ export type WithdrawPresetType = {
   name: string;
   iconName: string;
 };
+
+export const DEFAULT_WITHDRAW_PRESETS: WithdrawPresetType[] = [
+  { id: '1', name: 'Food', iconName: 'Utensils' },
+  { id: '2', name: 'Fare', iconName: 'Car' },
+  { id: '3', name: 'Bills', iconName: 'Receipt' },
+  { id: '4', name: 'Health', iconName: 'Heart' },
+  { id: '5', name: 'Shopping', iconName: 'ShoppingBag' },
+  { id: '6', name: 'Coffee', iconName: 'Coffee' },
+  { id: '7', name: 'Gift', iconName: 'Gift' },
+  { id: '8', name: 'Gaming', iconName: 'Gamepad' },
+  { id: '9', name: 'Travel', iconName: 'Map' },
+  { id: '10', name: 'Music', iconName: 'Music' },
+  { id: '11', name: 'Phone', iconName: 'Smartphone' },
+  { id: '12', name: 'Others', iconName: 'MoreHorizontal' },
+];
 
 export type RecursionType = {
   id: string;
@@ -209,7 +225,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [debts, setDebts] = useState<DebtType[]>([]);
   const [groceryLists, setGroceryLists] = useState<GroceryListType[]>([]);
   const [travels, setTravels] = useState<TravelType[]>([]);
-  const [withdrawPresets, setWithdrawPresets] = useState<WithdrawPresetType[]>([]);
+  const [withdrawPresets, setWithdrawPresets] = useState<WithdrawPresetType[]>(DEFAULT_WITHDRAW_PRESETS);
   const [recursions, setRecursions] = useState<RecursionType[]>([]);
   const [subscriptions, setSubscriptions] = useState<SubscriptionType[]>([]);
   const [userImage, setUserImageState] = useState<string | null>(null);
@@ -280,22 +296,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (storedPresets && JSON.parse(storedPresets).length > 0) {
         setWithdrawPresets(JSON.parse(storedPresets));
       } else {
-        const defaultPresets: WithdrawPresetType[] = [
-          { id: '1', name: 'Food', iconName: 'Utensils' },
-          { id: '2', name: 'Fare', iconName: 'Car' },
-          { id: '3', name: 'Bills', iconName: 'Receipt' },
-          { id: '4', name: 'Health', iconName: 'Heart' },
-          { id: '5', name: 'Shopping', iconName: 'ShoppingBag' },
-          { id: '6', name: 'Coffee', iconName: 'Coffee' },
-          { id: '7', name: 'Gift', iconName: 'Gift' },
-          { id: '8', name: 'Gaming', iconName: 'Gamepad' },
-          { id: '9', name: 'Travel', iconName: 'Map' },
-          { id: '10', name: 'Music', iconName: 'Music' },
-          { id: '11', name: 'Phone', iconName: 'Smartphone' },
-          { id: '12', name: 'Others', iconName: 'MoreHorizontal' },
-        ];
-        setWithdrawPresets(defaultPresets);
-        await AsyncStorage.setItem('@withdrawPresets', JSON.stringify(defaultPresets));
+        setWithdrawPresets(DEFAULT_WITHDRAW_PRESETS);
+        await AsyncStorage.setItem('@withdrawPresets', JSON.stringify(DEFAULT_WITHDRAW_PRESETS));
       }
       if (storedImage) setUserImageState(storedImage);
       const storedStatusBg = await AsyncStorage.getItem('@statusCardBg');

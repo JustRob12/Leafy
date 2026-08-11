@@ -21,6 +21,9 @@ export default function AddTravelScreen({ route }: any) {
   const [tripName, setTripName] = useState(tripToEdit?.name || '');
   const [location, setLocation] = useState(tripToEdit?.location || '');
   const [expenses, setExpenses] = useState(tripToEdit?.expenses ? tripToEdit.expenses.toString() : '');
+  const [isSingleDay, setIsSingleDay] = useState<boolean>(
+    tripToEdit?.isSingleDay ?? (tripToEdit?.startDate === tripToEdit?.endDate)
+  );
   const [startDate, setStartDate] = useState<Date | null>(tripToEdit?.startDate ? new Date(tripToEdit.startDate) : null);
   const [endDate, setEndDate] = useState<Date | null>(tripToEdit?.endDate ? new Date(tripToEdit.endDate) : null);
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -36,25 +39,21 @@ export default function AddTravelScreen({ route }: any) {
 
   const handleAddTravel = async () => {
     const numericExpenses = parseFloat(expenses.replace(/,/g, ''));
-    if (tripName.trim() && location.trim() && !isNaN(numericExpenses) && startDate && endDate) {
+    const finalEndDate = isSingleDay ? startDate : endDate;
+    if (tripName.trim() && location.trim() && !isNaN(numericExpenses) && startDate && finalEndDate) {
+      const travelPayload = {
+        name: tripName.trim(),
+        location: location.trim(),
+        expenses: numericExpenses,
+        startDate: formatDisplayDate(startDate),
+        endDate: formatDisplayDate(finalEndDate),
+        isSingleDay: isSingleDay,
+        images: images,
+      };
       if (tripToEdit) {
-        await editTravel(tripToEdit.id, {
-          name: tripName.trim(),
-          location: location.trim(),
-          expenses: numericExpenses,
-          startDate: formatDisplayDate(startDate),
-          endDate: formatDisplayDate(endDate),
-          images: images,
-        });
+        await editTravel(tripToEdit.id, travelPayload);
       } else {
-        await addTravel({
-          name: tripName.trim(),
-          location: location.trim(),
-          expenses: numericExpenses,
-          startDate: formatDisplayDate(startDate),
-          endDate: formatDisplayDate(endDate),
-          images: images,
-        });
+        await addTravel(travelPayload);
       }
       navigation.goBack();
     }
@@ -66,8 +65,12 @@ export default function AddTravelScreen({ route }: any) {
   };
 
   const handleDateSelect = (date: Date) => {
-    if (pickerMode === 'start') setStartDate(date);
-    else if (pickerMode === 'end') setEndDate(date);
+    if (pickerMode === 'start') {
+      setStartDate(date);
+      if (isSingleDay) setEndDate(date);
+    } else if (pickerMode === 'end') {
+      setEndDate(date);
+    }
     setPickerVisible(false);
   };
 
@@ -75,6 +78,8 @@ export default function AddTravelScreen({ route }: any) {
     if (!date) return '';
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   };
+
+  const isFormValid = tripName.trim() && location.trim() && expenses && startDate && (isSingleDay || endDate);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -99,7 +104,7 @@ export default function AddTravelScreen({ route }: any) {
               <Plane size={18} color={colors.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="e.g., Summer in El Nido"
+                placeholder="e.g., Summer in El Nido or Monthsary Date"
                 placeholderTextColor={colors.textMuted}
                 value={tripName}
                 onChangeText={setTripName}
@@ -132,39 +137,86 @@ export default function AddTravelScreen({ route }: any) {
               />
             </View>
 
-            <View style={styles.rowInputs}>
+            <Text style={styles.inputLabel}>Trip Duration</Text>
+            <View style={styles.durationToggleRow}>
+              <TouchableOpacity
+                style={[
+                  styles.durationChip,
+                  { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc', borderColor: colors.border },
+                  isSingleDay && { backgroundColor: colors.primary, borderColor: colors.primary }
+                ]}
+                onPress={() => {
+                  setIsSingleDay(true);
+                  if (startDate) setEndDate(startDate);
+                }}
+              >
+                <Text style={[styles.durationChipText, { color: colors.text }, isSingleDay && { color: '#ffffff' }]}>
+                  Single Day
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.durationChip,
+                  { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc', borderColor: colors.border },
+                  !isSingleDay && { backgroundColor: colors.primary, borderColor: colors.primary }
+                ]}
+                onPress={() => setIsSingleDay(false)}
+              >
+                <Text style={[styles.durationChipText, { color: colors.text }, !isSingleDay && { color: '#ffffff' }]}>
+                  Multiple Days
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {isSingleDay ? (
               <View style={{ flex: 1 }}>
-                <Text style={styles.inputLabel}>Start Date</Text>
+                <Text style={styles.inputLabel}>Date</Text>
                 <TouchableOpacity 
                   style={styles.inputWrapper}
                   onPress={() => handleOpenPicker('start')}
                 >
                   <Calendar size={18} color={colors.textMuted} style={styles.inputIcon} />
                   <Text style={[styles.dateInputPlaceholder, startDate && { color: colors.text }]}>
-                    {startDate ? formatDisplayDate(startDate) : 'Select Start'}
+                    {startDate ? formatDisplayDate(startDate) : 'Select Date'}
                   </Text>
                 </TouchableOpacity>
               </View>
-              
-              <View style={{ flex: 1 }}>
-                <Text style={styles.inputLabel}>End Date</Text>
-                <TouchableOpacity 
-                  style={styles.inputWrapper}
-                  onPress={() => handleOpenPicker('end')}
-                >
-                  <Calendar size={18} color={colors.textMuted} style={styles.inputIcon} />
-                  <Text style={[styles.dateInputPlaceholder, endDate && { color: colors.text }]}>
-                    {endDate ? formatDisplayDate(endDate) : 'Select End'}
-                  </Text>
-                </TouchableOpacity>
+            ) : (
+              <View style={styles.rowInputs}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Start Date</Text>
+                  <TouchableOpacity 
+                    style={styles.inputWrapper}
+                    onPress={() => handleOpenPicker('start')}
+                  >
+                    <Calendar size={18} color={colors.textMuted} style={styles.inputIcon} />
+                    <Text style={[styles.dateInputPlaceholder, startDate && { color: colors.text }]}>
+                      {startDate ? formatDisplayDate(startDate) : 'Select Start'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>End Date</Text>
+                  <TouchableOpacity 
+                    style={styles.inputWrapper}
+                    onPress={() => handleOpenPicker('end')}
+                  >
+                    <Calendar size={18} color={colors.textMuted} style={styles.inputIcon} />
+                    <Text style={[styles.dateInputPlaceholder, endDate && { color: colors.text }]}>
+                      {endDate ? formatDisplayDate(endDate) : 'Select End'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
+            )}
           </View>
 
           <TouchableOpacity
-            style={[styles.saveBtn, { backgroundColor: colors.primary }, (!tripName.trim() || !location.trim() || !expenses || !startDate || !endDate) && styles.saveBtnDisabled]}
+            style={[styles.saveBtn, { backgroundColor: colors.primary }, !isFormValid && styles.saveBtnDisabled]}
             onPress={handleAddTravel}
-            disabled={!tripName.trim() || !location.trim() || !expenses || !startDate || !endDate}
+            disabled={!isFormValid}
           >
             <Text style={styles.saveBtnText}>
               {tripToEdit ? 'Save Changes' : 'Record Trip'}
@@ -178,7 +230,7 @@ export default function AddTravelScreen({ route }: any) {
         onClose={() => setPickerVisible(false)}
         onSelect={handleDateSelect}
         initialDate={pickerMode === 'start' ? (startDate || undefined) : (endDate || undefined)}
-        title={pickerMode === 'start' ? "Select Start Date" : "Select End Date"}
+        title={isSingleDay ? "Select Date" : (pickerMode === 'start' ? "Select Start Date" : "Select End Date")}
       />
     </SafeAreaView>
   );
@@ -225,6 +277,23 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     color: colors.text,
     marginBottom: 8,
     marginTop: 12,
+  },
+  durationToggleRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 8,
+  },
+  durationChip: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  durationChipText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 14,
   },
   inputWrapper: {
     flexDirection: 'row',

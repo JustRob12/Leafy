@@ -108,8 +108,14 @@ export default function TravelScreen() {
                 <View style={styles.dateInfo}>
                    <Calendar size={14} color={colors.textMuted} />
                    <View>
-                     <Text style={styles.dateText}>{trip.startDate}</Text>
-                     <Text style={styles.dateText}>{trip.endDate}</Text>
+                      {trip.isSingleDay || trip.startDate === trip.endDate ? (
+                        <Text style={styles.dateText}>{trip.startDate}</Text>
+                      ) : (
+                        <>
+                          <Text style={styles.dateText}>{trip.startDate}</Text>
+                          <Text style={styles.dateText}>{trip.endDate}</Text>
+                        </>
+                      )}
                    </View>
                 </View>
                 <View style={styles.expenseInfo}>
@@ -167,7 +173,11 @@ export default function TravelScreen() {
                   <MapPin size={14} color={colors.textMuted} />
                   <Text style={styles.modalLocationText}>{selectedTrip?.location}</Text>
                 </View>
-                <Text style={styles.modalDateText}>{selectedTrip?.startDate} - {selectedTrip?.endDate}</Text>
+                <Text style={styles.modalDateText}>
+                  {selectedTrip?.isSingleDay || selectedTrip?.startDate === selectedTrip?.endDate
+                    ? selectedTrip?.startDate
+                    : `${selectedTrip?.startDate} - ${selectedTrip?.endDate}`}
+                </Text>
               </View>
               <TouchableOpacity style={styles.closeBtn} onPress={() => setModalVisible(false)}>
                 <X size={24} color={colors.text} />

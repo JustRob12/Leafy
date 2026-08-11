@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
 });
 
 const linking = {
-  prefixes: ['leafy://'],
+  prefixes: ['leapon://', 'leafy://'],
   config: {
     screens: {
       Main: {
@@ -240,13 +240,13 @@ function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
             id: 'deposit',
             title: 'Income',
             icon: Platform.OS === 'ios' ? 'symbol:plus.circle.fill' : 'shortcut_add_savings', 
-            params: { href: 'leafy://deposit' }
+            params: { href: 'leapon://deposit' }
           },
           {
             id: 'withdraw',
             title: 'Expense',
             icon: Platform.OS === 'ios' ? 'symbol:arrow.up.right.circle.fill' : 'shortcut_withdraw',
-            params: { href: 'leafy://withdraw' }
+            params: { href: 'leapon://withdraw' }
           }
         ]);
       } catch (e) {

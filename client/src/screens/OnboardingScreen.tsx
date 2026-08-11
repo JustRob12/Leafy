@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Leaf, ArrowRight, Lock, Fingerprint, Delete, ShieldCheck, Key } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import * as LocalAuthentication from 'expo-local-authentication';
-const LogoSource = require('../../assets/leafylogo.png');
+const LogoSource = require('../../assets/icon.png');
 
 export default function OnboardingScreen() {
   const { setUsername, setAppPin, toggleSecurity, toggleBiometrics, colors, isDarkMode } = useAppContext();
@@ -104,7 +104,7 @@ export default function OnboardingScreen() {
                   <View style={styles.iconContainer}>
                     <Image source={LogoSource} style={styles.logoImage} />
                   </View>
-                  <Text style={styles.title}>Welcome to Leafy</Text>
+                  <Text style={styles.title}>Welcome to Leapon</Text>
                   <Text style={styles.subtitle}>Your Invisible Architect for personal finance.</Text>
                 </View>
 
@@ -186,7 +186,7 @@ export default function OnboardingScreen() {
                   <Fingerprint size={38} color={colors.primary} />
                 </View>
                 <Text style={styles.titleCenter}>Enable Biometrics</Text>
-                <Text style={styles.subtitleCenter}>Unlock Leafy faster with your fingerprint or face ID.</Text>
+                <Text style={styles.subtitleCenter}>Unlock Leapon faster with your fingerprint or face ID.</Text>
 
                 <View style={styles.step3Actions}>
                   <TouchableOpacity

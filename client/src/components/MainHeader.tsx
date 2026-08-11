@@ -283,7 +283,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
         {/* Second Row: Greeting and Calendar Date (Right) */}
         <View style={styles.bottomRow}>
           <View style={styles.greetingWrapper}>
-            <Text style={styles.welcomeLabel} numberOfLines={1} adjustsFontSizeToFit>Welcome to Leafy</Text>
+            <Text style={styles.welcomeLabel} numberOfLines={1} adjustsFontSizeToFit>Welcome to Leapon</Text>
             <Text style={styles.greetingSmall} numberOfLines={1} adjustsFontSizeToFit>{username || 'User'}</Text>
             <Text style={styles.timeText} numberOfLines={1}>{fullDate}</Text>
           </View>
@@ -314,7 +314,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
                   </View>
                   <View>
                     <Text style={styles.dropdownUsername}>{username || 'User'}</Text>
-                    <Text style={styles.dropdownUserRole}>Leafy Member</Text>
+                    <Text style={styles.dropdownUserRole}>Leapon Member</Text>
                   </View>
                 </View>
 

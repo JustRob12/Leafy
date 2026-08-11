@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Image } from 'react-native';
 import { theme } from '../theme';
 import { Leaf } from 'lucide-react-native';
-const LogoSource = require('../../assets/leafylogo.png');
+const LogoSource = require('../../assets/icon.png');
 
 import { AppProvider, useAppContext } from '../context/AppContext';
 
@@ -50,7 +50,7 @@ export default function LoadingScreen({ onFinish }: LoadingScreenProps) {
         <View style={styles.iconContainer}>
           <Image source={LogoSource} style={styles.logoImage} />
         </View>
-        <Text style={styles.title}>Leafy</Text>
+        <Text style={styles.title}>Leapon</Text>
         <Text style={styles.subtitle}>Your Invisible Architect</Text>
       </Animated.View>
     </View>

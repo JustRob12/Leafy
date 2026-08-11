@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Leafy",
+    "name": "Leapon",
     "slug": "client",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "leafy",
+    "scheme": "leapon",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -18,7 +18,9 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -26,7 +28,7 @@
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.devrob.leafy",
+      "package": "com.devrob.leapon",
       "softwareKeyboardLayoutMode": "adjustResize"
     },
     "web": {
@@ -53,7 +55,8 @@
       ],
       "expo-notifications",
       "expo-quick-actions",
-      "./withShortcutIcons"
+      "./withShortcutIcons",
+      "expo-audio"
     ],
     "extra": {
       "eas": {

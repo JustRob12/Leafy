@@ -69,14 +69,14 @@ export default function DataTransferScreen() {
       };
 
       const jsonString = JSON.stringify(backupData);
-      const fileUri = cacheDirectory + 'leafy_backup.json';
+      const fileUri = cacheDirectory + 'leapon_backup.json';
 
       await writeAsStringAsync(fileUri, jsonString, { encoding: 'utf8' });
 
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri, {
           mimeType: 'application/json',
-          dialogTitle: 'Export Leafy Data',
+          dialogTitle: 'Export Leapon Data',
           UTI: 'public.json'
         });
       } else {
@@ -165,7 +165,7 @@ export default function DataTransferScreen() {
             </View>
             <View style={styles.cardContent}>
               <Text style={styles.cardTitle}>Export Data File</Text>
-              <Text style={styles.cardSubtitle}>Generate leafy_backup.json</Text>
+              <Text style={styles.cardSubtitle}>Generate leapon_backup.json</Text>
             </View>
           </TouchableOpacity>
         </View>

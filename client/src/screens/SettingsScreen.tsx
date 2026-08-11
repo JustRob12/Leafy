@@ -94,7 +94,7 @@ export default function SettingsScreen() {
       title: 'Support',
       options: [
         { id: '4', title: 'Help & Support', icon: CircleHelp, action: () => { setHelpModalVisible(true); } },
-        { id: '6', title: 'About Leafy', icon: Leaf, action: () => { setAboutModalVisible(true); } },
+        { id: '6', title: 'About Leapon', icon: Leaf, action: () => { setAboutModalVisible(true); } },
       ]
     }
   ];
@@ -240,7 +240,7 @@ export default function SettingsScreen() {
             <Shield size={24} color={theme.colors.primary} style={styles.infoIcon} />
             <Text style={styles.infoTitle}>Data Local Storage</Text>
             <Text style={styles.infoDescription}>
-              Leafy stores all your financial data locally on your device. We do not transmit or store your personal information on any external servers.
+              Leapon stores all your financial data locally on your device. We do not transmit or store your personal information on any external servers.
             </Text>
           </View>
 
@@ -267,7 +267,7 @@ export default function SettingsScreen() {
       >
         <View style={styles.modalContent}>
           <View style={styles.infoSection}>
-            <Text style={styles.infoTitle}>How to use Leafy?</Text>
+            <Text style={styles.infoTitle}>How to use Leapon?</Text>
             <Text style={styles.infoDescription}>
               1. Create Wallets to categorize your funds.{"\n"}
               2. Add Goals to track your savings targets.{"\n"}
@@ -366,7 +366,7 @@ export default function SettingsScreen() {
         title="Set Application PIN"
       >
         <View style={styles.modalContent}>
-          <Text style={styles.pinDesc}>Enter a 4-digit PIN to secure your application. You will be asked for this PIN every time you open Leafy.</Text>
+          <Text style={styles.pinDesc}>Enter a 4-digit PIN to secure your application. You will be asked for this PIN every time you open Leapon.</Text>
 
           <View style={styles.pinVisual}>
             {[1, 2, 3, 4].map((_, i) => (
@@ -495,7 +495,7 @@ export default function SettingsScreen() {
               <Text style={[styles.infoTitle, { fontSize: 16 }]}>How to use:</Text>
               <Text style={styles.infoDescription}>
                 1. Go to your phone's home screen.{"\n"}
-                2. Long-press the Leafy app icon.{"\n"}
+                2. Long-press the Leapon app icon.{"\n"}
                 3. Select "Income" or "Expense".{"\n"}
                 4. (Android) You can drag these items to your home screen as standalone widgets.
               </Text>
@@ -515,19 +515,19 @@ export default function SettingsScreen() {
         </View>
       </ActionSheet>
 
-      {/* About Leafy Modal */}
+      {/* About Leapon Modal */}
       <ActionSheet
         visible={aboutModalVisible}
         onClose={() => setAboutModalVisible(false)}
-        title="About Leafy"
+        title="About Leapon"
       >
         <View style={styles.modalContent}>
           <View style={styles.aboutHeader}>
             <Leaf size={32} color={colors.primary} />
-            <Text style={styles.aboutTitle}>Leafy v1.1.0</Text>
+            <Text style={styles.aboutTitle}>Leapon v1.1.0</Text>
           </View>
           <Text style={styles.aboutDescription}>
-            Leafy is your premium financial companion designed to help you track wallets, set savings goals, manage grocery lists, and plan your travels with ease. Grow your wealth one leaf at a time.
+            Leapon is your premium financial companion designed to help you track wallets, set savings goals, manage grocery lists, and plan your travels with ease. Grow your wealth one leaf at a time.
           </Text>
           <View style={styles.aboutFooter}>
             <Text style={styles.aboutVersion}>Made with ❤️ by Roberto Prisoris together with his Girlfriend Lady Marianne Bauyot</Text>

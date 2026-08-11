@@ -318,7 +318,7 @@ export default function StatusCardScreen() {
                       <View style={styles.heroSection}>
                         <View style={[styles.brandHeader, { justifyContent: 'flex-start', marginBottom: 10 }]}>
                             <Leaf size={20} color={textColor} fill={textColor + '22'} />
-                            <Text style={[styles.brandName, { color: textColor, fontSize: 16 }]}>Leafy</Text>
+                            <Text style={[styles.brandName, { color: textColor, fontSize: 16 }]}>Leapon</Text>
                         </View>
                         <View>
                           <Text style={[styles.greeting, { color: textColor }]}>Hello {username || 'Buddy'},</Text>
@@ -352,7 +352,7 @@ export default function StatusCardScreen() {
                     <View style={styles.travelStoryLayout}>
                       <View style={[styles.brandHeader, { justifyContent: 'flex-start', marginBottom: 20 }]}>
                           <Leaf size={20} color={textColor} fill={textColor + '22'} />
-                          <Text style={[styles.brandName, { color: textColor, fontSize: 16 }]}>Leafy Travel</Text>
+                          <Text style={[styles.brandName, { color: textColor, fontSize: 16 }]}>Leapon Travel</Text>
                       </View>
                       
                       {selectedTravel && (

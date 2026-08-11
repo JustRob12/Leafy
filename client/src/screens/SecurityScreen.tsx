@@ -5,7 +5,7 @@ import { Shield, Fingerprint, Lock, ShieldAlert, CheckCircle2, Leaf, Key } from 
 import { useAppContext } from '../context/AppContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as LocalAuthentication from 'expo-local-authentication';
-const LogoSource = require('../../assets/leafylogo.png');
+const LogoSource = require('../../assets/icon.png');
 
 export default function SecurityScreen() {
   const { appPin, unlockApp, colors, isBiometricsEnabled } = useAppContext();
@@ -36,7 +36,7 @@ export default function SecurityScreen() {
 
     if (hasHardware && isEnrolled) {
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Unlock Leafy',
+        promptMessage: 'Unlock Leapon',
         fallbackLabel: 'Use PIN',
       });
 
@@ -108,7 +108,7 @@ export default function SecurityScreen() {
           <View style={styles.header}>
             <View style={styles.brand}>
               <Image source={LogoSource} style={styles.brandLogo} />
-              <Text style={styles.brandText}>Leafy</Text>
+              <Text style={styles.brandText}>Leapon</Text>
             </View>
             <View style={[styles.iconWrapper, error && styles.iconWrapperError]}>
               <Lock size={28} color={error ? UI_COLORS.error : UI_COLORS.text} />

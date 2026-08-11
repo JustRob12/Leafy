@@ -57,8 +57,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "5e9fc6f5-d01c-4a2c-bd75-6e23e2441f6d"
+        "projectId": "8d5626ba-41c2-466e-a03a-15067934275c"
       }
-    }
+    },
+    "owner": "scheme2"
   }
 }

@@ -2,14 +2,14 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image as RNImage, Modal, Dimensions } from 'react-native';
 import { theme } from '../theme';
 import { Plus, Wallet as WalletIcon, MoreHorizontal, QrCode, X, ChevronUp, ChevronDown, User, AlertTriangle, ShoppingBag, Plane, Eye, EyeOff } from 'lucide-react-native';
-import { useAppContext, WalletCategory } from '../context/AppContext';
+import { useAppContext, WalletCategory, getWalletTotalBalanceInPhp } from '../context/AppContext';
 import { useNavigation, useRoute, useScrollToTop } from '@react-navigation/native';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 
 export default function WalletsScreen() {
   const [selectedWalletDetail, setSelectedWalletDetail] = useState<any | null>(null);
   const [showBalances, setShowBalances] = useState(true);
-  const { wallets, colors, isDarkMode } = useAppContext();
+  const { wallets, colors, isDarkMode, usdToPhpRate } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const { handleScroll } = useScrollHideTabBar();
 
@@ -130,19 +130,31 @@ export default function WalletsScreen() {
                           </View>
 
                           <View style={styles.cardBody}>
-                            <Text 
-                              style={[
-                                styles.cardBalanceText, 
-                                wallet.balance >= 1000000 ? { fontSize: 13 } : wallet.balance >= 100000 ? { fontSize: 15 } : {}
-                              ]} 
-                              numberOfLines={1} 
-                              adjustsFontSizeToFit
-                            >
-                              {showBalances 
-                                ? `₱${wallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                : '₱*****'
-                              }
-                            </Text>
+                            {(() => {
+                              const walletTotalPhp = getWalletTotalBalanceInPhp(wallet, usdToPhpRate);
+                              return (
+                                <>
+                                  <Text 
+                                    style={[
+                                      styles.cardBalanceText, 
+                                      walletTotalPhp >= 1000000 ? { fontSize: 13 } : walletTotalPhp >= 100000 ? { fontSize: 15 } : {}
+                                    ]} 
+                                    numberOfLines={1} 
+                                    adjustsFontSizeToFit
+                                  >
+                                    {showBalances 
+                                      ? `₱${walletTotalPhp.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                      : '₱*****'
+                                    }
+                                  </Text>
+                                  {showBalances && (wallet.usdBalance || 0) > 0 && (
+                                    <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: 'rgba(255, 255, 255, 0.85)', marginTop: 2 }}>
+                                      Includes ${(wallet.usdBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                                    </Text>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </View>
 
                           <View style={styles.cardFooter}>

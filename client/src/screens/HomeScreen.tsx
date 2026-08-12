@@ -7,7 +7,7 @@ import { AudioPlayer, createAudioPlayer } from 'expo-audio';
 
 import { theme } from '../theme';
 import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane, RefreshCw, Leaf, Eye, EyeOff, CreditCard, Coins, Sparkles, ArrowRightLeft, TrendingUp } from 'lucide-react-native';
-import { useAppContext } from '../context/AppContext';
+import { useAppContext, getTransactionAmountInPhp } from '../context/AppContext';
 import { useNavigation, useScrollToTop } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 import WalletDropdown from '../components/WalletDropdown';
@@ -40,13 +40,14 @@ const ICON_MAP: { [key: string]: any } = {
   Receipt: LucideIcons.Receipt,
   Heart: LucideIcons.Heart,
   ShoppingBag: LucideIcons.ShoppingBag,
-  MoreHorizontal: LucideIcons.MoreHorizontal,
   Coffee: LucideIcons.Coffee,
-  Home: LucideIcons.Home,
   Gift: LucideIcons.Gift,
-  Smartphone: LucideIcons.Smartphone,
-  Gamepad: LucideIcons.Gamepad,
+  Gamepad: LucideIcons.Gamepad2,
+  Phone: LucideIcons.Smartphone,
+  MoreHorizontal: LucideIcons.MoreHorizontal,
+  Home: LucideIcons.Home,
   Briefcase: LucideIcons.Briefcase,
+  Book: LucideIcons.BookOpen,
   Camera: LucideIcons.Camera,
   Film: LucideIcons.Film,
   Music: LucideIcons.Music,
@@ -57,7 +58,7 @@ const ICON_MAP: { [key: string]: any } = {
 
 
 export default function HomeScreen() {
-  const { totalBalance, totalReceivables, totalDebts, wallets, debts, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode, treeType, isTutorialActive, stopTutorial, groceryLists, subscriptions, recursions } = useAppContext();
+  const { totalBalance, totalReceivables, totalDebts, wallets, debts, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode, treeType, isTutorialActive, stopTutorial, groceryLists, subscriptions, recursions, usdToPhpRate } = useAppContext();
 
   const navigation = useNavigation<any>();
   const { handleScroll } = useScrollHideTabBar();
@@ -367,7 +368,7 @@ export default function HomeScreen() {
 
   const monthlySpent = transactions
     .filter(t => t.type === 'withdrawal')
-    .reduce((acc, curr) => acc + curr.amount, 0);
+    .reduce((acc, curr) => acc + getTransactionAmountInPhp(curr, usdToPhpRate), 0);
 
   const getThemeDecorIcon = (size: number, rotation: string) => {
     const iconProps = { size, color: "#ffffff", opacity: 0.3, style: { transform: [{ rotate: rotation }] } as any };
@@ -438,11 +439,18 @@ export default function HomeScreen() {
           {isBalanceHidden ? (
             <Text style={styles.premiumAmount}>₱ ******</Text>
           ) : (
-            <AnimatedCounter
-              value={totalBalance}
-              style={styles.premiumAmount}
-              shouldAnimate={totalBalance < 1000000}
-            />
+            <>
+              <AnimatedCounter
+                value={totalBalance}
+                style={styles.premiumAmount}
+                shouldAnimate={totalBalance < 1000000}
+              />
+              {wallets.reduce((sum, w) => sum + (w.usdBalance || 0), 0) > 0 && (
+                <Text style={{ fontFamily: theme.fonts.medium, fontSize: 12, color: 'rgba(255, 255, 255, 0.85)', marginTop: 4 }}>
+                  Includes ${wallets.reduce((sum, w) => sum + (w.usdBalance || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD (1 USD = ₱{usdToPhpRate.toFixed(2)})
+                </Text>
+              )}
+            </>
           )}
 
 
@@ -660,6 +668,10 @@ export default function HomeScreen() {
           ) : (
             transactions.slice(0, 4).map(tx => {
               const isDeposit = tx.type === 'deposit';
+              const symbol = tx.currency === 'USD' ? '$' : '₱';
+              const formattedAmt = tx.amount.toLocaleString(tx.currency === 'USD' ? 'en-US' : 'en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              const phpEquiv = tx.currency === 'USD' ? ` (≈ ₱${(tx.amount * usdToPhpRate).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : '';
+
               return (
                 <View key={tx.id} style={styles.txItem}>
                   <View style={styles.txLeft}>
@@ -667,7 +679,7 @@ export default function HomeScreen() {
                       <Text style={styles.txTitle} numberOfLines={2}>{tx.title}</Text>
                       <Text style={styles.txDate}>{formatTxDate(tx.date)}</Text>
                       <Text style={[isDeposit ? styles.txAmountPositive : styles.txAmountNegative, { marginTop: 4 }]}>
-                        {isBalanceHidden ? "₱ ******" : `${isDeposit ? '+' : '-'}₱${tx.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        {isBalanceHidden ? `${symbol} ******` : `${isDeposit ? '+' : '-'}${symbol}${formattedAmt}${phpEquiv}`}
                       </Text>
                     </View>
                   </View>

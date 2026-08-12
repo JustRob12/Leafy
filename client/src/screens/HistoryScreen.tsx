@@ -39,7 +39,7 @@ const ICON_MAP: { [key: string]: any } = {
 };
 
 export default function HistoryScreen() {
-  const { transactions, deleteTransaction, showConfirm, showFeedback, colors, isDarkMode, wallets } = useAppContext();
+  const { transactions, deleteTransaction, showConfirm, showFeedback, colors, isDarkMode, wallets, usdToPhpRate } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const { handleScroll } = useScrollHideTabBar();
   const scrollViewRef = React.useRef<ScrollView>(null);
@@ -178,6 +178,10 @@ export default function HistoryScreen() {
         ) : (
           filteredTransactions.map(tx => {
             const isDeposit = tx.type === 'deposit';
+            const symbol = tx.currency === 'USD' ? '$' : '₱';
+            const formattedAmt = tx.amount.toLocaleString(tx.currency === 'USD' ? 'en-US' : 'en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const phpEquiv = tx.currency === 'USD' ? ` (≈ ₱${(tx.amount * usdToPhpRate).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : '';
+
             return (
               <View key={tx.id} style={styles.txItem}>
                 <View style={styles.txLeft}>
@@ -193,7 +197,7 @@ export default function HistoryScreen() {
                     <Text style={styles.txTitle} numberOfLines={2}>{tx.title}</Text>
                     <Text style={styles.txDate}>{formatTxDate(tx.date)}</Text>
                     <Text style={[isDeposit ? styles.txAmountPositive : styles.txAmountNegative, { marginTop: 4 }]}>
-                      {isDeposit ? '+' : '-'}₱{tx.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {isDeposit ? '+' : '-'}{symbol}{formattedAmt}{phpEquiv}
                     </Text>
                   </View>
                 </View>

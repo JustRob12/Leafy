@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
-import { ChevronLeft, Edit2, QrCode, CreditCard, PieChart, TrendingUp, Tag, X } from 'lucide-react-native';
-import { useAppContext } from '../context/AppContext';
+import { ChevronLeft, Edit2, QrCode, CreditCard, PieChart, TrendingUp, Tag, X, Coins } from 'lucide-react-native';
+import { useAppContext, getWalletTotalBalanceInPhp } from '../context/AppContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -11,7 +11,7 @@ const scale = SCREEN_WIDTH / 375;
 const rf = (size: number) => Math.round(size * scale);
 
 export default function WalletDetailScreen() {
-  const { wallets, colors, isDarkMode } = useAppContext();
+  const { wallets, colors, isDarkMode, usdToPhpRate } = useAppContext();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const initialWallet = route.params?.wallet;
@@ -20,6 +20,8 @@ export default function WalletDetailScreen() {
   const wallet = wallets.find(w => w.id === initialWallet?.id) || initialWallet;
 
   if (!wallet) return null;
+
+  const totalPhp = getWalletTotalBalanceInPhp(wallet, usdToPhpRate);
 
   const handleEdit = () => {
     navigation.navigate('AddWallet', { wallet });
@@ -51,10 +53,53 @@ export default function WalletDetailScreen() {
                 <View style={styles.identityPill}>
                     <Text style={styles.identityPillText}>{wallet.category || 'Personal'}</Text>
                 </View>
-                <Text style={styles.identityBalance}>
-                    ₱{wallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                </Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.identityBalance}>
+                      ₱{totalPhp.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                  </Text>
+                  {(wallet.usdBalance || 0) > 0 && (
+                    <Text style={{ fontFamily: theme.fonts.medium, fontSize: rf(11), color: 'rgba(255, 255, 255, 0.85)' }}>
+                      Includes ${(wallet.usdBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
+                    </Text>
+                  )}
+                </View>
             </View>
+        </View>
+
+        {/* Separate Currency Holdings Cards / Divs */}
+        <View style={[styles.section, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc' }]}>
+          <View style={styles.sectionHeader}>
+            <Coins size={18} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Currency Balances</Text>
+          </View>
+
+          <View style={styles.currencyBreakdownGrid}>
+            {/* Peso Balance Card */}
+            <View style={[styles.currencyBreakdownCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.currencyCardTop}>
+                <Text style={styles.currencyFlagIcon}>🇵🇭</Text>
+                <Text style={[styles.currencyCardTitle, { color: colors.textMuted }]}>Peso (PHP)</Text>
+              </View>
+              <Text style={[styles.currencyCardMainVal, { color: colors.text }]}>
+                ₱{(wallet.balance || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Text>
+              <Text style={[styles.currencyCardSub, { color: colors.textMuted }]}>Standard Balance</Text>
+            </View>
+
+            {/* Dollar Balance Card (Displayed if dollar income exists or > 0) */}
+            <View style={[styles.currencyBreakdownCard, { backgroundColor: colors.card, borderColor: (wallet.usdBalance || 0) > 0 ? colors.primary : colors.border }]}>
+              <View style={styles.currencyCardTop}>
+                <Text style={styles.currencyFlagIcon}>🇺🇸</Text>
+                <Text style={[styles.currencyCardTitle, { color: (wallet.usdBalance || 0) > 0 ? colors.primary : colors.textMuted }]}>Dollar (USD)</Text>
+              </View>
+              <Text style={[styles.currencyCardMainVal, { color: (wallet.usdBalance || 0) > 0 ? colors.primary : colors.text }]}>
+                ${(wallet.usdBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Text>
+              <Text style={[styles.currencyCardSub, { color: colors.textMuted }]}>
+                ≈ ₱{((wallet.usdBalance || 0) * usdToPhpRate).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* QR Code Section */}
@@ -83,8 +128,8 @@ export default function WalletDetailScreen() {
         <View style={styles.infoGrid}>
           <DetailItem 
             icon={<CreditCard size={18} color={colors.primary} />}
-            label="Current Balance"
-            value={`₱${wallet.balance.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
+            label="Total Balance (PHP)"
+            value={`₱${totalPhp.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
             colors={colors}
           />
           <DetailItem 
@@ -340,5 +385,37 @@ const styles = StyleSheet.create({
     fontSize: rf(14),
     color: 'rgba(255, 255, 255, 0.7)',
     marginTop: 24,
+  },
+  currencyBreakdownGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  currencyBreakdownCard: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1.5,
+  },
+  currencyCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  currencyFlagIcon: {
+    fontSize: rf(14),
+  },
+  currencyCardTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(12),
+  },
+  currencyCardMainVal: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(17),
+    marginBottom: 4,
+  },
+  currencyCardSub: {
+    fontFamily: theme.fonts.medium,
+    fontSize: rf(11),
   },
 });

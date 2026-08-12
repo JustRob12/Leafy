@@ -20,12 +20,13 @@ const BRAND_LOGOS: { [key: string]: any } = {
 };
 
 export default function DepositScreen() {
-  const { colors, isDarkMode, wallets, addTransaction, showFeedback } = useAppContext();
+  const { colors, isDarkMode, wallets, addTransaction, showFeedback, usdToPhpRate } = useAppContext();
   const navigation = useNavigation<any>();
   const styles = getStyles(colors, isDarkMode);
 
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState<'PHP' | 'USD'>('PHP');
   
   const searchInputRef = useRef<TextInput>(null);
 
@@ -42,8 +43,10 @@ export default function DepositScreen() {
     }
 
     await addTransaction({
-      title: 'Added Income',
+      title: `Added Income (${currency})`,
       amount: numericAmount,
+      currency,
+      exchangeRate: currency === 'USD' ? usdToPhpRate : 1,
       type: 'deposit',
       walletId: selectedWalletId
     });
@@ -58,6 +61,8 @@ export default function DepositScreen() {
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     return parts.join('.');
   };
+
+  const numericAmount = parseFloat(amount) || 0;
 
   return (
     <View style={styles.container}>
@@ -85,13 +90,44 @@ export default function DepositScreen() {
           </View>
         ) : (
           <>
+            {/* Currency Selector Pill */}
+            <View style={styles.currencyToggleContainer}>
+              <TouchableOpacity
+                style={[styles.currencyPill, currency === 'PHP' && styles.currencyPillActive]}
+                onPress={() => setCurrency('PHP')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.currencyFlag}>🇵🇭</Text>
+                <Text style={[styles.currencyPillText, currency === 'PHP' && styles.currencyPillTextActive]}>PHP (₱)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.currencyPill, currency === 'USD' && styles.currencyPillActive]}
+                onPress={() => setCurrency('USD')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.currencyFlag}>🇺🇸</Text>
+                <Text style={[styles.currencyPillText, currency === 'USD' && styles.currencyPillTextActive]}>USD ($)</Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.amountDisplayWrapperCompact}>
-              <Text style={styles.currencyPrefixCompact}>₱</Text>
+              <Text style={styles.currencyPrefixCompact}>{currency === 'USD' ? '$' : '₱'}</Text>
               <Text style={[styles.amountTextCompact, !amount && { color: colors.textMuted + '44' }]}>
                 {formatDisplayAmount(amount)}
               </Text>
             </View>
 
+            {currency === 'USD' && (
+              <View style={styles.conversionHintWrapper}>
+                <Text style={styles.conversionHintText}>
+                  {numericAmount > 0 
+                    ? `≈ ₱${(numericAmount * usdToPhpRate).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : `1 USD = ₱${usdToPhpRate.toFixed(2)}`
+                  }
+                </Text>
+                <Text style={styles.conversionRateSubtext}>Rate updated daily from ECB</Text>
+              </View>
+            )}
 
             <FlatList 
               data={filteredWallets}
@@ -125,7 +161,7 @@ export default function DepositScreen() {
                     {wallet.name}
                   </Text>
                   <Text style={[styles.miniWalletBalance, { color: 'rgba(255, 255, 255, 0.8)' }]} numberOfLines={1}>
-                    ₱{Math.floor(wallet.balance).toLocaleString()}
+                    ₱{Math.floor((wallet.balance || 0) + ((wallet.usdBalance || 0) * usdToPhpRate)).toLocaleString()}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -156,7 +192,7 @@ export default function DepositScreen() {
                 onPress={handleIncome}
                 disabled={!amount || !selectedWalletId}
               >
-                <Text style={styles.incomeBtnText}>Confirm Income</Text>
+                <Text style={styles.incomeBtnText}>Confirm Income ({currency})</Text>
               </TouchableOpacity>
           </>
         )}
@@ -373,5 +409,57 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     width: 18,
     height: 18,
     resizeMode: 'contain',
+  },
+  currencyToggleContainer: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+    borderRadius: 25,
+    padding: 4,
+    marginBottom: 8,
+    gap: 4,
+  },
+  currencyPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  currencyPillActive: {
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  currencyFlag: {
+    fontSize: rf(14),
+  },
+  currencyPillText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(13),
+    color: colors.textMuted,
+  },
+  currencyPillTextActive: {
+    color: '#ffffff',
+  },
+  conversionHintWrapper: {
+    alignItems: 'center',
+    marginTop: -12,
+    marginBottom: 16,
+  },
+  conversionHintText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(15),
+    color: colors.primary,
+  },
+  conversionRateSubtext: {
+    fontFamily: theme.fonts.medium,
+    fontSize: rf(11),
+    color: colors.textMuted,
+    marginTop: 2,
   },
 });

@@ -93,7 +93,7 @@ export default function AddTravelScreen({ route }: any) {
         <View style={{ width: 40 }} />
       </View>
 
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
@@ -104,7 +104,7 @@ export default function AddTravelScreen({ route }: any) {
               <Plane size={18} color={colors.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="e.g., Summer in El Nido or Monthsary Date"
+                placeholder="e.g., Vacation, Date"
                 placeholderTextColor={colors.textMuted}
                 value={tripName}
                 onChangeText={setTripName}
@@ -172,7 +172,7 @@ export default function AddTravelScreen({ route }: any) {
             {isSingleDay ? (
               <View style={{ flex: 1 }}>
                 <Text style={styles.inputLabel}>Date</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.inputWrapper}
                   onPress={() => handleOpenPicker('start')}
                 >
@@ -186,7 +186,7 @@ export default function AddTravelScreen({ route }: any) {
               <View style={styles.rowInputs}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.inputLabel}>Start Date</Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.inputWrapper}
                     onPress={() => handleOpenPicker('start')}
                   >
@@ -196,10 +196,10 @@ export default function AddTravelScreen({ route }: any) {
                     </Text>
                   </TouchableOpacity>
                 </View>
-                
+
                 <View style={{ flex: 1 }}>
                   <Text style={styles.inputLabel}>End Date</Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.inputWrapper}
                     onPress={() => handleOpenPicker('end')}
                   >

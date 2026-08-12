@@ -10,7 +10,8 @@ export type WalletType = {
   id: string;
   name: string;
   purpose: string;
-  balance: number;
+  balance: number; // PHP balance
+  usdBalance?: number; // USD balance
   qrCodeImage?: string;
   iconType?: 'purpose' | 'preset' | 'custom';
   presetLogo?: string;
@@ -25,11 +26,26 @@ export type TransactionType = {
   id: string;
   title: string;
   amount: number;
+  currency?: 'PHP' | 'USD';
+  exchangeRate?: number;
   date: string;
   type: 'deposit' | 'withdrawal';
   walletId: string;
   icon?: string; // Optional icon name for withdrawals
   category?: 'transfer' | 'expense' | 'income' | 'interest';
+};
+
+export const getTransactionAmountInPhp = (tx: TransactionType, usdRate: number): number => {
+  if (tx.currency === 'USD') {
+    return tx.amount * usdRate;
+  }
+  return tx.amount;
+};
+
+export const getWalletTotalBalanceInPhp = (wallet: WalletType, usdRate: number): number => {
+  const phpBal = wallet.balance || 0;
+  const usdBal = (wallet.usdBalance || 0) * usdRate;
+  return phpBal + usdBal;
 };
 
 export type GoalType = {
@@ -210,6 +226,9 @@ type AppContextType = {
   editSubscription: (id: string, updates: Partial<Omit<SubscriptionType, 'id' | 'date'>>) => Promise<void>;
   deleteSubscription: (id: string) => Promise<void>;
   transferMoney: (fromWalletId: string, toWalletId: string, amount: number, tax?: number) => Promise<void>;
+  usdToPhpRate: number;
+  usdToPhpRateDate: string | null;
+  refreshUsdToPhpRate: () => Promise<void>;
 };
 
 
@@ -250,7 +269,72 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [isTutorialActive, setIsTutorialActive] = useState(false);
   const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(true);
+  const [usdToPhpRate, setUsdToPhpRate] = useState<number>(58.50);
+  const [usdToPhpRateDate, setUsdToPhpRateDate] = useState<string | null>(null);
 
+  const fetchWithTimeout = async (url: string, ms = 3000) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), ms);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (e) {
+      clearTimeout(timeoutId);
+      throw e;
+    }
+  };
+
+  const fetchUsdToPhpRate = async (): Promise<number> => {
+    try {
+      const response = await fetchWithTimeout('https://api.frankfurter.app/latest?from=USD&to=PHP', 3000);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.rates && data.rates.PHP) {
+          const rate = Number(data.rates.PHP);
+          setUsdToPhpRate(rate);
+          setUsdToPhpRateDate(data.date || new Date().toISOString());
+          await AsyncStorage.setItem('@usdToPhpRate', String(rate));
+          await AsyncStorage.setItem('@usdToPhpRateDate', data.date || new Date().toISOString());
+          return rate;
+        }
+      }
+    } catch (e) {
+      // Fast fallback if offline or API unavailable
+    }
+
+    try {
+      const response = await fetchWithTimeout('https://open.er-api.com/v6/latest/USD', 3000);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.rates && data.rates.PHP) {
+          const rate = Number(data.rates.PHP);
+          setUsdToPhpRate(rate);
+          setUsdToPhpRateDate(new Date().toISOString());
+          await AsyncStorage.setItem('@usdToPhpRate', String(rate));
+          await AsyncStorage.setItem('@usdToPhpRateDate', new Date().toISOString());
+          return rate;
+        }
+      }
+    } catch (e) {
+      // Fast fallback if offline or API unavailable
+    }
+
+    const storedRate = await AsyncStorage.getItem('@usdToPhpRate');
+    if (storedRate) {
+      const parsed = parseFloat(storedRate);
+      if (!isNaN(parsed) && parsed > 0) {
+        setUsdToPhpRate(parsed);
+        return parsed;
+      }
+    }
+
+    return 58.50;
+  };
+
+  const refreshUsdToPhpRate = async () => {
+    await fetchUsdToPhpRate();
+  };
 
   useEffect(() => {
     loadData();
@@ -332,6 +416,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (storedTreeType !== null) {
         setTreeTypeState(storedTreeType as TreeType);
       }
+
+      const storedUsdRate = await AsyncStorage.getItem('@usdToPhpRate');
+      const storedUsdRateDate = await AsyncStorage.getItem('@usdToPhpRateDate');
+      if (storedUsdRate) setUsdToPhpRate(parseFloat(storedUsdRate));
+      if (storedUsdRateDate) setUsdToPhpRateDate(storedUsdRateDate);
+      fetchUsdToPhpRate();
     } catch (e) {
       console.error('Failed to load data', e);
     } finally {
@@ -548,8 +638,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addTransaction = async (txData: Omit<TransactionType, 'id' | 'date'>) => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 800));
+    const txCurrency = txData.currency || 'PHP';
     const newTx: TransactionType = {
       ...txData,
+      currency: txCurrency,
+      exchangeRate: txCurrency === 'USD' ? usdToPhpRate : 1,
       id: Date.now().toString(),
       date: new Date().toISOString(),
     };
@@ -562,23 +655,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const updatedWallets = wallets.map(w => {
       if (w.id === txData.walletId) {
-        const oldBalance = w.balance;
-        const newBalance = w.balance + (txData.type === 'deposit' ? txData.amount : -txData.amount);
+        const oldPhpTotal = getWalletTotalBalanceInPhp(w, usdToPhpRate);
+        let updatedWallet = { ...w };
+
+        if (txCurrency === 'USD') {
+          const currentUsd = w.usdBalance || 0;
+          const delta = txData.type === 'deposit' ? txData.amount : -txData.amount;
+          updatedWallet.usdBalance = Math.max(0, currentUsd + delta);
+        } else {
+          const currentPhp = w.balance || 0;
+          const delta = txData.type === 'deposit' ? txData.amount : -txData.amount;
+          updatedWallet.balance = currentPhp + delta;
+        }
+
+        const newPhpTotal = getWalletTotalBalanceInPhp(updatedWallet, usdToPhpRate);
         
         if (txData.type === 'deposit') {
           const associatedGoals = goals.filter(g => g.walletId === w.id);
           for (const goal of associatedGoals) {
-            if (oldBalance < goal.targetAmount && newBalance >= goal.targetAmount) {
+            if (oldPhpTotal < goal.targetAmount && newPhpTotal >= goal.targetAmount) {
               completedGoalTitle = goal.title;
               break; 
             }
           }
         }
 
-        return {
-          ...w,
-          balance: newBalance
-        };
+        return updatedWallet;
       }
       return w;
     });
@@ -692,12 +794,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteRecursion = async (id: string) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     const updated = recursions.filter(r => r.id !== id);
     setRecursions(updated);
     await AsyncStorage.setItem('@recursions', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('delete', 'Recursion Removed');
   };
 
@@ -779,12 +878,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteSubscription = async (id: string) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     const updated = subscriptions.filter(s => s.id !== id);
     setSubscriptions(updated);
     await AsyncStorage.setItem('@subscriptions', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('delete', 'Subscription Removed');
   };
 
@@ -890,51 +986,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteWallet = async (id: string) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     const updated = wallets.filter(w => w.id !== id);
     setWallets(updated);
     await AsyncStorage.setItem('@wallets', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('delete', 'Wallet Removed');
   };
 
   const deleteGoal = async (id: string) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     const updated = goals.filter(g => g.id !== id);
     setGoals(updated);
     await AsyncStorage.setItem('@goals', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('delete', 'Goal Removed');
   };
 
   const deleteReceivable = async (id: string) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     const updated = receivables.filter(r => r.id !== id);
     setReceivables(updated);
     await AsyncStorage.setItem('@receivables', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('delete', 'Removed from Receivables');
   };
 
   const deleteDebt = async (id: string) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     const updated = debts.filter(d => d.id !== id);
     setDebts(updated);
     await AsyncStorage.setItem('@debts', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('delete', 'Debt Cleared');
   };
 
   const deleteTransaction = async (id: string) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     const txToDelete = transactions.find(t => t.id === id);
     if (!txToDelete) {
-      setLoading(false);
       return;
     }
 
@@ -944,16 +1025,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const updatedWallets = wallets.map(w => {
       if (w.id === txToDelete.walletId) {
-        return {
-          ...w,
-          balance: w.balance + (txToDelete.type === 'deposit' ? -txToDelete.amount : txToDelete.amount)
-        };
+        if (txToDelete.currency === 'USD') {
+          const currentUsd = w.usdBalance || 0;
+          const delta = txToDelete.type === 'deposit' ? -txToDelete.amount : txToDelete.amount;
+          return {
+            ...w,
+            usdBalance: Math.max(0, currentUsd + delta)
+          };
+        } else {
+          const currentPhp = w.balance || 0;
+          const delta = txToDelete.type === 'deposit' ? -txToDelete.amount : txToDelete.amount;
+          return {
+            ...w,
+            balance: currentPhp + delta
+          };
+        }
       }
       return w;
     });
     setWallets(updatedWallets);
     await AsyncStorage.setItem('@wallets', JSON.stringify(updatedWallets));
-    setLoading(false);
   };
 
   const clearData = async () => {
@@ -1330,7 +1421,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const totalReceivables = receivables.reduce((acc, r) => acc + r.amount, 0);
   const totalDebts = debts.reduce((acc, d) => acc + d.amount, 0);
-  const totalBalance = wallets.reduce((acc, wallet) => acc + wallet.balance, 0);
+  const totalBalance = wallets.reduce((acc, wallet) => acc + getWalletTotalBalanceInPhp(wallet, usdToPhpRate), 0);
 
   const calculateStreak = () => {
     if (transactions.length === 0) return 0;
@@ -1478,6 +1569,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         editSubscription,
         deleteSubscription,
         transferMoney,
+        usdToPhpRate,
+        usdToPhpRateDate,
+        refreshUsdToPhpRate,
       }}
     >
       {children}

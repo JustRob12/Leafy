@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Animated, TouchableOpacity, Text } from 'react-native';
+import { View, Animated, TouchableOpacity, Text, Platform } from 'react-native';
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Home, Wallet, Target, Clock } from 'lucide-react-native';
 import { theme } from '../theme';
@@ -23,8 +23,7 @@ interface CustomTabBarProps extends BottomTabBarProps {
 const CustomTabBar = ({ state, descriptors, navigation, colors, isDarkMode }: CustomTabBarProps) => {
   const [containerWidth, setContainerWidth] = React.useState(0);
   const translateX = React.useRef(new Animated.Value(0)).current;
-  const insets = useSafeAreaInsets();
-  const tabWidth = containerWidth / state.routes.length;
+  const tabWidth = containerWidth > 0 ? containerWidth / state.routes.length : 0;
 
   React.useEffect(() => {
     if (tabWidth > 0) {
@@ -42,44 +41,41 @@ const CustomTabBar = ({ state, descriptors, navigation, colors, isDarkMode }: Cu
       onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
       style={{ 
         flexDirection: 'row', 
-        height: 70 + (insets.bottom > 0 ? insets.bottom - 10 : 0), 
+        height: 64, 
         alignItems: 'center',
-        paddingBottom: insets.bottom > 0 ? insets.bottom : 5,
+        borderRadius: 32,
+        overflow: 'hidden',
+        position: 'relative',
       }}
     >
-      {/* Solid green bar across the entire top */}
-      <View style={{ 
-        position: 'absolute', 
-        top: 0, 
-        left: 0, 
-        right: 0, 
-        height: 4, 
-        backgroundColor: colors.primary,
-        zIndex: 1
-      }} />
-
-      {/* Indicator Layer (Animated Dip) */}
-      <Animated.View
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: tabWidth,
-          height: '100%',
-          alignItems: 'center',
-          transform: [{ translateX }],
-          zIndex: 2,
-        }}
-      >
-        {/* The "Dip" background blob */}
-        <View style={{ 
-          width: 65, 
-          height: 56, 
-          backgroundColor: colors.primary, 
-          borderBottomLeftRadius: 16, 
-          borderBottomRightRadius: 16,
-        }} />
-      </Animated.View>
+      {/* Animated Floating Active Pill Indicator */}
+      {tabWidth > 0 && (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: 7,
+            left: 0,
+            width: tabWidth,
+            height: 50,
+            alignItems: 'center',
+            justifyContent: 'center',
+            transform: [{ translateX }],
+            zIndex: 1,
+          }}
+        >
+          <View style={{ 
+            width: Math.min(72, tabWidth - 8), 
+            height: 48, 
+            backgroundColor: colors.primary, 
+            borderRadius: 24,
+            shadowColor: colors.primary,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.35,
+            shadowRadius: 8,
+            elevation: 6,
+          }} />
+        </Animated.View>
+      )}
 
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
@@ -98,19 +94,21 @@ const CustomTabBar = ({ state, descriptors, navigation, colors, isDarkMode }: Cu
             key={route.key}
             onPress={onPress}
             activeOpacity={0.8}
-            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', zIndex: 10 }}
+            style={{ flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}
           >
-            <View style={{ height: 30, justifyContent: 'center' }}>
-              {Icon && Icon({ color: isFocused ? '#FFF' : colors.textMuted, size: 20, focused: isFocused })}
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ height: 22, justifyContent: 'center' }}>
+                {Icon && Icon({ color: isFocused ? '#FFFFFF' : colors.textMuted, size: 20, focused: isFocused })}
+              </View>
+              <Text style={{ 
+                color: isFocused ? '#FFFFFF' : colors.textMuted, 
+                fontSize: 10,
+                fontFamily: isFocused ? theme.fonts.bold : theme.fonts.medium,
+                marginTop: 2,
+              }}>
+                {route.name}
+              </Text>
             </View>
-            <Text style={{ 
-              color: isFocused ? '#FFF' : colors.textMuted, 
-              fontSize: 9,
-              fontFamily: theme.fonts.medium,
-              marginTop: 1,
-            }}>
-              {route.name}
-            </Text>
           </TouchableOpacity>
         );
       })}
@@ -120,6 +118,11 @@ const CustomTabBar = ({ state, descriptors, navigation, colors, isDarkMode }: Cu
 
 export default function BottomTabNavigator() {
   const { colors, isDarkMode } = useAppContext();
+  const insets = useSafeAreaInsets();
+
+  const bottomMargin = insets.bottom > 0 
+    ? insets.bottom + 12 
+    : Platform.OS === 'android' ? 28 : 16;
 
   return (
     <Tab.Navigator
@@ -128,18 +131,20 @@ export default function BottomTabNavigator() {
         <Animated.View 
           style={{ 
             position: 'absolute', 
-            bottom: 0, 
-            left: 0, 
-            right: 0, 
+            bottom: bottomMargin, 
+            left: 20, 
+            right: 20, 
             transform: [{ translateY: globalTabBarTranslateY }],
             zIndex: 100,
             backgroundColor: colors.card,
-            elevation: 12,
+            borderRadius: 32,
+            elevation: 16,
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
-            overflow: 'hidden',
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: isDarkMode ? 0.4 : 0.15,
+            shadowRadius: 16,
+            borderWidth: 1,
+            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
           }}
         >
           <CustomTabBar {...props} colors={colors} isDarkMode={isDarkMode} />
@@ -153,28 +158,28 @@ export default function BottomTabNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({ color }) => <Home size={24} color={color} />
+          tabBarIcon: ({ color }) => <Home size={20} color={color} />
         }}
       />
       <Tab.Screen
         name="Wallets"
         component={WalletsScreen}
         options={{
-          tabBarIcon: ({ color }) => <Wallet size={24} color={color} />
+          tabBarIcon: ({ color }) => <Wallet size={20} color={color} />
         }}
       />
       <Tab.Screen
         name="Goals"
         component={GoalsScreen}
         options={{
-          tabBarIcon: ({ color }) => <Target size={24} color={color} />
+          tabBarIcon: ({ color }) => <Target size={20} color={color} />
         }}
       />
       <Tab.Screen
         name="History"
         component={HistoryScreen}
         options={{
-          tabBarIcon: ({ color }) => <Clock size={24} color={color} />
+          tabBarIcon: ({ color }) => <Clock size={20} color={color} />
         }}
       />
     </Tab.Navigator>

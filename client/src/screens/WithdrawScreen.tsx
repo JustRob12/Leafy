@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Animated, Dimensions, Platform, KeyboardAvoidingView, FlatList, Easing, Keyboard, Image as RNImage } from 'react-native';
 import { theme } from '../theme';
-import { useAppContext, DEFAULT_WITHDRAW_PRESETS } from '../context/AppContext';
+import { useAppContext, DEFAULT_WITHDRAW_PRESETS, getWalletTotalBalanceInPhp } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
 import { 
   ChevronLeft, Plus, Utensils, Car, Receipt, Heart, ShoppingBag, 
@@ -31,7 +31,7 @@ const BRAND_LOGOS: { [key: string]: any } = {
 };
 
 export default function WithdrawScreen() {
-  const { colors, isDarkMode, withdrawPresets, addWithdrawPreset, wallets, addTransaction, showFeedback } = useAppContext();
+  const { colors, isDarkMode, withdrawPresets, addWithdrawPreset, wallets, addTransaction, showFeedback, usdToPhpRate } = useAppContext();
   const navigation = useNavigation<any>();
   const styles = getStyles(colors, isDarkMode);
 
@@ -91,7 +91,7 @@ export default function WithdrawScreen() {
     }
 
     const wallet = wallets.find(w => w.id === selectedWalletId);
-    if (wallet && numericAmount > wallet.balance) {
+    if (wallet && numericAmount > getWalletTotalBalanceInPhp(wallet, usdToPhpRate)) {
       showFeedback('error', 'Insufficient Balance');
       return;
     }
@@ -175,7 +175,7 @@ export default function WithdrawScreen() {
                 {wallet.name}
               </Text>
               <Text style={[styles.miniWalletBalance, { color: 'rgba(255, 255, 255, 0.8)' }]} numberOfLines={1}>
-                ₱{Math.floor(wallet.balance).toLocaleString()}
+                ₱{Math.floor(getWalletTotalBalanceInPhp(wallet, usdToPhpRate)).toLocaleString()}
               </Text>
             </TouchableOpacity>
           )}

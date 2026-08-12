@@ -3,19 +3,26 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { theme } from '../theme';
-import { Plus, ShoppingCart, Trash2, Calendar, ChevronLeft, ChevronRight, List } from 'lucide-react-native';
+import { Plus, ShoppingCart, Trash2, Calendar, ChevronLeft, ChevronRight, List, Edit3 } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import { useNavigation } from '@react-navigation/native';
 
 export default function GroceryScreen() {
-  const { groceryLists, addGroceryList, deleteGroceryList, showConfirm, colors, isDarkMode } = useAppContext();
+  const { groceryLists, addGroceryList, editGroceryList, deleteGroceryList, showConfirm, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation<any>();
 
+  // Add List Modal state
   const [modalVisible, setModalVisible] = useState(false);
   const [listTitle, setListTitle] = useState('');
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
+
+  // Edit List Modal state
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingListId, setEditingListId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editSelectedDays, setEditSelectedDays] = useState<number[]>([]);
 
   const daysOfWeek = [
     { label: 'M', value: 1 },
@@ -44,6 +51,23 @@ export default function GroceryScreen() {
     }
   };
 
+  const openEditModal = (list: any) => {
+    setEditingListId(list.id);
+    setEditTitle(list.title);
+    setEditSelectedDays(list.scheduledDays || []);
+    setEditModalVisible(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editingListId && editTitle.trim()) {
+      await editGroceryList(editingListId, editTitle.trim(), editSelectedDays);
+      setEditModalVisible(false);
+      setEditingListId(null);
+      setEditTitle('');
+      setEditSelectedDays([]);
+    }
+  };
+
   const handleDelete = (id: string, name: string) => {
     showConfirm(
       "Delete List?",
@@ -66,7 +90,6 @@ export default function GroceryScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Grocery Lists</Text>
@@ -124,17 +147,27 @@ export default function GroceryScreen() {
                 </View>
               </View>
 
-              <TouchableOpacity
-                style={styles.deleteBtn}
-                onPress={() => handleDelete(list.id, list.title)}
-              >
-                <Trash2 size={16} color="#ef4444" />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <TouchableOpacity
+                  style={styles.deleteBtn}
+                  onPress={(e) => {
+                    openEditModal(list);
+                  }}
+                >
+                  <Edit3 size={16} color={colors.primary} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.deleteBtn}
+                  onPress={() => handleDelete(list.id, list.title)}
+                >
+                  <Trash2 size={16} color="#ef4444" />
+                </TouchableOpacity>
+              </View>
             </TouchableOpacity>
           ))
         )}
       </ScrollView>
-
 
       {/* TOTAL FOOTER (Persistent) */}
       <View style={styles.footer}>
@@ -148,9 +181,10 @@ export default function GroceryScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* New List ActionSheet Modal */}
       <ActionSheet
         visible={modalVisible}
-        onClose={() => { setModalVisible(false); setListTitle(''); }}
+        onClose={() => { setModalVisible(false); setListTitle(''); setSelectedDays([]); }}
         title="New Grocery List"
       >
         <Text style={styles.inputLabel}>List Title</Text>
@@ -195,6 +229,60 @@ export default function GroceryScreen() {
           <Text style={styles.saveBtnText}>Create List</Text>
         </TouchableOpacity>
       </ActionSheet>
+
+      {/* Edit List ActionSheet Modal */}
+      <ActionSheet
+        visible={editModalVisible}
+        onClose={() => { setEditModalVisible(false); setEditingListId(null); }}
+        title="Edit Grocery List"
+      >
+        <Text style={styles.inputLabel}>List Title</Text>
+        <View style={styles.inputWrapper}>
+          <ShoppingCart size={18} color={colors.textMuted} style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="e.g., Saturday Grocery"
+            placeholderTextColor={colors.textMuted}
+            value={editTitle}
+            onChangeText={setEditTitle}
+          />
+        </View>
+
+        <Text style={styles.inputLabel}>Schedule Days (Weekly)</Text>
+        <View style={styles.daysPicker}>
+          {daysOfWeek.map((day) => (
+            <TouchableOpacity
+              key={day.value}
+              style={[
+                styles.dayChip,
+                editSelectedDays.includes(day.value) && styles.dayChipActive
+              ]}
+              onPress={() => {
+                if (editSelectedDays.includes(day.value)) {
+                  setEditSelectedDays(editSelectedDays.filter(d => d !== day.value));
+                } else {
+                  setEditSelectedDays([...editSelectedDays, day.value]);
+                }
+              }}
+            >
+              <Text style={[
+                styles.dayChipText,
+                editSelectedDays.includes(day.value) && styles.dayChipTextActive
+              ]}>
+                {day.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.saveBtn, !editTitle.trim() && styles.saveBtnDisabled]}
+          onPress={handleSaveEdit}
+          disabled={!editTitle.trim()}
+        >
+          <Text style={styles.saveBtnText}>Save Changes</Text>
+        </TouchableOpacity>
+      </ActionSheet>
     </SafeAreaView>
   );
 }
@@ -208,154 +296,178 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.md,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
   backBtn: {
-    padding: 4,
+    padding: 8,
+    marginLeft: -8,
   },
   headerTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 18,
+    fontSize: 20,
     color: colors.text,
   },
-  addBtnHeader: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   scrollContent: {
-    padding: theme.spacing.lg,
-    paddingBottom: 140,
+    padding: 20,
+    paddingBottom: 110,
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 60,
+    paddingVertical: 60,
   },
   emptyIconWrapper: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   emptyTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 20,
+    fontSize: 18,
     color: colors.text,
     marginBottom: 8,
   },
   emptySubtitle: {
-    fontFamily: theme.fonts.regular,
+    fontFamily: theme.fonts.medium,
     fontSize: 14,
     color: colors.textMuted,
     textAlign: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: 30,
     marginBottom: 24,
   },
   createBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primary,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: 16,
     gap: 8,
   },
   createBtnText: {
-    fontFamily: theme.fonts.semiBold,
+    fontFamily: theme.fonts.bold,
     fontSize: 15,
     color: '#ffffff',
   },
   listCard: {
-    backgroundColor: colors.card,
-    borderRadius: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: isDarkMode ? colors.border : colors.primary + '22',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: isDarkMode ? 0.2 : 0.04,
-    shadowRadius: 8,
-    elevation: 3,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
-    paddingHorizontal: 20,
+    backgroundColor: colors.card,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cardContent: {
+    flex: 1,
   },
   cardLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 15,
   },
-  iconWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)',
+  titleRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.1)',
   },
   listName: {
     fontFamily: theme.fonts.bold,
     fontSize: 16,
     color: colors.text,
-    flexShrink: 1, // Allow truncation
-    flex: 1, // Fill available width for better truncation
-  },
-  dateText: {
-    fontFamily: theme.fonts.regular,
-    fontSize: 12,
-    color: colors.textMuted,
   },
   detailsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 4,
   },
+  dateText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+    color: colors.textMuted,
+  },
   dotSeparator: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: colors.textMuted,
-    marginHorizontal: 8,
+    marginHorizontal: 6,
     opacity: 0.5,
+  },
+  scheduledDaysText: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 12,
+    color: colors.primary,
   },
   itemCountTextInline: {
     fontFamily: theme.fonts.medium,
     fontSize: 12,
-    color: colors.primary,
+    color: colors.textMuted,
   },
-  cardRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  todayBadge: {
+    backgroundColor: '#10b98115',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#10b98130',
+  },
+  todayBadgeText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 10,
+    color: '#10b981',
   },
   deleteBtn: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
     padding: 8,
-    zIndex: 2,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.card,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  footerInfo: {
+    flex: 1,
+  },
+  footerLabel: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  footerValue: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 18,
+    color: colors.text,
+  },
+  mainAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 16,
+    gap: 8,
+  },
+  mainAddBtnText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 15,
+    color: '#ffffff',
   },
   inputLabel: {
-    fontFamily: theme.fonts.medium,
+    fontFamily: theme.fonts.semiBold,
     fontSize: 14,
     color: colors.text,
     marginBottom: 8,
@@ -364,50 +476,32 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    marginBottom: 8,
+    paddingHorizontal: 14,
+    height: 50,
   },
   inputIcon: {
     marginRight: 10,
   },
   input: {
     flex: 1,
-    height: 48,
-    fontFamily: theme.fonts.regular,
+    fontFamily: theme.fonts.medium,
     fontSize: 15,
     color: colors.text,
-  },
-  saveBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 24,
-  },
-  saveBtnDisabled: {
-    opacity: 0.5,
-  },
-  saveBtnText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 16,
-    color: '#ffffff',
   },
   daysPicker: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
-    marginBottom: 16,
+    marginVertical: 8,
   },
   dayChip: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -418,96 +512,27 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderColor: colors.primary,
   },
   dayChipText: {
-    fontFamily: theme.fonts.medium,
+    fontFamily: theme.fonts.bold,
     fontSize: 13,
-    color: colors.textMuted,
+    color: colors.text,
   },
   dayChipTextActive: {
     color: '#ffffff',
-    fontFamily: theme.fonts.bold,
   },
-  scheduledDaysText: {
-    fontFamily: theme.fonts.semiBold,
-    fontSize: 12,
-    color: colors.primary,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 120,
-    right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  saveBtn: {
     backgroundColor: colors.primary,
+    borderRadius: 16,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-    zIndex: 10,
-    display: 'none', // Hidden in favor of footer button
+    marginTop: 20,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 2,
+  saveBtnDisabled: {
+    opacity: 0.5,
   },
-  todayBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
-  },
-  todayBadgeText: {
+  saveBtnText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 10,
-    color: colors.primary,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.card,
-    padding: 24,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: 40,
-  },
-  footerInfo: {
-    flex: 1,
-  },
-  footerLabel: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 12,
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-  },
-  footerValue: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 22,
-    color: colors.primary,
-  },
-  mainAddBtn: {
-    backgroundColor: colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 14,
-    gap: 8,
-  },
-  mainAddBtnText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 15,
+    fontSize: 16,
     color: '#ffffff',
   },
 });

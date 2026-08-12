@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Animated, Easing, FlatList, Dimensions, NativeSyntheticEvent, NativeScrollEvent, Modal, Platform, StatusBar } from 'react-native';
 import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { AudioPlayer, createAudioPlayer } from 'expo-audio';
 
 
 
 import { theme } from '../theme';
-import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane, RefreshCw, Leaf, Eye, EyeOff, CreditCard, Coins, Sparkles, ArrowRightLeft, TrendingUp } from 'lucide-react-native';
-import { useAppContext, getTransactionAmountInPhp } from '../context/AppContext';
+import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane, RefreshCw, Leaf, Eye, EyeOff, CreditCard, Coins, Sparkles, ArrowRightLeft, TrendingUp, Layers, MapPin, Building, Home } from 'lucide-react-native';
+import { useAppContext, getTransactionAmountInPhp, getWalletTotalBalanceInPhp } from '../context/AppContext';
 import { useNavigation, useScrollToTop } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 import WalletDropdown from '../components/WalletDropdown';
@@ -58,7 +59,7 @@ const ICON_MAP: { [key: string]: any } = {
 
 
 export default function HomeScreen() {
-  const { totalBalance, totalReceivables, totalDebts, wallets, debts, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode, treeType, isTutorialActive, stopTutorial, groceryLists, subscriptions, recursions, usdToPhpRate } = useAppContext();
+  const { totalBalance, totalReceivables, totalDebts, wallets, debts, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode, treeType, isTutorialActive, stopTutorial, groceryLists, subscriptions, recursions, installments, rents, usdToPhpRate } = useAppContext();
 
   const navigation = useNavigation<any>();
   const { handleScroll } = useScrollHideTabBar();
@@ -404,7 +405,32 @@ export default function HomeScreen() {
     return daysRemaining <= 3;
   }).length;
 
-  const totalMoreBadge = pendingDebts + pendingGroceries;
+  const activeInstallmentsList = (installments || []).filter(i => i.paidMonths < i.monthsToPay);
+  const pendingInstallments = activeInstallmentsList.length;
+  const urgentInstallmentsCount = activeInstallmentsList.filter(item => {
+    if (!item.dueDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(item.dueDate);
+    due.setHours(0, 0, 0, 0);
+    const diffTime = due.getTime() - today.getTime();
+    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return daysRemaining <= 3;
+  }).length;
+
+  const activeRentsList = (rents || []);
+  const urgentRentsCount = activeRentsList.filter(item => {
+    if (!item.dueDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(item.dueDate);
+    due.setHours(0, 0, 0, 0);
+    const diffTime = due.getTime() - today.getTime();
+    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return daysRemaining <= 3;
+  }).length;
+
+  const totalMoreBadge = pendingDebts + pendingGroceries + urgentInstallmentsCount + urgentRentsCount;
 
   return (
     <View style={styles.container}>
@@ -555,7 +581,7 @@ export default function HomeScreen() {
                 if (!goal) return null;
 
                 const linkedWallet = wallets.find(w => w.id === goal.walletId);
-                const currentAmount = linkedWallet ? linkedWallet.balance : 0;
+                const currentAmount = linkedWallet ? getWalletTotalBalanceInPhp(linkedWallet, usdToPhpRate) : 0;
                 const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
 
                 return (
@@ -649,6 +675,263 @@ export default function HomeScreen() {
                 );
               })}
             </View>
+          </>
+        )}
+
+        {/* ACTIVE INSTALLMENTS DASHBOARD SECTION */}
+        {activeInstallmentsList.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Installments</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Installment')}>
+                <Text style={styles.seeAllText}>SEE ALL</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 4, paddingBottom: 8 }}>
+              {activeInstallmentsList.slice(0, 5).map(item => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const due = new Date(item.dueDate);
+                due.setHours(0, 0, 0, 0);
+                const diffTime = due.getTime() - today.getTime();
+                const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                const isUrgent = daysRemaining <= 3;
+
+                if (isUrgent) {
+                  return (
+                    <TouchableOpacity 
+                      key={item.id}
+                      activeOpacity={0.9}
+                      onPress={() => navigation.navigate('Installment')}
+                    >
+                      <ExpoLinearGradient
+                        colors={['#ef4444', '#dc2626', '#991b1b']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{
+                          width: 240,
+                          padding: 16,
+                          borderRadius: 20,
+                          elevation: 4,
+                          shadowColor: '#ef4444',
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.35,
+                          shadowRadius: 8,
+                        }}
+                      >
+                        <Text style={{
+                          fontFamily: theme.fonts.bold,
+                          fontSize: 9,
+                          color: '#ffffff',
+                          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                          alignSelf: 'flex-start',
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: 6,
+                          marginBottom: 8,
+                          letterSpacing: 0.5,
+                        }}>
+                          🚨 DUE IN {daysRemaining <= 0 ? 'TODAY' : `${daysRemaining} DAYS`}
+                        </Text>
+                        <Text style={{ fontFamily: theme.fonts.bold, fontSize: 16, color: '#FFFFFF' }} numberOfLines={1}>
+                          {item.productName}
+                        </Text>
+                        <Text 
+                          style={{ fontFamily: theme.fonts.bold, fontSize: 18, color: '#FFFFFF', marginTop: 4 }}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit={true}
+                          minimumFontScale={0.5}
+                        >
+                          {item.currency === 'USD' ? '$' : '₱'}{item.monthlyAmount.toLocaleString()} / mo
+                        </Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+                          <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: 'rgba(255, 255, 255, 0.85)' }}>
+                            Month {item.paidMonths}/{item.monthsToPay}
+                          </Text>
+                          <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: 'rgba(255, 255, 255, 0.85)' }}>
+                            Due: {item.dueDate}
+                          </Text>
+                        </View>
+                      </ExpoLinearGradient>
+                    </TouchableOpacity>
+                  );
+                }
+
+                return (
+                  <TouchableOpacity 
+                    key={item.id}
+                    activeOpacity={0.9}
+                    onPress={() => navigation.navigate('Installment')}
+                    style={{
+                      width: 240,
+                      padding: 16,
+                      borderRadius: 20,
+                      backgroundColor: colors.card,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                      <Layers size={14} color={colors.primary} />
+                      <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: colors.textMuted }}>Installment</Text>
+                    </View>
+                    <Text style={{ fontFamily: theme.fonts.bold, fontSize: 16, color: colors.text }} numberOfLines={1}>
+                      {item.productName}
+                    </Text>
+                    <Text 
+                      style={{ fontFamily: theme.fonts.bold, fontSize: 18, color: colors.primary, marginTop: 4 }}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit={true}
+                      minimumFontScale={0.5}
+                    >
+                      {item.currency === 'USD' ? '$' : '₱'}{item.monthlyAmount.toLocaleString()} / mo
+                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+                      <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: colors.textMuted }}>
+                        Month {item.paidMonths}/{item.monthsToPay}
+                      </Text>
+                      <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: colors.textMuted }}>
+                        Due: {item.dueDate}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </>
+        )}
+
+        {/* ACTIVE RENT DASHBOARD SECTION */}
+        {activeRentsList.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Rent Properties</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Rent')}>
+                <Text style={styles.seeAllText}>SEE ALL</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 4, paddingBottom: 8 }}>
+              {activeRentsList.slice(0, 5).map(item => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const due = new Date(item.dueDate);
+                due.setHours(0, 0, 0, 0);
+                const diffTime = due.getTime() - today.getTime();
+                const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                const isUrgent = daysRemaining <= 3;
+
+                if (isUrgent) {
+                  return (
+                    <TouchableOpacity 
+                      key={item.id}
+                      activeOpacity={0.9}
+                      onPress={() => navigation.navigate('Rent')}
+                    >
+                      <ExpoLinearGradient
+                        colors={['#ef4444', '#dc2626', '#991b1b']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{
+                          width: 240,
+                          padding: 16,
+                          borderRadius: 20,
+                          elevation: 4,
+                          shadowColor: '#ef4444',
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.35,
+                          shadowRadius: 8,
+                        }}
+                      >
+                        <Text style={{
+                          fontFamily: theme.fonts.bold,
+                          fontSize: 9,
+                          color: '#ffffff',
+                          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                          alignSelf: 'flex-start',
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: 6,
+                          marginBottom: 8,
+                          letterSpacing: 0.5,
+                        }}>
+                          🚨 RENT DUE IN {daysRemaining <= 0 ? 'TODAY' : `${daysRemaining} DAYS`}
+                        </Text>
+                        <Text style={{ fontFamily: theme.fonts.bold, fontSize: 16, color: '#FFFFFF' }} numberOfLines={1}>
+                          {item.propertyName}
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                          <MapPin size={11} color="#ffffff" />
+                          <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: 'rgba(255, 255, 255, 0.9)' }} numberOfLines={1}>
+                            {item.location}
+                          </Text>
+                        </View>
+                        <Text 
+                          style={{ fontFamily: theme.fonts.bold, fontSize: 18, color: '#FFFFFF', marginTop: 6 }}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit={true}
+                          minimumFontScale={0.5}
+                        >
+                          {item.currency === 'USD' ? '$' : '₱'}{item.monthlyAmount.toLocaleString()} / mo
+                        </Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+                          <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: 'rgba(255, 255, 255, 0.85)' }}>
+                            Due: {item.dueDate}
+                          </Text>
+                          <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: 'rgba(255, 255, 255, 0.85)' }}>
+                            Ongoing Rent
+                          </Text>
+                        </View>
+                      </ExpoLinearGradient>
+                    </TouchableOpacity>
+                  );
+                }
+
+                return (
+                  <TouchableOpacity 
+                    key={item.id}
+                    activeOpacity={0.9}
+                    onPress={() => navigation.navigate('Rent')}
+                    style={{
+                      width: 240,
+                      padding: 16,
+                      borderRadius: 20,
+                      backgroundColor: colors.card,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                      <Home size={14} color={colors.primary} />
+                      <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: colors.textMuted }}>Rent Property</Text>
+                    </View>
+                    <Text style={{ fontFamily: theme.fonts.bold, fontSize: 16, color: colors.text }} numberOfLines={1}>
+                      {item.propertyName}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <MapPin size={11} color="#ef4444" />
+                      <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: colors.textMuted }} numberOfLines={1}>
+                        {item.location}
+                      </Text>
+                    </View>
+                    <Text 
+                      style={{ fontFamily: theme.fonts.bold, fontSize: 18, color: colors.primary, marginTop: 6 }}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit={true}
+                      minimumFontScale={0.5}
+                    >
+                      {item.currency === 'USD' ? '$' : '₱'}{item.monthlyAmount.toLocaleString()} / mo
+                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+                      <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: colors.textMuted }}>
+                        Next Due: {item.dueDate}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </>
         )}
 
@@ -995,6 +1278,30 @@ export default function HomeScreen() {
               )}
             </View>
             <Text style={styles.moreActionText}>Subscription</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Installment'); }}>
+            <View style={styles.moreActionIconBox}>
+              <Layers size={22} color={colors.text} />
+              {pendingInstallments > 0 && (
+                <View style={[styles.gridBadge, urgentInstallmentsCount > 0 && { backgroundColor: '#ef4444' }]}>
+                  <Text style={styles.gridBadgeText}>{pendingInstallments}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.moreActionText}>Installment</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Rent'); }}>
+            <View style={styles.moreActionIconBox}>
+              <Home size={22} color={colors.text} />
+              {activeRentsList.length > 0 && (
+                <View style={[styles.gridBadge, urgentRentsCount > 0 && { backgroundColor: '#ef4444' }]}>
+                  <Text style={styles.gridBadgeText}>{activeRentsList.length}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.moreActionText}>Rent</Text>
           </TouchableOpacity>
         </View>
       </ActionSheet>

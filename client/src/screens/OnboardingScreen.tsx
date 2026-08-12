@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Animated, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Animated, Image, Vibration } from 'react-native';
 import { theme } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Leaf, ArrowRight, Lock, Fingerprint, Delete, ShieldCheck, Key } from 'lucide-react-native';
@@ -43,6 +43,10 @@ export default function OnboardingScreen() {
     }
   };
 
+  const [firstPin, setFirstPin] = useState('');
+  const [pinStep, setPinStep] = useState<'create' | 'confirm'>('create');
+  const [pinError, setPinError] = useState<string | null>(null);
+
   const checkBiometricsAndProceed = async () => {
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
     const isEnrolled = await LocalAuthentication.isEnrolledAsync();
@@ -56,6 +60,7 @@ export default function OnboardingScreen() {
   };
 
   const handleKeypadPress = (key: string) => {
+    setPinError(null);
     if (key === 'delete') {
       setPin(prev => prev.slice(0, -1));
     } else if (key !== '') {
@@ -64,9 +69,27 @@ export default function OnboardingScreen() {
         setPin(newPin);
 
         if (newPin.length === 6) {
-          setTimeout(() => {
-            checkBiometricsAndProceed();
-          }, 300);
+          if (pinStep === 'create') {
+            setTimeout(() => {
+              setFirstPin(newPin);
+              setPin('');
+              setPinStep('confirm');
+            }, 200);
+          } else {
+            if (newPin === firstPin) {
+              setTimeout(() => {
+                checkBiometricsAndProceed();
+              }, 300);
+            } else {
+              Vibration.vibrate([0, 50, 50, 50]);
+              setPinError("PINs do not match. Please try again.");
+              setTimeout(() => {
+                setPin('');
+                setFirstPin('');
+                setPinStep('create');
+              }, 600);
+            }
+          }
         }
       }
     }
@@ -139,11 +162,17 @@ export default function OnboardingScreen() {
 
             {step === 2 && (
               <View style={styles.setupSection}>
-                <View style={styles.iconContainerVariant}>
-                  <Lock size={32} color={colors.primary} />
+                <View style={[styles.iconContainerVariant, pinError ? { backgroundColor: '#ef444420' } : null]}>
+                  <Lock size={32} color={pinError ? '#ef4444' : colors.primary} />
                 </View>
-                <Text style={styles.titleCenter}>Secure your Vault</Text>
-                <Text style={styles.subtitleCenter}>Create a 6-digit PIN to protect your local financial data.</Text>
+                <Text style={styles.titleCenter}>
+                  {pinStep === 'create' ? 'Create Security PIN' : 'Confirm Your PIN'}
+                </Text>
+                <Text style={[styles.subtitleCenter, pinError ? { color: '#ef4444', fontFamily: theme.fonts.bold } : null]}>
+                  {pinError || (pinStep === 'create' 
+                    ? 'Create a 6-digit PIN to protect your financial data.' 
+                    : 'Re-enter your 6-digit PIN to verify.')}
+                </Text>
 
                 <View style={styles.pinContainer}>
                   {[1, 2, 3, 4, 5, 6].map((_, i) => (

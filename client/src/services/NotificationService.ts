@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { DebtType, GroceryListType } from '../context/AppContext';
+import { DebtType, GroceryListType, InstallmentType } from '../context/AppContext';
 
 export const requestNotificationPermissions = async () => {
   try {
@@ -32,7 +32,12 @@ export const requestNotificationPermissions = async () => {
   }
 };
 
-export const syncAllNotifications = async (debts: DebtType[], groceryLists: GroceryListType[], isEnabled: boolean) => {
+export const syncAllNotifications = async (
+  debts: DebtType[],
+  groceryLists: GroceryListType[],
+  installments: InstallmentType[] = [],
+  isEnabled: boolean = true
+) => {
   try {
     // 1. Always cancel all to start clean
     await Notifications.cancelAllScheduledNotificationsAsync();
@@ -49,14 +54,11 @@ export const syncAllNotifications = async (debts: DebtType[], groceryLists: Groc
       let dueDate = new Date(debt.dueDate);
       dueDate.setHours(9, 0, 0, 0); // Notif at 9:00 AM
       
-      // If it's today and past 9 AM, schedule it for 2 minutes from now
-      // This ensures if the user adds a debt "today", they get notified shortly after.
       if (dueDate.getTime() <= now) {
           const todayStr = new Date().toISOString().split('T')[0];
           if (debt.dueDate === todayStr) {
               dueDate = new Date(now + 2 * 60 * 1000); // 2 minutes from now
           } else {
-              // It's in the past and NOT today, skip it
               continue;
           }
       }
@@ -82,7 +84,6 @@ export const syncAllNotifications = async (debts: DebtType[], groceryLists: Groc
       for (const dayIndex of list.scheduledDays) {
           const expoWeekday = dayIndex + 1; 
 
-          // Standard weekly reminder
           await Notifications.scheduleNotificationAsync({
               content: {
                   title: "🛒 Grocery Day!",
@@ -97,7 +98,6 @@ export const syncAllNotifications = async (debts: DebtType[], groceryLists: Groc
               },
           });
 
-          // If today is grocery day and it's past 8:30 AM, schedule an immediate-ish reminder
           if (dayIndex === todayIndex) {
               const checkTime = new Date();
               checkTime.setHours(8, 30, 0, 0);
@@ -110,11 +110,39 @@ export const syncAllNotifications = async (debts: DebtType[], groceryLists: Groc
                       },
                       trigger: {
                           type: Notifications.SchedulableTriggerInputTypes.DATE,
-                          date: new Date(now + 2 * 60 * 1000), // 2 minutes from now
+                          date: new Date(now + 2 * 60 * 1000),
                       },
                   });
               }
           }
+      }
+    }
+
+    // 5. Schedule Installments (Notifies when 3 days near deadline)
+    for (const item of installments) {
+      if (!item.dueDate || item.paidMonths >= item.monthsToPay) continue;
+
+      const due = new Date(item.dueDate);
+      due.setHours(9, 0, 0, 0); // 9:00 AM
+
+      // 3 days prior reminder date
+      const reminderDate = new Date(due.getTime() - 3 * 24 * 60 * 60 * 1000);
+      reminderDate.setHours(9, 0, 0, 0);
+
+      const targetTriggerDate = reminderDate.getTime() > now ? reminderDate : due;
+
+      if (targetTriggerDate.getTime() > now) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "💳 Installment Payment Reminder",
+            body: `Your installment payment for "${item.productName}" (${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()}) is due on ${item.dueDate}!`,
+            data: { path: 'Installment' },
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: targetTriggerDate,
+          },
+        });
       }
     }
   } catch (error) {

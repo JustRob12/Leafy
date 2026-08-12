@@ -52,6 +52,10 @@ import AddReceivableScreen from './src/screens/AddReceivableScreen';
 import AddDebtScreen from './src/screens/AddDebtScreen';
 import SubscriptionScreen from './src/screens/SubscriptionScreen';
 import AddSubscriptionScreen from './src/screens/AddSubscriptionScreen';
+import InstallmentScreen from './src/screens/InstallmentScreen';
+import AddInstallmentScreen from './src/screens/AddInstallmentScreen';
+import RentScreen from './src/screens/RentScreen';
+import AddRentScreen from './src/screens/AddRentScreen';
 import MainHeader from './src/components/MainHeader';
 import FeedbackModal from './src/components/FeedbackModal';
 import ConfirmModal from './src/components/ConfirmModal';
@@ -131,6 +135,10 @@ function MainNavigation() {
             <Stack.Screen name="AddDebt" component={AddDebtScreen} />
             <Stack.Screen name="Subscription" component={SubscriptionScreen} />
             <Stack.Screen name="AddSubscription" component={AddSubscriptionScreen} />
+            <Stack.Screen name="Installment" component={InstallmentScreen} />
+            <Stack.Screen name="AddInstallment" component={AddInstallmentScreen} />
+            <Stack.Screen name="Rent" component={RentScreen} />
+            <Stack.Screen name="AddRent" component={AddRentScreen} />
             <Stack.Screen name="CurrencyConverter" component={CurrencyConverterScreen} />
             <Stack.Screen name="Transfer" component={TransferScreen} />
             

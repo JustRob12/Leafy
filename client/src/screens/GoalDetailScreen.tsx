@@ -3,13 +3,13 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { ChevronLeft, Target, Wallet, Edit3, Trash2, X, TrendingUp, AlertCircle, BarChart3, Info } from 'lucide-react-native';
-import { useAppContext } from '../context/AppContext';
+import { useAppContext, getWalletTotalBalanceInPhp } from '../context/AppContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
 export default function GoalDetailScreen() {
-  const { wallets, deleteGoal, showConfirm, colors, isDarkMode } = useAppContext();
+  const { wallets, deleteGoal, showConfirm, colors, isDarkMode, usdToPhpRate } = useAppContext();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const styles = getStyles(colors, isDarkMode);
@@ -29,7 +29,7 @@ export default function GoalDetailScreen() {
   }
 
   const linkedWallet = wallets.find(w => w.id === goal.walletId);
-  const currentAmount = linkedWallet ? linkedWallet.balance : 0;
+  const currentAmount = linkedWallet ? getWalletTotalBalanceInPhp(linkedWallet, usdToPhpRate) : 0;
   const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
   const remaining = Math.max(0, goal.targetAmount - currentAmount);
 

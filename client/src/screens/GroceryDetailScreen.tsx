@@ -3,13 +3,13 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { theme } from '../theme';
-import { Plus, Trash2, ChevronLeft, CheckCircle2, Circle, Package, ShoppingBag } from 'lucide-react-native';
+import { Plus, Trash2, ChevronLeft, CheckCircle2, Circle, Package, ShoppingBag, Edit3, ShoppingCart } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 export default function GroceryDetailScreen() {
-  const { groceryLists, addGroceryItem, deleteGroceryItem, toggleGroceryItem, showConfirm, colors, isDarkMode } = useAppContext();
+  const { groceryLists, addGroceryItem, deleteGroceryItem, toggleGroceryItem, editGroceryList, showConfirm, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -17,10 +17,26 @@ export default function GroceryDetailScreen() {
 
   const currentList = groceryLists.find(l => l.id === listId);
 
+  // Add Item Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [price, setPrice] = useState('');
+
+  // Edit List Modal State
+  const [editListModalVisible, setEditListModalVisible] = useState(false);
+  const [editListTitle, setEditListTitle] = useState(currentList?.title || '');
+  const [editListDays, setEditListDays] = useState<number[]>(currentList?.scheduledDays || []);
+
+  const daysOfWeek = [
+    { label: 'M', value: 1 },
+    { label: 'T', value: 2 },
+    { label: 'W', value: 3 },
+    { label: 'Th', value: 4 },
+    { label: 'F', value: 5 },
+    { label: 'S', value: 6 },
+    { label: 'Su', value: 0 },
+  ];
 
   if (!currentList) {
     return (
@@ -39,6 +55,13 @@ export default function GroceryDetailScreen() {
       });
       setModalVisible(false);
       resetForm();
+    }
+  };
+
+  const handleSaveEditList = async () => {
+    if (editListTitle.trim()) {
+      await editGroceryList(currentList.id, editListTitle.trim(), editListDays);
+      setEditListModalVisible(false);
     }
   };
 
@@ -62,7 +85,6 @@ export default function GroceryDetailScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
@@ -70,7 +92,17 @@ export default function GroceryDetailScreen() {
           <Text style={styles.headerTitle}>{currentList.title}</Text>
           <Text style={styles.headerSubtitle}>{completedCount} of {currentList.items.length} items collected</Text>
         </View>
-        <View style={{ width: 36 }} />
+
+        <TouchableOpacity 
+          onPress={() => {
+            setEditListTitle(currentList.title);
+            setEditListDays(currentList.scheduledDays || []);
+            setEditListModalVisible(true);
+          }} 
+          style={styles.editHeaderBtn}
+        >
+          <Edit3 size={20} color={colors.primary} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -89,44 +121,40 @@ export default function GroceryDetailScreen() {
               style={[styles.itemCard, item.completed && styles.itemCardCompleted]}
               onPress={() => toggleGroceryItem(listId, item.id)}
             >
-              <View style={styles.itemMain}>
-                <View style={styles.itemLeft}>
-                  {item.completed ? (
-                    <CheckCircle2 size={24} color={colors.primary} />
-                  ) : (
-                    <Circle size={24} color={colors.textMuted} />
-                  )}
-                  <View style={styles.itemTextContent}>
-                    <Text style={[styles.itemName, item.completed && styles.textStrikethrough]} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
-                  </View>
-                </View>
-                
-                <View style={styles.itemRight}>
-                  {item.price !== undefined && (
-                    <Text style={[styles.itemPrice, item.completed && styles.textStrikethrough]}>
-                      ₱{item.price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                    </Text>
-                  )}
-                  <TouchableOpacity
-                    onPress={(e) => { e.stopPropagation(); handleDelete(item.id, item.name); }}
-                    style={styles.deleteBtn}
-                  >
-                    <Trash2 size={16} color="#ef4444" />
-                  </TouchableOpacity>
-                </View>
+              <View style={styles.checkboxWrapper}>
+                {item.completed ? (
+                  <CheckCircle2 size={22} color={colors.primary} />
+                ) : (
+                  <Circle size={22} color={colors.textMuted} />
+                )}
               </View>
+
+              <View style={styles.itemInfo}>
+                <Text style={[styles.itemName, item.completed && styles.itemNameCompleted]}>{item.name}</Text>
+                <Text style={styles.itemQty}>Qty: {item.quantity}</Text>
+              </View>
+
+              {item.price !== undefined && (
+                <Text style={[styles.itemPrice, item.completed && styles.itemPriceCompleted]}>
+                  ₱{item.price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                </Text>
+              )}
+
+              <TouchableOpacity 
+                style={styles.deleteBtn}
+                onPress={() => handleDelete(item.id, item.name)}
+              >
+                <Trash2 size={16} color="#ef4444" />
+              </TouchableOpacity>
             </TouchableOpacity>
           ))
         )}
       </ScrollView>
 
-      {/* TOTAL FOOTER */}
+      {/* TOTAL FOOTER (Persistent) */}
       <View style={styles.footer}>
         <View style={styles.footerInfo}>
-          <Text style={styles.footerLabel}>Estimated Total</Text>
+          <Text style={styles.footerLabel}>Total Estimated Cost</Text>
           <Text style={styles.footerValue}>₱{totalCost.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
         </View>
         <TouchableOpacity style={styles.mainAddBtn} onPress={() => setModalVisible(true)}>
@@ -135,6 +163,7 @@ export default function GroceryDetailScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Add Item ActionSheet Modal */}
       <ActionSheet
         visible={modalVisible}
         onClose={() => { setModalVisible(false); resetForm(); }}
@@ -142,10 +171,10 @@ export default function GroceryDetailScreen() {
       >
         <Text style={styles.inputLabel}>Item Name</Text>
         <View style={styles.inputWrapper}>
-          <ShoppingBag size={18} color={colors.textMuted} style={styles.inputIcon} />
+          <Package size={18} color={colors.textMuted} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="e.g., Milk, Eggs, Rice..."
+            placeholder="e.g., Milk, Eggs, Bread"
             placeholderTextColor={colors.textMuted}
             value={itemName}
             onChangeText={setItemName}
@@ -157,21 +186,19 @@ export default function GroceryDetailScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.inputLabel}>Quantity</Text>
             <View style={styles.inputWrapper}>
-              <Package size={18} color={colors.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="e.g., 2, 500g..."
+                placeholder="e.g., 1, 2 kg"
                 placeholderTextColor={colors.textMuted}
                 value={quantity}
                 onChangeText={setQuantity}
               />
             </View>
           </View>
-          
           <View style={{ flex: 1 }}>
-            <Text style={styles.inputLabel}>Price (Optional)</Text>
+            <Text style={styles.inputLabel}>Est. Price (Optional)</Text>
             <View style={styles.inputWrapper}>
-              <Text style={{ fontSize: 18, color: colors.textMuted, fontFamily: theme.fonts.bold, marginRight: 10 }}>₱</Text>
+              <Text style={styles.currencySymbol}>₱</Text>
               <TextInput
                 style={styles.input}
                 placeholder="0.00"
@@ -192,6 +219,60 @@ export default function GroceryDetailScreen() {
           <Text style={styles.saveBtnText}>Add to List</Text>
         </TouchableOpacity>
       </ActionSheet>
+
+      {/* Edit List ActionSheet Modal */}
+      <ActionSheet
+        visible={editListModalVisible}
+        onClose={() => setEditListModalVisible(false)}
+        title="Edit Grocery List"
+      >
+        <Text style={styles.inputLabel}>List Title</Text>
+        <View style={styles.inputWrapper}>
+          <ShoppingCart size={18} color={colors.textMuted} style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="e.g., Saturday Grocery"
+            placeholderTextColor={colors.textMuted}
+            value={editListTitle}
+            onChangeText={setEditListTitle}
+          />
+        </View>
+
+        <Text style={styles.inputLabel}>Schedule Days (Weekly)</Text>
+        <View style={styles.daysPicker}>
+          {daysOfWeek.map((day) => (
+            <TouchableOpacity
+              key={day.value}
+              style={[
+                styles.dayChip,
+                editListDays.includes(day.value) && styles.dayChipActive
+              ]}
+              onPress={() => {
+                if (editListDays.includes(day.value)) {
+                  setEditListDays(editListDays.filter(d => d !== day.value));
+                } else {
+                  setEditListDays([...editListDays, day.value]);
+                }
+              }}
+            >
+              <Text style={[
+                styles.dayChipText,
+                editListDays.includes(day.value) && styles.dayChipTextActive
+              ]}>
+                {day.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.saveBtn, !editListTitle.trim() && styles.saveBtnDisabled]}
+          onPress={handleSaveEditList}
+          disabled={!editListTitle.trim()}
+        >
+          <Text style={styles.saveBtnText}>Save Changes</Text>
+        </TouchableOpacity>
+      </ActionSheet>
     </SafeAreaView>
   );
 }
@@ -205,118 +286,107 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.xl,
-    paddingBottom: theme.spacing.md,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
   backBtn: {
-    padding: 4,
+    padding: 8,
+    marginLeft: -8,
+  },
+  editHeaderBtn: {
+    padding: 8,
+    marginRight: -4,
   },
   headerInfo: {
     flex: 1,
-    marginLeft: 15,
+    marginLeft: 10,
   },
   headerTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 18,
+    fontSize: 20,
     color: colors.text,
   },
   headerSubtitle: {
     fontFamily: theme.fonts.medium,
     fontSize: 12,
     color: colors.textMuted,
+    marginTop: 2,
   },
   scrollContent: {
-    padding: theme.spacing.lg,
-    paddingBottom: 160,
+    padding: 20,
+    paddingBottom: 110,
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 60,
+    paddingVertical: 60,
   },
   emptyIconWrapper: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   emptyTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 20,
+    fontSize: 18,
     color: colors.text,
     marginBottom: 8,
   },
   emptySubtitle: {
-    fontFamily: theme.fonts.regular,
+    fontFamily: theme.fonts.medium,
     fontSize: 14,
     color: colors.textMuted,
     textAlign: 'center',
-    paddingHorizontal: 40,
   },
   itemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.card,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDarkMode ? 0.2 : 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
   itemCardCompleted: {
     opacity: 0.6,
-    backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.2)' : '#f8fafc',
   },
-  itemMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  checkboxWrapper: {
+    marginRight: 12,
   },
-  itemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 15,
-    flex: 1,
-  },
-  itemTextContent: {
+  itemInfo: {
     flex: 1,
   },
   itemName: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 16,
+    fontSize: 15,
     color: colors.text,
   },
-  itemQuantity: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 13,
-    color: colors.textMuted,
-  },
-  itemRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 15,
-  },
-  itemPrice: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 15,
-    color: colors.primary,
-  },
-  textStrikethrough: {
+  itemNameCompleted: {
     textDecorationLine: 'line-through',
     color: colors.textMuted,
   },
+  itemQty: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  itemPrice: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 14,
+    color: colors.text,
+    marginRight: 12,
+  },
+  itemPriceCompleted: {
+    color: colors.textMuted,
+  },
   deleteBtn: {
-    padding: 4,
+    padding: 6,
   },
   footer: {
     position: 'absolute',
@@ -324,13 +394,13 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: colors.card,
-    padding: 24,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: 40,
   },
   footerInfo: {
     flex: 1,
@@ -339,20 +409,19 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.medium,
     fontSize: 12,
     color: colors.textMuted,
-    textTransform: 'uppercase',
   },
   footerValue: {
     fontFamily: theme.fonts.bold,
-    fontSize: 22,
-    color: colors.primary,
+    fontSize: 18,
+    color: colors.text,
   },
   mainAddBtn: {
-    backgroundColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 18,
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: 16,
     gap: 8,
   },
   mainAddBtnText: {
@@ -361,7 +430,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     color: '#ffffff',
   },
   inputLabel: {
-    fontFamily: theme.fonts.medium,
+    fontFamily: theme.fonts.semiBold,
     fontSize: 14,
     color: colors.text,
     marginBottom: 8,
@@ -370,20 +439,25 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    marginBottom: 8,
+    paddingHorizontal: 14,
+    height: 50,
   },
   inputIcon: {
     marginRight: 10,
   },
+  currencySymbol: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 16,
+    color: colors.primary,
+    marginRight: 8,
+  },
   input: {
     flex: 1,
-    height: 48,
-    fontFamily: theme.fonts.regular,
+    fontFamily: theme.fonts.medium,
     fontSize: 15,
     color: colors.text,
   },
@@ -393,11 +467,11 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   saveBtn: {
     backgroundColor: colors.primary,
-    borderRadius: 12,
+    borderRadius: 16,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 24,
+    marginTop: 20,
   },
   saveBtnDisabled: {
     opacity: 0.5,
@@ -405,6 +479,33 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   saveBtnText: {
     fontFamily: theme.fonts.bold,
     fontSize: 16,
+    color: '#ffffff',
+  },
+  daysPicker: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 8,
+  },
+  dayChip: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  dayChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  dayChipText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 13,
+    color: colors.text,
+  },
+  dayChipTextActive: {
     color: '#ffffff',
   },
 });

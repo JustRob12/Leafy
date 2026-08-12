@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Animated, Easing, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Animated, Easing, TextInput, Vibration } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { theme } from '../theme';
@@ -11,7 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 
 export default function SettingsScreen() {
-  const { username, setUsername, userImage, setUserImage, clearData, showConfirm, isDarkMode, toggleTheme, treeType, setTreeType, colors, appPin, setAppPin, isSecurityEnabled, toggleSecurity, isBiometricsEnabled, toggleBiometrics, isNotificationsEnabled, toggleNotifications } = useAppContext();
+  const { username, setUsername, userImage, setUserImage, clearData, showConfirm, showFeedback, isDarkMode, toggleTheme, treeType, setTreeType, colors, appPin, setAppPin, isSecurityEnabled, toggleSecurity, isBiometricsEnabled, toggleBiometrics, isNotificationsEnabled, toggleNotifications } = useAppContext();
   const navigation = useNavigation<any>();
 
   const styles = getStyles(colors, isDarkMode);
@@ -28,6 +28,16 @@ export default function SettingsScreen() {
   const [pinSetupVisible, setPinSetupVisible] = React.useState(false);
   const [editName, setEditName] = React.useState(username || '');
   const [newPin, setNewPin] = React.useState('');
+  const [firstPin, setFirstPin] = React.useState('');
+  const [pinStep, setPinStep] = React.useState<'create' | 'confirm'>('create');
+  const [pinError, setPinError] = React.useState<string | null>(null);
+
+  const resetPinState = () => {
+    setNewPin('');
+    setFirstPin('');
+    setPinStep('create');
+    setPinError(null);
+  };
   const [biometricsSupported, setBiometricsSupported] = React.useState(false);
   const [appearanceModalVisible, setAppearanceModalVisible] = React.useState(false);
 
@@ -362,15 +372,19 @@ export default function SettingsScreen() {
       {/* PIN Setup Modal */}
       <ActionSheet
         visible={pinSetupVisible}
-        onClose={() => { setPinSetupVisible(false); setNewPin(''); }}
-        title="Set Application PIN"
+        onClose={() => { setPinSetupVisible(false); resetPinState(); }}
+        title={pinStep === 'create' ? "Set Application PIN" : "Confirm Application PIN"}
       >
         <View style={styles.modalContent}>
-          <Text style={styles.pinDesc}>Enter a 6-digit PIN to secure your application. You will be asked for this PIN every time you open Leapon.</Text>
+          <Text style={[styles.pinDesc, pinError ? { color: '#ef4444', fontFamily: theme.fonts.bold } : null]}>
+            {pinError || (pinStep === 'create' 
+              ? 'Enter a 6-digit PIN to secure your application. You will be asked for this PIN every time you open Leapon.' 
+              : 'Re-enter your 6-digit PIN to verify and complete setup.')}
+          </Text>
 
           <View style={styles.pinVisual}>
             {[1, 2, 3, 4, 5, 6].map((_, i) => (
-              <View key={i} style={[styles.pinCircle, newPin.length > i && styles.pinCircleFilled]} />
+              <View key={i} style={[styles.pinCircle, newPin.length > i && styles.pinCircleFilled, pinError ? { backgroundColor: '#ef4444' } : null]} />
             ))}
           </View>
 
@@ -381,17 +395,38 @@ export default function SettingsScreen() {
                 style={[styles.pinKey, k === '' && styles.pinKeyEmpty]}
                 disabled={k === ''}
                 onPress={() => {
-                  if (k === 'DEL') setNewPin(prev => prev.slice(0, -1));
-                  else if (newPin.length < 6) {
+                  setPinError(null);
+                  if (k === 'DEL') {
+                    setNewPin(prev => prev.slice(0, -1));
+                  } else if (newPin.length < 6) {
                     const p = newPin + k;
                     setNewPin(p);
                     if (p.length === 6) {
-                      setTimeout(async () => {
-                        await setAppPin(p);
-                        if (!isSecurityEnabled) await toggleSecurity(true);
-                        setPinSetupVisible(false);
-                        setNewPin('');
-                      }, 300);
+                      if (pinStep === 'create') {
+                        setTimeout(() => {
+                          setFirstPin(p);
+                          setNewPin('');
+                          setPinStep('confirm');
+                        }, 200);
+                      } else {
+                        if (p === firstPin) {
+                          setTimeout(async () => {
+                            await setAppPin(p);
+                            if (!isSecurityEnabled) await toggleSecurity(true);
+                            setPinSetupVisible(false);
+                            resetPinState();
+                            showFeedback('success', 'PIN Security Enabled');
+                          }, 300);
+                        } else {
+                          Vibration.vibrate([0, 50, 50, 50]);
+                          setPinError("PINs do not match. Please try again.");
+                          setTimeout(() => {
+                            setNewPin('');
+                            setFirstPin('');
+                            setPinStep('create');
+                          }, 600);
+                        }
+                      }
                     }
                   }
                 }}
@@ -401,7 +436,7 @@ export default function SettingsScreen() {
             ))}
           </View>
 
-          <TouchableOpacity style={[styles.closeBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border }]} onPress={() => setPinSetupVisible(false)}>
+          <TouchableOpacity style={[styles.closeBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border }]} onPress={() => { setPinSetupVisible(false); resetPinState(); }}>
             <Text style={[styles.closeBtnText, { color: colors.text }]}>Cancel</Text>
           </TouchableOpacity>
         </View>

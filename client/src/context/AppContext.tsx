@@ -144,6 +144,53 @@ export type SubscriptionType = {
   icon?: string;
 };
 
+export const calculateNextDueDate = (startDateStr: string, paidMonths: number): string => {
+  if (!startDateStr) return new Date().toISOString().split('T')[0];
+  const parts = startDateStr.split('-');
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+  if (isNaN(y) || isNaN(m) || isNaN(d)) return startDateStr;
+  
+  const targetDate = new Date(y, (m - 1) + (paidMonths + 1), d);
+  const outY = targetDate.getFullYear();
+  const outM = targetDate.getMonth() + 1;
+  const outD = targetDate.getDate();
+  
+  const mm = outM < 10 ? `0${outM}` : `${outM}`;
+  const dd = outD < 10 ? `0${outD}` : `${outD}`;
+  return `${outY}-${mm}-${dd}`;
+};
+
+export type InstallmentType = {
+  id: string;
+  productName: string;
+  totalAmount: number;
+  monthlyAmount: number;
+  monthsToPay: number;
+  paidMonths: number;
+  startDate: string; // ISO date string e.g. "2026-05-01"
+  dueDate: string; // ISO date string calculated from startDate + (paidMonths + 1)
+  walletId?: string; // Optional linked wallet for auto-deduction
+  currency?: 'PHP' | 'USD';
+  date: string;
+  notes?: string;
+};
+
+export type RentType = {
+  id: string;
+  propertyName: string; // e.g. "Boarding House", "Apartment Unit 4B"
+  location: string; // e.g. "Sampaloc, Manila", "Makati City"
+  monthlyAmount: number;
+  currency?: 'PHP' | 'USD';
+  startDate: string; // ISO date string e.g. "2026-05-01"
+  dueDate: string; // Next payment due date calculated monthly
+  paidCycles: number; // Number of months paid
+  walletId?: string; // Optional auto-deduct wallet
+  notes?: string;
+  date: string;
+};
+
 type AppContextType = {
   isLoaded: boolean;
   username: string | null;
@@ -186,6 +233,7 @@ type AppContextType = {
   colors: any;
   groceryLists: GroceryListType[];
   addGroceryList: (title: string, scheduledDays?: number[]) => Promise<void>;
+  editGroceryList: (id: string, newTitle: string, scheduledDays?: number[]) => Promise<void>;
   deleteGroceryList: (id: string) => Promise<void>;
   addGroceryItem: (listId: string, item: Omit<GroceryItemType, 'id' | 'completed'>) => Promise<void>;
   deleteGroceryItem: (listId: string, itemId: string) => Promise<void>;
@@ -212,7 +260,7 @@ type AppContextType = {
   startTutorial: () => void;
   stopTutorial: () => void;
   withdrawPresets: WithdrawPresetType[];
-  addWithdrawPreset: (name: string, iconName: string) => Promise<void>;
+  addWithdrawPreset: (name: string, iconName: string) => Promise<WithdrawPresetType>;
   deleteWithdrawPreset: (id: string) => Promise<void>;
   recursions: RecursionType[];
   addRecursion: (recursion: Omit<RecursionType, 'id' | 'date'>) => Promise<void>;
@@ -229,6 +277,16 @@ type AppContextType = {
   usdToPhpRate: number;
   usdToPhpRateDate: string | null;
   refreshUsdToPhpRate: () => Promise<void>;
+  installments: InstallmentType[];
+  addInstallment: (installment: Omit<InstallmentType, 'id' | 'dueDate' | 'date'> & { startDate: string; paidMonths?: number }) => Promise<void>;
+  editInstallment: (id: string, updates: Partial<InstallmentType>) => Promise<void>;
+  deleteInstallment: (id: string) => Promise<void>;
+  payInstallmentMonth: (id: string, walletId?: string) => Promise<void>;
+  rents: RentType[];
+  addRent: (rent: Omit<RentType, 'id' | 'dueDate' | 'paidCycles' | 'date'> & { startDate: string; paidCycles?: number }) => Promise<void>;
+  editRent: (id: string, updates: Partial<RentType>) => Promise<void>;
+  deleteRent: (id: string) => Promise<void>;
+  payRentMonth: (id: string, walletId?: string) => Promise<void>;
 };
 
 
@@ -247,6 +305,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [withdrawPresets, setWithdrawPresets] = useState<WithdrawPresetType[]>(DEFAULT_WITHDRAW_PRESETS);
   const [recursions, setRecursions] = useState<RecursionType[]>([]);
   const [subscriptions, setSubscriptions] = useState<SubscriptionType[]>([]);
+  const [installments, setInstallments] = useState<InstallmentType[]>([]);
+  const [rents, setRents] = useState<RentType[]>([]);
   const [userImage, setUserImageState] = useState<string | null>(null);
   const [appPin, setAppPinState] = useState<string | null>(null);
   const [isSecurityEnabled, setIsSecurityEnabled] = useState(false);
@@ -358,6 +418,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (storedRecursions) setRecursions(JSON.parse(storedRecursions));
       const storedSubscriptions = await AsyncStorage.getItem('@subscriptions');
       if (storedSubscriptions) setSubscriptions(JSON.parse(storedSubscriptions));
+      const storedInstallments = await AsyncStorage.getItem('@installments');
+      if (storedInstallments) setInstallments(JSON.parse(storedInstallments));
+
+      const storedRents = await AsyncStorage.getItem('@rents');
+      if (storedRents) setRents(JSON.parse(storedRents));
       const storedGrocery = await AsyncStorage.getItem('@groceryLists');
       if (storedGrocery) setGroceryLists(JSON.parse(storedGrocery));
       const storedWallets = await AsyncStorage.getItem('@wallets');
@@ -439,21 +504,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (isNotificationsEnabled) {
           const hasPermission = await requestNotificationPermissions();
           if (hasPermission) {
-            syncAllNotifications(debts, groceryLists, true);
+            syncAllNotifications(debts, groceryLists, installments, true);
           }
         } else {
-          syncAllNotifications(debts, groceryLists, false);
+          syncAllNotifications(debts, groceryLists, installments, false);
         }
       };
       setupNotifications();
     }
-  }, [isLoaded, recursions.length]);
+  }, [isLoaded, recursions.length, debts, groceryLists, installments, isNotificationsEnabled]);
 
   useEffect(() => {
     if (isLoaded) {
-      syncAllNotifications(debts, groceryLists, isNotificationsEnabled);
+      syncAllNotifications(debts, groceryLists, installments, isNotificationsEnabled);
     }
-  }, [debts, groceryLists, isNotificationsEnabled]);
+  }, [debts, groceryLists, installments, isNotificationsEnabled]);
 
   useEffect(() => {
     if (isLoaded) {
@@ -1212,6 +1277,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showFeedback('success', 'List Created');
   };
 
+  const editGroceryList = async (id: string, newTitle: string, scheduledDays?: number[]) => {
+    const updated = groceryLists.map(l => l.id === id ? { ...l, title: newTitle, scheduledDays } : l);
+    setGroceryLists(updated);
+    await AsyncStorage.setItem('@groceryLists', JSON.stringify(updated));
+    showFeedback('success', 'List Updated');
+  };
+
   const deleteGroceryList = async (id: string) => {
     const updated = groceryLists.filter(l => l.id !== id);
     setGroceryLists(updated);
@@ -1476,6 +1548,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setWithdrawPresets(updated);
     await AsyncStorage.setItem('@withdrawPresets', JSON.stringify(updated));
     showFeedback('success', 'Preset Added');
+    return newPreset;
   };
 
   const deleteWithdrawPreset = async (id: string) => {
@@ -1483,6 +1556,179 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setWithdrawPresets(updated);
     await AsyncStorage.setItem('@withdrawPresets', JSON.stringify(updated));
     showFeedback('delete', 'Preset Removed');
+  };
+
+  const addInstallment = async (data: Omit<InstallmentType, 'id' | 'dueDate' | 'date'> & { startDate: string; paidMonths?: number }) => {
+    const initialPaidMonths = data.paidMonths || 0;
+    const initialDueDate = calculateNextDueDate(data.startDate, initialPaidMonths);
+    const newInstallment: InstallmentType = {
+      ...data,
+      id: Date.now().toString(),
+      paidMonths: initialPaidMonths,
+      dueDate: initialDueDate,
+      date: new Date().toISOString(),
+    };
+    const updated = [newInstallment, ...installments];
+    setInstallments(updated);
+    await AsyncStorage.setItem('@installments', JSON.stringify(updated));
+    showFeedback('success', 'Installment Recorded');
+  };
+
+  const editInstallment = async (id: string, updates: Partial<InstallmentType>) => {
+    const updated = installments.map(i => {
+      if (i.id === id) {
+        const nextUpdates = { ...i, ...updates };
+        if (updates.startDate || updates.paidMonths !== undefined) {
+          nextUpdates.dueDate = calculateNextDueDate(nextUpdates.startDate, nextUpdates.paidMonths);
+        }
+        return nextUpdates;
+      }
+      return i;
+    });
+    setInstallments(updated);
+    await AsyncStorage.setItem('@installments', JSON.stringify(updated));
+    showFeedback('success', 'Installment Updated');
+  };
+
+  const deleteInstallment = async (id: string) => {
+    const updated = installments.filter(i => i.id !== id);
+    setInstallments(updated);
+    await AsyncStorage.setItem('@installments', JSON.stringify(updated));
+    showFeedback('delete', 'Installment Removed');
+  };
+
+  const payInstallmentMonth = async (id: string, customWalletId?: string) => {
+    const item = installments.find(i => i.id === id);
+    if (!item) return;
+
+    if (item.paidMonths >= item.monthsToPay) {
+      showFeedback('error', 'Installment already completed!');
+      return;
+    }
+
+    const targetWalletId = customWalletId || item.walletId;
+
+    if (targetWalletId) {
+      const wallet = wallets.find(w => w.id === targetWalletId);
+      if (wallet) {
+        const walletBal = item.currency === 'USD' ? (wallet.usdBalance || 0) : wallet.balance;
+        if (walletBal < item.monthlyAmount) {
+          showFeedback('error', 'Insufficient Wallet Balance');
+          return;
+        }
+
+        await addTransaction({
+          title: `Installment: ${item.productName} (${item.paidMonths + 1}/${item.monthsToPay})`,
+          amount: item.monthlyAmount,
+          currency: item.currency || 'PHP',
+          type: 'withdrawal',
+          walletId: targetWalletId,
+          icon: 'CreditCard'
+        });
+      }
+    }
+
+    const nextPaidMonths = item.paidMonths + 1;
+    const nextDue = calculateNextDueDate(item.startDate, nextPaidMonths);
+
+    const updated = installments.map(inst => {
+      if (inst.id === id) {
+        return {
+          ...inst,
+          paidMonths: nextPaidMonths,
+          dueDate: nextDue,
+        };
+      }
+      return inst;
+    });
+
+    setInstallments(updated);
+    await AsyncStorage.setItem('@installments', JSON.stringify(updated));
+    showFeedback('success', `Paid Month ${nextPaidMonths} of ${item.monthsToPay}`);
+  };
+
+  const addRent = async (data: Omit<RentType, 'id' | 'dueDate' | 'paidCycles' | 'date'> & { startDate: string; paidCycles?: number }) => {
+    const initialPaid = data.paidCycles || 0;
+    const initialDueDate = calculateNextDueDate(data.startDate, initialPaid);
+    const newRent: RentType = {
+      ...data,
+      id: Date.now().toString(),
+      paidCycles: initialPaid,
+      dueDate: initialDueDate,
+      date: new Date().toISOString(),
+    };
+    const updated = [newRent, ...rents];
+    setRents(updated);
+    await AsyncStorage.setItem('@rents', JSON.stringify(updated));
+    showFeedback('success', 'Rent Property Recorded');
+  };
+
+  const editRent = async (id: string, updates: Partial<RentType>) => {
+    const updated = rents.map(r => {
+      if (r.id === id) {
+        const nextUpdates = { ...r, ...updates };
+        if (updates.startDate || updates.paidCycles !== undefined) {
+          nextUpdates.dueDate = calculateNextDueDate(nextUpdates.startDate, nextUpdates.paidCycles || 0);
+        }
+        return nextUpdates;
+      }
+      return r;
+    });
+    setRents(updated);
+    await AsyncStorage.setItem('@rents', JSON.stringify(updated));
+    showFeedback('success', 'Rent Details Updated');
+  };
+
+  const deleteRent = async (id: string) => {
+    const updated = rents.filter(r => r.id !== id);
+    setRents(updated);
+    await AsyncStorage.setItem('@rents', JSON.stringify(updated));
+    showFeedback('delete', 'Rent Property Removed');
+  };
+
+  const payRentMonth = async (id: string, customWalletId?: string) => {
+    const item = rents.find(r => r.id === id);
+    if (!item) return;
+
+    const targetWalletId = customWalletId || item.walletId;
+
+    if (targetWalletId) {
+      const wallet = wallets.find(w => w.id === targetWalletId);
+      if (wallet) {
+        const walletBal = item.currency === 'USD' ? (wallet.usdBalance || 0) : wallet.balance;
+        if (walletBal < item.monthlyAmount) {
+          showFeedback('error', 'Insufficient Wallet Balance');
+          return;
+        }
+
+        await addTransaction({
+          title: `Rent: ${item.propertyName} (${item.location})`,
+          amount: item.monthlyAmount,
+          currency: item.currency || 'PHP',
+          type: 'withdrawal',
+          walletId: targetWalletId,
+          icon: 'Home'
+        });
+      }
+    }
+
+    const nextPaidCycles = item.paidCycles + 1;
+    const nextDue = calculateNextDueDate(item.startDate, nextPaidCycles);
+
+    const updated = rents.map(r => {
+      if (r.id === id) {
+        return {
+          ...r,
+          paidCycles: nextPaidCycles,
+          dueDate: nextDue,
+        };
+      }
+      return r;
+    });
+
+    setRents(updated);
+    await AsyncStorage.setItem('@rents', JSON.stringify(updated));
+    showFeedback('success', `Rent Paid for ${item.propertyName}`);
   };
 
   return (
@@ -1529,6 +1775,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         colors,
         groceryLists,
         addGroceryList,
+        editGroceryList,
         deleteGroceryList,
         addGroceryItem,
         deleteGroceryItem,
@@ -1572,6 +1819,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         usdToPhpRate,
         usdToPhpRateDate,
         refreshUsdToPhpRate,
+        installments,
+        addInstallment,
+        editInstallment,
+        deleteInstallment,
+        payInstallmentMonth,
+        rents,
+        addRent,
+        editRent,
+        deleteRent,
+        payRentMonth,
       }}
     >
       {children}

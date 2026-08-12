@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { theme } from '../theme';
 import { Target, Plus, Wallet } from 'lucide-react-native';
-import { useAppContext } from '../context/AppContext';
+import { useAppContext, getWalletTotalBalanceInPhp } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import { useNavigation, useRoute, useScrollToTop } from '@react-navigation/native';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 
 export default function GoalsScreen() {
-  const { goals, addGoal, editGoal, deleteGoal, wallets, showFeedback, showConfirm, colors, isDarkMode } = useAppContext();
+  const { goals, addGoal, editGoal, deleteGoal, wallets, showFeedback, showConfirm, colors, isDarkMode, usdToPhpRate } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -91,7 +91,7 @@ export default function GoalsScreen() {
         ) : (
           filteredGoals.map((goal) => {
             const linkedWallet = wallets.find(w => w.id === goal.walletId);
-            const currentAmount = linkedWallet ? linkedWallet.balance : 0;
+            const currentAmount = linkedWallet ? getWalletTotalBalanceInPhp(linkedWallet, usdToPhpRate) : 0;
             const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
 
             return (

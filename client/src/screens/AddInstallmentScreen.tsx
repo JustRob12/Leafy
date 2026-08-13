@@ -291,16 +291,20 @@ export default function AddInstallmentScreen() {
                 key={wallet.id}
                 style={[
                   styles.walletChip,
-                  { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderColor: colors.border },
+                  { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderColor: colors.border, maxWidth: 160 },
                   selectedWalletId === wallet.id && { backgroundColor: wallet.color || colors.primary, borderColor: wallet.color || colors.primary }
                 ]}
                 onPress={() => setSelectedWalletId(wallet.id)}
               >
-                <Text style={[
-                  styles.walletChipName,
-                  { color: colors.text },
-                  selectedWalletId === wallet.id && { color: '#FFFFFF' }
-                ]}>
+                <Text 
+                  style={[
+                    styles.walletChipName,
+                    { color: colors.text },
+                    selectedWalletId === wallet.id && { color: '#FFFFFF' }
+                  ]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
                   {wallet.name}
                 </Text>
               </TouchableOpacity>

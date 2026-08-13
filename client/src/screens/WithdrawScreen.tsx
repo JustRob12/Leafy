@@ -185,6 +185,7 @@ export default function WithdrawScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.id}
+          style={{ flexGrow: 0 }}
           contentContainerStyle={styles.walletSliderContent}
           renderItem={({ item: wallet }) => (
             <TouchableOpacity 
@@ -208,12 +209,14 @@ export default function WithdrawScreen() {
                   return <CreditCard size={14} color="#ffffff" />;
                 })()}
               </View>
-              <Text style={[styles.miniWalletName, { color: '#ffffff' }]} numberOfLines={1}>
-                {wallet.name}
-              </Text>
-              <Text style={[styles.miniWalletBalance, { color: 'rgba(255, 255, 255, 0.8)' }]} numberOfLines={1}>
-                ₱{Math.floor(getWalletTotalBalanceInPhp(wallet, usdToPhpRate)).toLocaleString()}
-              </Text>
+              <View>
+                <Text style={[styles.miniWalletName, { color: '#ffffff' }]} numberOfLines={1}>
+                  {wallet.name}
+                </Text>
+                <Text style={[styles.miniWalletBalance, { color: 'rgba(255, 255, 255, 0.8)' }]} numberOfLines={1}>
+                  ₱{Math.floor(getWalletTotalBalanceInPhp(wallet, usdToPhpRate)).toLocaleString()}
+                </Text>
+              </View>
             </TouchableOpacity>
           )}
         />
@@ -227,7 +230,12 @@ export default function WithdrawScreen() {
         </View>
 
         {/* Preset Horizontal Chips */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetSliderContent}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          style={{ flexGrow: 0 }}
+          contentContainerStyle={styles.presetSliderContent}
+        >
           {effectivePresets.map((preset) => {
             const Icon = ICON_MAP[preset.iconName] || MoreHorizontal;
             const isSelected = selectedPreset?.id === preset.id;
@@ -542,31 +550,33 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 12,
+    marginVertical: 6,
   },
   currencyPrefixCompact: {
     fontFamily: theme.fonts.bold,
-    fontSize: rf(32),
-    marginRight: 6,
+    fontSize: rf(26),
+    marginRight: 4,
   },
   amountTextCompact: {
     fontFamily: theme.fonts.bold,
-    fontSize: rf(38),
+    fontSize: rf(32),
   },
   sectionLabelSmall: {
     fontFamily: theme.fonts.bold,
     fontSize: rf(11),
     letterSpacing: 0.8,
-    marginBottom: 8,
+    marginBottom: 5,
   },
   walletSliderContent: {
-    gap: 10,
-    paddingBottom: 10,
+    gap: 8,
+    paddingVertical: 4,
   },
   miniWalletItem: {
-    width: 120,
-    padding: 12,
+    width: 86,
+    height: 86,
+    padding: 8,
     borderRadius: 16,
+    justifyContent: 'space-between',
     position: 'relative',
   },
   miniWalletItemSelected: {
@@ -577,41 +587,40 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     position: 'absolute',
     top: 6,
     right: 6,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   miniWalletIconBox: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
+    width: 22,
+    height: 22,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
   },
   miniWalletLogo: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 5,
   },
   miniWalletName: {
     fontFamily: theme.fonts.bold,
-    fontSize: rf(12),
+    fontSize: rf(11),
   },
   miniWalletBalance: {
     fontFamily: theme.fonts.medium,
-    fontSize: rf(11),
-    marginTop: 2,
+    fontSize: rf(9.5),
+    marginTop: 1,
   },
   presetHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 12,
-    marginBottom: 6,
+    marginTop: 8,
+    marginBottom: 4,
   },
   allPresetsLink: {
     paddingVertical: 2,
@@ -622,45 +631,46 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   presetSliderContent: {
     gap: 8,
-    paddingBottom: 12,
+    paddingVertical: 4,
   },
   miniPresetChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 14,
+    paddingHorizontal: 12,
+    height: 36,
+    borderRadius: 12,
     borderWidth: 1,
-    gap: 6,
+    gap: 5,
   },
   miniPresetChipText: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: rf(13),
+    fontSize: rf(12),
   },
   keypadBottom: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginVertical: 10,
+    marginVertical: 6,
   },
   keypadButtonCompact: {
     width: '31%',
-    height: 52,
-    borderRadius: 14,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   keypadButtonTextCompact: {
     fontFamily: theme.fonts.bold,
-    fontSize: rf(20),
+    fontSize: rf(18),
   },
   expenseBtnFinal: {
-    height: 54,
+    height: 50,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 4,
+    marginBottom: 8,
   },
   expenseBtnDisabled: {
     opacity: 0.5,

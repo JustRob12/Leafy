@@ -98,7 +98,7 @@ export default function WalletsScreen() {
                 <Text style={styles.categoryLabel}>{group.title}</Text>
                 <View style={styles.gridContainer}>
                   {group.data.map((wallet) => (
-                      <View key={wallet.id} style={styles.premiumCardWrapper}>
+                    <View key={wallet.id} style={styles.premiumCardWrapper}>
                         <TouchableOpacity 
                           style={[styles.premiumCard, { backgroundColor: wallet.color || colors.primary }]}
                           onPress={() => navigation.navigate('WalletDetail', { wallet })}
@@ -119,7 +119,7 @@ export default function WalletsScreen() {
                                   return <PurposeIcon size={16} color="#ffffff" />;
                                 })()}
                               </View>
-                              <Text style={[styles.cardName, { color: '#ffffff' }]} numberOfLines={1}>{wallet.name}</Text>
+                              <Text style={[styles.cardName, { color: '#ffffff' }]} numberOfLines={1} ellipsizeMode="tail">{wallet.name}</Text>
                             </View>
 
                             <View style={styles.cardHeaderRight}>
@@ -148,7 +148,11 @@ export default function WalletsScreen() {
                                     }
                                   </Text>
                                   {showBalances && (wallet.usdBalance || 0) > 0 && (
-                                    <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: 'rgba(255, 255, 255, 0.85)', marginTop: 2 }}>
+                                    <Text 
+                                      style={{ fontFamily: theme.fonts.medium, fontSize: 10, color: 'rgba(255, 255, 255, 0.85)', marginTop: 2 }}
+                                      numberOfLines={1}
+                                      adjustsFontSizeToFit
+                                    >
                                       Includes ${(wallet.usdBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
                                     </Text>
                                   )}
@@ -158,20 +162,22 @@ export default function WalletsScreen() {
                           </View>
 
                           <View style={styles.cardFooter}>
-                            <View style={[styles.purposePill, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
-                              <Text style={[styles.purposePillText, { color: '#ffffff' }]}>{wallet.purpose}</Text>
-                            </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, overflow: 'hidden' }}>
+                              <View style={[styles.purposePill, { backgroundColor: 'rgba(255, 255, 255, 0.2)', maxWidth: 75 }]}>
+                                <Text style={[styles.purposePillText, { color: '#ffffff' }]} numberOfLines={1} ellipsizeMode="tail">{wallet.purpose}</Text>
+                              </View>
 
-                            {(wallet.interestRate ?? 0) > 0 && (
-                               <View style={[styles.interestPill, { backgroundColor: 'rgba(255, 255, 255, 0.2)', marginLeft: 8 }]}>
-                                 <Text style={[styles.interestPillText, { color: '#ffffff' }]}>{wallet.interestRate}%</Text>
-                               </View>
-                            )}
+                              {(wallet.interestRate ?? 0) > 0 && (
+                                 <View style={[styles.interestPill, { backgroundColor: 'rgba(255, 255, 255, 0.2)', marginLeft: 6 }]}>
+                                   <Text style={[styles.interestPillText, { color: '#ffffff' }]} numberOfLines={1}>{wallet.interestRate}%</Text>
+                                 </View>
+                              )}
+                            </View>
 
                             {wallet.qrCodeImage && (
                               <TouchableOpacity
                                 onPress={(e) => { e.stopPropagation(); navigation.navigate('WalletDetail', { wallet }); }}
-                                style={[styles.qrActionBtn, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
+                                style={[styles.qrActionBtn, { backgroundColor: 'rgba(255, 255, 255, 0.2)', marginLeft: 4 }]}
                               >
                                 <QrCode size={14} color="#ffffff" />
                               </TouchableOpacity>
@@ -279,6 +285,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     premiumCardWrapper: {
       width: (Dimensions.get('window').width - theme.spacing.lg * 2 - 12) / 2,
+      height: 140,
       marginBottom: 12,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
@@ -287,24 +294,27 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       elevation: 4,
     },
     premiumCard: {
+      height: 140,
       backgroundColor: colors.card,
       borderRadius: 18,
       borderWidth: 1,
       borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#f1f5f9',
       overflow: 'hidden',
+      justifyContent: 'space-between',
+      padding: 10,
     },
     cardHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: 8,
-      paddingHorizontal: 10,
+      height: 28,
     },
     cardHeaderLeft: {
       flexDirection: 'row',
       alignItems: 'center',
       flex: 1,
       position: 'relative',
+      overflow: 'hidden',
     },
     headerGlow: {
       position: 'absolute',
@@ -335,13 +345,14 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     },
     cardBody: {
       alignItems: 'center',
-      paddingVertical: 12,
-      paddingHorizontal: 8,
+      justifyContent: 'center',
+      flex: 1,
+      paddingVertical: 2,
       backgroundColor: 'transparent',
     },
     cardBalanceText: {
       fontFamily: theme.fonts.bold,
-      fontSize: rf(18),
+      fontSize: rf(17),
       color: '#ffffff',
       textAlign: 'center',
     },
@@ -349,8 +360,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: 8,
-      paddingHorizontal: 10,
+      height: 24,
     },
     purposePill: {
       backgroundColor: colors.primary + '15',

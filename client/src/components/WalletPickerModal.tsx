@@ -58,8 +58,8 @@ export default function WalletPickerModal({ visible, onClose, wallets, selectedW
                       <WalletIcon size={20} color={isSelected ? colors.primary : colors.textMuted} />
                     </View>
                     <View style={styles.walletDetails}>
-                      <Text style={[styles.walletName, isSelected && styles.walletNameSelected]}>{item.name}</Text>
-                      <Text style={styles.walletBalanceText}>Balance: ₱{item.balance.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
+                      <Text style={[styles.walletName, isSelected && styles.walletNameSelected]} numberOfLines={1} ellipsizeMode="tail">{item.name}</Text>
+                      <Text style={styles.walletBalanceText} numberOfLines={1}>Balance: ₱{item.balance.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</Text>
                     </View>
                     {isSelected && <View style={styles.checkIndicator} />}
                   </TouchableOpacity>

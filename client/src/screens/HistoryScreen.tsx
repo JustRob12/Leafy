@@ -279,11 +279,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDarkMode ? 0.2 : 0.05,
-    shadowRadius: 8,
-    elevation: 3,
   },
   txLeft: {
     flex: 1,

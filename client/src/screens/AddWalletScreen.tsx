@@ -626,6 +626,8 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#000000',
   },
   pickerIconContainer: {
     width: 50,

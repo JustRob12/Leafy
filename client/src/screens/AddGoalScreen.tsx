@@ -241,14 +241,16 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderRadius: 24,
     marginBottom: 24,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 1.5,
+    borderColor: '#000000',
     borderStyle: 'dashed',
     backgroundColor: colors.card,
   },
   previewImage: {
     width: '100%',
     height: '100%',
+    borderWidth: 1.5,
+    borderColor: '#000000',
     backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
   },
   imagePlaceholder: {

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, Animated, Platform, TouchableWithoutFeedback, Keyboard, useWindowDimensions, ScrollView, KeyboardAvoidingView } from 'react-native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
@@ -13,7 +13,7 @@ interface ActionSheetProps {
 export default function ActionSheet({ visible, onClose, title, children }: ActionSheetProps) {
   const { height } = useWindowDimensions();
   const { colors, isDarkMode } = useAppContext();
-  const styles = getStyles(colors, isDarkMode, height);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const slideAnim = useRef(new Animated.Value(height)).current;
 
   useEffect(() => {
@@ -25,45 +25,85 @@ export default function ActionSheet({ visible, onClose, title, children }: Actio
         tension: 65,
         friction: 11
       }).start();
+    } else {
+      setKeyboardHeight(0);
     }
   }, [visible, height]);
 
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const styles = getStyles(colors, isDarkMode, height);
+
+  const dynamicMaxHeight = keyboardHeight > 0 
+    ? Math.max(200, height - keyboardHeight - (Platform.OS === 'ios' ? 60 : 40))
+    : height * 0.85;
+
+  const handleClose = () => {
+    Keyboard.dismiss();
+    onClose();
+  };
+
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.overlay}>
-          <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.container}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    <Modal 
+      visible={visible} 
+      transparent 
+      animationType="fade" 
+      statusBarTranslucent
+      onRequestClose={handleClose}
+    >
+      <View style={styles.overlay}>
+        <TouchableWithoutFeedback onPress={handleClose}>
+          <View style={StyleSheet.absoluteFillObject} />
+        </TouchableWithoutFeedback>
+
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.container}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+          pointerEvents="box-none"
+        >
+          <Animated.View 
+            style={[
+              styles.content, 
+              { 
+                transform: [{ translateY: slideAnim }],
+                maxHeight: dynamicMaxHeight,
+              }
+            ]}
           >
-            <Animated.View 
-              style={[
-                styles.content, 
-                { 
-                  transform: [{ translateY: slideAnim }]
-                }
-              ]}
+            <View style={styles.header}>
+              <Text style={styles.title}>{title}</Text>
+              <TouchableOpacity onPress={handleClose} style={styles.cancelBtn}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView 
+              showsVerticalScrollIndicator={false}
+              style={styles.scrollArea}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled={true}
             >
-              <View style={styles.header}>
-                <Text style={styles.title}>{title}</Text>
-                <TouchableOpacity onPress={onClose} style={styles.cancelBtn}>
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-              <ScrollView 
-                showsVerticalScrollIndicator={false}
-                style={styles.scrollArea}
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
-                nestedScrollEnabled={true}
-              >
-                {children}
-              </ScrollView>
-            </Animated.View>
-          </KeyboardAvoidingView>
-        </View>
-      </TouchableWithoutFeedback>
+              {children}
+            </ScrollView>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
@@ -120,6 +160,7 @@ const getStyles = (colors: any, isDarkMode: boolean, height: number) => StyleShe
     color: colors.textMuted,
   }
 });
+
 
 
 

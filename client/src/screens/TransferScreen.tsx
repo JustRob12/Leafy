@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { 
   View, Text, StyleSheet, TouchableOpacity, TextInput, 
   Dimensions, Platform, FlatList, Image as RNImage 
@@ -10,7 +10,9 @@ import {
   ChevronLeft, ArrowRightLeft, CreditCard, Check 
 } from 'lucide-react-native';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
+const scale = width / 375;
+const rf = (size: number) => Math.round(size * scale);
 
 const BRAND_LOGOS: { [key: string]: any } = {
   'gcash.png': require('../../public/walletimages/gcash.png'),
@@ -22,7 +24,7 @@ const BRAND_LOGOS: { [key: string]: any } = {
 };
 
 export default function TransferScreen() {
-  const { colors, isDarkMode, wallets, transferMoney, showFeedback } = useAppContext();
+  const { colors, isDarkMode, wallets, transferMoney, showFeedback, usdToPhpRate } = useAppContext();
   const navigation = useNavigation<any>();
   const styles = getStyles(colors, isDarkMode);
 
@@ -31,6 +33,7 @@ export default function TransferScreen() {
   const [amount, setAmount] = useState('');
   const [tax, setTax] = useState('');
   const [activeInput, setActiveInput] = useState<'amount' | 'tax'>('amount');
+  const [currency, setCurrency] = useState<'PHP' | 'USD'>('PHP');
 
   const formatDisplayAmount = (raw: string) => {
     if (!raw) return '0.00';
@@ -61,20 +64,36 @@ export default function TransferScreen() {
     }
 
     const fromWallet = wallets.find(w => w.id === fromWalletId);
-    if (fromWallet && numericAmount > fromWallet.balance) {
-      showFeedback('error', 'Insufficient Balance');
-      return;
+    if (fromWallet) {
+      if (currency === 'USD') {
+        const availableUsd = fromWallet.usdBalance || 0;
+        if (numericAmount > availableUsd) {
+          showFeedback('error', `Insufficient USD balance in ${fromWallet.name}`);
+          return;
+        }
+      } else {
+        if (numericAmount > fromWallet.balance) {
+          showFeedback('error', `Insufficient PHP balance in ${fromWallet.name}`);
+          return;
+        }
+      }
     }
 
-    await transferMoney(fromWalletId, toWalletId, numericAmount, numericTax);
+    await transferMoney(fromWalletId, toWalletId, numericAmount, numericTax, currency);
     navigation.navigate('Main');
   };
 
   const netAmount = Math.max(0, (parseFloat(amount) || 0) - (parseFloat(tax) || 0));
+  const numericAmount = parseFloat(amount) || 0;
+  const currencySymbol = currency === 'USD' ? '$' : '₱';
 
   const renderWalletItem = ({ item: wallet, type }: { item: any, type: 'from' | 'to' }) => {
     const isSelected = type === 'from' ? fromWalletId === wallet.id : toWalletId === wallet.id;
     const isOtherSelected = type === 'from' ? toWalletId === wallet.id : fromWalletId === wallet.id;
+
+    const displayBal = currency === 'USD'
+      ? `$${(wallet.usdBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : `₱${Math.floor(wallet.balance).toLocaleString()}`;
 
     return (
       <TouchableOpacity 
@@ -82,7 +101,7 @@ export default function TransferScreen() {
           styles.miniWalletItem,
           { backgroundColor: wallet.color || (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)') },
           isSelected && styles.miniWalletItemSelected,
-          isOtherSelected && { opacity: 0.5 }
+          isOtherSelected && { opacity: 0.4 }
         ]}
         onPress={() => {
           if (type === 'from') {
@@ -95,7 +114,7 @@ export default function TransferScreen() {
       >
         {isSelected && (
           <View style={styles.selectedIndicator}>
-            <Check size={8} color="#ffffff" strokeWidth={3} />
+            <Check size={9} color="#ffffff" strokeWidth={3} />
           </View>
         )}
         <View style={styles.miniWalletIconBox}>
@@ -109,8 +128,8 @@ export default function TransferScreen() {
         <Text style={[styles.miniWalletName, { color: '#ffffff' }]} numberOfLines={1}>
           {wallet.name}
         </Text>
-        <Text style={[styles.miniWalletBalance, { color: 'rgba(255, 255, 255, 0.8)' }]} numberOfLines={1}>
-          ₱{Math.floor(wallet.balance).toLocaleString()}
+        <Text style={[styles.miniWalletBalance, { color: 'rgba(255, 255, 255, 0.85)' }]} numberOfLines={1}>
+          {displayBal}
         </Text>
       </TouchableOpacity>
     );
@@ -129,8 +148,29 @@ export default function TransferScreen() {
       <FlatList
         data={[{ id: 'content' }]}
         keyExtractor={item => item.id}
+        showsVerticalScrollIndicator={false}
         renderItem={() => (
           <View style={styles.mainContent}>
+            {/* Currency Selector Pill */}
+            <View style={styles.currencyToggleContainer}>
+              <TouchableOpacity
+                style={[styles.currencyPill, currency === 'PHP' && styles.currencyPillActive]}
+                onPress={() => setCurrency('PHP')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.currencyFlag}>🇵🇭</Text>
+                <Text style={[styles.currencyPillText, currency === 'PHP' && styles.currencyPillTextActive]}>PHP (₱)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.currencyPill, currency === 'USD' && styles.currencyPillActive]}
+                onPress={() => setCurrency('USD')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.currencyFlag}>🇺🇸</Text>
+                <Text style={[styles.currencyPillText, currency === 'USD' && styles.currencyPillTextActive]}>USD ($)</Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.inputsRow}>
               <TouchableOpacity 
                 style={[styles.amountDisplayWrapper, activeInput === 'amount' && styles.activeInputWrapper]} 
@@ -138,7 +178,7 @@ export default function TransferScreen() {
               >
                 <Text style={styles.inputLabelSmall}>Transfer Amount</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                  <Text style={styles.currencyPrefix}>₱</Text>
+                  <Text style={styles.currencyPrefix}>{currencySymbol}</Text>
                   <Text style={[styles.amountText, !amount && { color: colors.textMuted + '44' }]}>
                     {formatDisplayAmount(amount)}
                   </Text>
@@ -151,7 +191,7 @@ export default function TransferScreen() {
               >
                 <Text style={styles.inputLabelSmall}>Fee / Tax (Optional)</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                  <Text style={[styles.currencyPrefix, { fontSize: 16 }]}>₱</Text>
+                  <Text style={[styles.currencyPrefix, { fontSize: 16 }]}>{currencySymbol}</Text>
                   <Text style={[styles.taxText, !tax && { color: colors.textMuted + '44' }]}>
                     {formatDisplayAmount(tax)}
                   </Text>
@@ -159,10 +199,22 @@ export default function TransferScreen() {
               </TouchableOpacity>
             </View>
 
+            {currency === 'USD' && (
+              <View style={styles.conversionHintWrapper}>
+                <Text style={styles.conversionHintText}>
+                  {numericAmount > 0 
+                    ? `≈ ₱${(numericAmount * usdToPhpRate).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : `1 USD = ₱${usdToPhpRate.toFixed(2)}`
+                  }
+                </Text>
+                <Text style={styles.conversionRateSubtext}>Rate updated daily from ECB</Text>
+              </View>
+            )}
+
             {parseFloat(tax) > 0 && (
               <View style={styles.summaryBox}>
                 <Text style={styles.summaryText}>
-                  Receiver gets: <Text style={styles.summaryHighlight}>₱{netAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</Text>
+                  Receiver gets: <Text style={styles.summaryHighlight}>{currencySymbol}{netAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </Text>
               </View>
             )}
@@ -179,7 +231,9 @@ export default function TransferScreen() {
 
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <ArrowRightLeft color={colors.textMuted} size={20} />
+              <View style={styles.dividerBadge}>
+                <ArrowRightLeft color={colors.primary} size={18} />
+              </View>
               <View style={styles.dividerLine} />
             </View>
 
@@ -246,7 +300,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   backBtn: {
     width: 44,
@@ -258,45 +312,98 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   headerTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 20,
+    fontSize: rf(20),
     color: colors.text,
   },
   mainContent: {
     paddingHorizontal: 20,
   },
+  currencyToggleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+    borderRadius: 25,
+    padding: 4,
+    alignSelf: 'center',
+    marginBottom: 20,
+    gap: 4,
+  },
+  currencyPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  currencyPillActive: {
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  currencyFlag: {
+    fontSize: rf(14),
+  },
+  currencyPillText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(13),
+    color: colors.textMuted,
+  },
+  currencyPillTextActive: {
+    color: '#ffffff',
+  },
+  conversionHintWrapper: {
+    alignItems: 'center',
+    marginTop: -8,
+    marginBottom: 16,
+  },
+  conversionHintText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(15),
+    color: colors.primary,
+  },
+  conversionRateSubtext: {
+    fontFamily: theme.fonts.medium,
+    fontSize: rf(11),
+    color: colors.textMuted,
+    marginTop: 2,
+  },
   inputsRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   amountDisplayWrapper: {
     flex: 2,
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
   },
   taxDisplayWrapper: {
     flex: 1.3,
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
   },
   activeInputWrapper: {
     borderColor: colors.primary,
-    backgroundColor: colors.primary + '05',
+    backgroundColor: colors.primary + '08',
   },
   summaryBox: {
     backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
     padding: 12,
-    borderRadius: 12,
-    marginBottom: 20,
+    borderRadius: 14,
+    marginBottom: 18,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
     borderStyle: 'dashed',
   },
   summaryText: {
@@ -323,12 +430,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   amountText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 28,
+    fontSize: 26,
     color: colors.text,
   },
   taxText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 20,
+    fontSize: 18,
     color: colors.text,
   },
   sectionLabel: {
@@ -400,13 +507,23 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 16,
+    marginVertical: 14,
     gap: 15,
   },
   dividerLine: {
     flex: 1,
     height: 1,
     backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+  },
+  dividerBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
   },
   keypadContainer: {
     marginTop: 10,

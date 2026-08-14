@@ -273,7 +273,7 @@ type AppContextType = {
   addSubscription: (subscription: Omit<SubscriptionType, 'id' | 'date'>) => Promise<void>;
   editSubscription: (id: string, updates: Partial<Omit<SubscriptionType, 'id' | 'date'>>) => Promise<void>;
   deleteSubscription: (id: string) => Promise<void>;
-  transferMoney: (fromWalletId: string, toWalletId: string, amount: number, tax?: number) => Promise<void>;
+  transferMoney: (fromWalletId: string, toWalletId: string, amount: number, tax?: number, currency?: 'PHP' | 'USD') => Promise<void>;
   usdToPhpRate: number;
   usdToPhpRateDate: string | null;
   refreshUsdToPhpRate: () => Promise<void>;
@@ -949,7 +949,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showFeedback('delete', 'Subscription Removed');
   };
 
-  const transferMoney = async (fromWalletId: string, toWalletId: string, amount: number, tax: number = 0) => {
+  const transferMoney = async (fromWalletId: string, toWalletId: string, amount: number, tax: number = 0, currency: 'PHP' | 'USD' = 'PHP') => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -972,10 +972,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const txId2 = (Date.now() + 1).toString();
     const date = new Date().toISOString();
 
+    const isUsd = currency === 'USD';
+    const symbol = isUsd ? '$' : '₱';
+    const currentRate = isUsd ? usdToPhpRate : 1;
+
     const withdrawalTx: TransactionType = {
       id: txId1,
-      title: `Transfer to ${toWallet.name}${tax > 0 ? ` (₱${tax} fee deducted)` : ''}`,
+      title: `Transfer to ${toWallet.name}${tax > 0 ? ` (${symbol}${tax} fee deducted)` : ''}`,
       amount: amount,
+      currency: currency,
+      exchangeRate: currentRate,
       date: date,
       type: 'withdrawal',
       walletId: fromWalletId,
@@ -987,6 +993,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: txId2,
       title: `Transfer from ${fromWallet.name}`,
       amount: depositAmount,
+      currency: currency,
+      exchangeRate: currentRate,
       date: date,
       type: 'deposit',
       walletId: toWalletId,
@@ -998,8 +1006,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await AsyncStorage.setItem('@transactions', JSON.stringify(updatedTx));
 
     const updatedWallets = wallets.map(w => {
-      if (w.id === fromWalletId) return { ...w, balance: w.balance - amount };
-      if (w.id === toWalletId) return { ...w, balance: w.balance + depositAmount };
+      if (w.id === fromWalletId) {
+        if (isUsd) {
+          const currentUsd = w.usdBalance || 0;
+          return { ...w, usdBalance: Math.max(0, currentUsd - amount) };
+        } else {
+          return { ...w, balance: w.balance - amount };
+        }
+      }
+      if (w.id === toWalletId) {
+        if (isUsd) {
+          const currentUsd = w.usdBalance || 0;
+          return { ...w, usdBalance: currentUsd + depositAmount };
+        } else {
+          return { ...w, balance: w.balance + depositAmount };
+        }
+      }
       return w;
     });
 

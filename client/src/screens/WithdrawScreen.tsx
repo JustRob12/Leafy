@@ -21,6 +21,7 @@ import {
   MoreHorizontal, Coffee, Home, Gift, Smartphone, Gamepad, 
   CreditCard, Briefcase, Camera, Film, Music, Globe, Map, Search, Check, ArrowRight, X, ListFilter, Sliders
 } from 'lucide-react-native';
+import WalletBrandLogo from '../components/WalletBrandLogo';
 
 const { width, height } = Dimensions.get('window');
 
@@ -31,15 +32,6 @@ const ICON_MAP: { [key: string]: any } = {
 };
 
 const AVAILABLE_ICONS = Object.keys(ICON_MAP);
-
-const BRAND_LOGOS: { [key: string]: any } = {
-  'gcash.png': require('../../public/walletimages/gcash.png'),
-  'maya.png': require('../../public/walletimages/maya.png'),
-  'paypal.png': require('../../public/walletimages/paypal.png'),
-  'wise.png': require('../../public/walletimages/wise.png'),
-  'maribank.png': require('../../public/walletimages/maribank.png'),
-  'gotyme.png': require('../../public/walletimages/gotyme.png'),
-};
 
 const defaultIds = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
 
@@ -204,7 +196,7 @@ export default function WithdrawScreen() {
               <View style={styles.miniWalletIconBox}>
                 {(() => {
                   if (wallet.iconType === 'preset' && wallet.presetLogo) {
-                    return <RNImage source={BRAND_LOGOS[wallet.presetLogo]} style={styles.miniWalletLogo as any} />;
+                    return <WalletBrandLogo logoKey={wallet.presetLogo} size={20} style={styles.miniWalletLogo} />;
                   }
                   return <CreditCard size={14} color="#ffffff" />;
                 })()}

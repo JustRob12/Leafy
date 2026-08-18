@@ -56,8 +56,8 @@ export const sendTestNotification = async (): Promise<boolean> => {
     await requestNotificationPermissions();
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: "🔔 Leapon Notification Test",
-        body: "Notifications are working perfectly! You'll receive alerts for Paydays, Goals, Subscriptions, Installments & Rent.",
+        title: "Leapon Alerts",
+        body: "Notifications are working! You'll receive alerts for Paydays, Goals, Subscriptions, Installments & Rent.",
         data: { path: 'Main', screen: 'Home' },
         sound: true,
       },
@@ -116,8 +116,8 @@ export const syncAllNotifications = async (
 
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: "📅 Subscription Payment Due Today",
-          body: `Your subscription "${sub.title}" (₱${sub.amount.toLocaleString()}) is due for payment today!`,
+          title: "Subscription Due Today",
+          body: `Your subscription "${sub.title}" (₱${sub.amount.toLocaleString()}) is due for payment today.`,
           data: { path: 'Subscription' },
           sound: true,
         },
@@ -147,8 +147,8 @@ export const syncAllNotifications = async (
 
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: "💳 Installment Payment Due Today",
-          body: `Payment for "${item.productName}" (${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()}) is due today!`,
+          title: "Installment Payment Due Today",
+          body: `Payment for "${item.productName}" (${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()}) is due today.`,
           data: { path: 'Installment' },
           sound: true,
         },
@@ -178,8 +178,8 @@ export const syncAllNotifications = async (
 
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: "🏠 Rent Payment Due Today",
-          body: `Monthly rent for "${rent.propertyName}" (${rent.currency === 'USD' ? '$' : '₱'}${rent.monthlyAmount.toLocaleString()}) is due today!`,
+          title: "Rent Payment Due Today",
+          body: `Monthly rent for "${rent.propertyName}" (${rent.currency === 'USD' ? '$' : '₱'}${rent.monthlyAmount.toLocaleString()}) is due today.`,
           data: { path: 'Rent' },
           sound: true,
         },
@@ -209,8 +209,8 @@ export const syncAllNotifications = async (
 
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: "💰 It's Payday! 🎉",
-            body: `Payday from ${rec.companyName}: Expecting ₱${rec.amount.toLocaleString()} today!`,
+            title: "Payday Alert",
+            body: `Payday from ${rec.companyName}: Expecting ₱${rec.amount.toLocaleString()} today.`,
             data: { path: 'Recursion' },
             sound: true,
           },
@@ -223,8 +223,8 @@ export const syncAllNotifications = async (
         const expoWeekday = rec.dayOfWeek + 1;
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: "💰 Weekly Payday! 🎉",
-            body: `Payday from ${rec.companyName}: ₱${rec.amount.toLocaleString()} scheduled today!`,
+            title: "Weekly Payday Alert",
+            body: `Payday from ${rec.companyName}: ₱${rec.amount.toLocaleString()} scheduled today.`,
             data: { path: 'Recursion' },
             sound: true,
           },
@@ -244,8 +244,8 @@ export const syncAllNotifications = async (
         if (isToday15 || isTodayLast) {
           await Notifications.scheduleNotificationAsync({
             content: {
-              title: "💰 Bi-Monthly Payday! 🎉",
-              body: `Payday from ${rec.companyName}: Expecting ₱${rec.amount.toLocaleString()} today!`,
+              title: "Payday Alert",
+              body: `Payday from ${rec.companyName}: Expecting ₱${rec.amount.toLocaleString()} today.`,
               data: { path: 'Recursion' },
               sound: true,
             },
@@ -277,8 +277,8 @@ export const syncAllNotifications = async (
       
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: "💸 Debt Reminder",
-          body: `Don't forget to pay ${debt.personName}: ₱${debt.amount.toLocaleString()} for ${debt.taskName}`,
+          title: "Debt Payment Reminder",
+          body: `Reminder to pay ${debt.personName}: ₱${debt.amount.toLocaleString()} for ${debt.taskName}.`,
           data: { path: 'Debts' },
           sound: true,
         },
@@ -301,8 +301,8 @@ export const syncAllNotifications = async (
 
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: "🛒 Grocery Day!",
-            body: `Time to buy your items for: ${list.title}`,
+            title: "Grocery Day",
+            body: `Scheduled grocery shopping for: ${list.title}`,
             data: { path: 'GroceryDetail', listId: list.id },
             sound: true,
           },
@@ -320,7 +320,7 @@ export const syncAllNotifications = async (
           if (now >= checkTime.getTime()) {
             await Notifications.scheduleNotificationAsync({
               content: {
-                title: "🛒 Grocery Day (Reminder)",
+                title: "Grocery Day Reminder",
                 body: `Don't forget your grocery items for: ${list.title}`,
                 data: { path: 'GroceryDetail', listId: list.id },
                 sound: true,
@@ -344,8 +344,8 @@ export const notifyGoalCompletion = async (goalTitle: string) => {
     await requestNotificationPermissions();
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: "🎯 Goal Reached! 🎉",
-        body: `Congratulations! You've successfully reached 100% of your target for: ${goalTitle}`,
+        title: "Goal Target Reached",
+        body: `Congratulations! You've successfully reached 100% of your target for "${goalTitle}"!`,
         data: { path: 'Main', screen: 'Goals' },
         sound: true,
       },
@@ -361,8 +361,8 @@ export const notifyGoalMilestone = async (goalTitle: string, percent: number) =>
     await requestNotificationPermissions();
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: `🎯 Goal Milestone: ${percent}% 🎉`,
-        body: `Great progress! You are ${percent}% of the way towards "${goalTitle}"!`,
+        title: `Goal Milestone: ${percent}%`,
+        body: `Great progress! You are ${percent}% of the way towards "${goalTitle}".`,
         data: { path: 'Main', screen: 'Goals' },
         sound: true,
       },

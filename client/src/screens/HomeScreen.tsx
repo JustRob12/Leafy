@@ -15,6 +15,7 @@ import WalletDropdown from '../components/WalletDropdown';
 import AnimatedCounter from '../components/AnimatedCounter';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 import * as LucideIcons from 'lucide-react-native';
+import WalletBrandLogo from '../components/WalletBrandLogo';
 
 const SUBS_ICONS: { [key: string]: any } = {
   'capcut.png': require('../../public/subs/capcut.png'),
@@ -344,7 +345,7 @@ export default function HomeScreen() {
     if (isDeposit) {
       const wallet = wallets.find(w => w.id === tx.walletId);
       if (wallet?.iconType === 'preset' && wallet.presetLogo) {
-        return <Image source={BRAND_LOGOS[wallet.presetLogo]} style={styles.txBrandLogo as any} />;
+        return <WalletBrandLogo logoKey={wallet.presetLogo} size={20} style={styles.txBrandLogo} />;
       }
       return <ArrowDownRight size={18} color={colors.primary} />;
     } else {

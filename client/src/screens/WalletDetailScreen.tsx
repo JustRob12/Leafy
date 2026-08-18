@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
-import { ChevronLeft, Edit2, QrCode, CreditCard, PieChart, TrendingUp, Tag, X, Coins } from 'lucide-react-native';
+import { ChevronLeft, Edit2, QrCode, CreditCard, PieChart, TrendingUp, Tag, X, Coins, User, AlertTriangle, ShoppingBag, Plane, Wallet as WalletIcon } from 'lucide-react-native';
 import { useAppContext, getWalletTotalBalanceInPhp } from '../context/AppContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import WalletBrandLogo from '../components/WalletBrandLogo';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = SCREEN_WIDTH / 375;
@@ -46,8 +47,21 @@ export default function WalletDetailScreen() {
         {/* Wallet Name Card (Visual identity) */}
         <View style={[styles.identityCard, { backgroundColor: wallet.color || colors.primary }]}>
             <View style={styles.identityGlow} />
-            <Text style={styles.identityLabel}>NAME</Text>
-            <Text style={styles.identityName}>{wallet.name}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1, marginRight: 12 }}>
+                <Text style={styles.identityLabel}>NAME</Text>
+                <Text style={styles.identityName}>{wallet.name}</Text>
+              </View>
+              {(() => {
+                if (wallet.iconType === 'preset' && wallet.presetLogo) {
+                  return <WalletBrandLogo logoKey={wallet.presetLogo} size={48} style={{ borderRadius: 12 }} />;
+                }
+                if (wallet.iconType === 'custom' && wallet.customIcon) {
+                  return <Image source={{ uri: wallet.customIcon }} style={{ width: 48, height: 48, borderRadius: 12 }} />;
+                }
+                return null;
+              })()}
+            </View>
             
             <View style={styles.identityFooter}>
                 <View style={styles.identityPill}>

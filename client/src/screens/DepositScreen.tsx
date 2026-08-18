@@ -7,17 +7,9 @@ import {
   ChevronLeft, Plus, Search, Check, CreditCard
 } from 'lucide-react-native';
 import MainHeader from '../components/MainHeader';
+import WalletBrandLogo from '../components/WalletBrandLogo';
 
 const { width, height } = Dimensions.get('window');
-
-const BRAND_LOGOS: { [key: string]: any } = {
-  'gcash.png': require('../../public/walletimages/gcash.png'),
-  'maya.png': require('../../public/walletimages/maya.png'),
-  'paypal.png': require('../../public/walletimages/paypal.png'),
-  'wise.png': require('../../public/walletimages/wise.png'),
-  'maribank.png': require('../../public/walletimages/maribank.png'),
-  'gotyme.png': require('../../public/walletimages/gotyme.png'),
-};
 
 export default function DepositScreen() {
   const { colors, isDarkMode, wallets, addTransaction, showFeedback, usdToPhpRate } = useAppContext();
@@ -152,7 +144,7 @@ export default function DepositScreen() {
                   <View style={styles.miniWalletIconBox}>
                     {(() => {
                       if (wallet.iconType === 'preset' && wallet.presetLogo) {
-                        return <RNImage source={BRAND_LOGOS[wallet.presetLogo]} style={styles.miniWalletLogo as any} />;
+                        return <WalletBrandLogo logoKey={wallet.presetLogo} size={20} style={styles.miniWalletLogo} />;
                       }
                       return <CreditCard size={14} color="#ffffff" />;
                     })()}

@@ -7,15 +7,7 @@ import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 import { useScrollToTop } from '@react-navigation/native';
 import * as LucideIcons from 'lucide-react-native';
 import { Image } from 'react-native';
-
-const BRAND_LOGOS: { [key: string]: any } = {
-  'gcash.png': require('../../public/walletimages/gcash.png'),
-  'maya.png': require('../../public/walletimages/maya.png'),
-  'paypal.png': require('../../public/walletimages/paypal.png'),
-  'wise.png': require('../../public/walletimages/wise.png'),
-  'maribank.png': require('../../public/walletimages/maribank.png'),
-  'gotyme.png': require('../../public/walletimages/gotyme.png'),
-};
+import WalletBrandLogo from '../components/WalletBrandLogo';
 
 const ICON_MAP: { [key: string]: any } = {
   Utensils: LucideIcons.Utensils,
@@ -106,7 +98,7 @@ export default function HistoryScreen() {
     if (isDeposit) {
       const wallet = wallets.find(w => w.id === tx.walletId);
       if (wallet?.iconType === 'preset' && wallet.presetLogo) {
-        return <Image source={BRAND_LOGOS[wallet.presetLogo]} style={styles.txBrandLogo as any} />;
+        return <WalletBrandLogo logoKey={wallet.presetLogo} size={20} style={styles.txBrandLogo} />;
       }
       return <LucideIcons.ArrowDownRight size={20} color={colors.success} />;
     } else {

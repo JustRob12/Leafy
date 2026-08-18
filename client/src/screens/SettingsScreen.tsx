@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { theme } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check, Fingerprint, ChevronLeft, Plus, Palette, Moon, Sun, Smartphone, Sparkles, RefreshCw, ExternalLink, Eye, EyeOff, Layers, Type, Sliders, CheckCircle2 } from 'lucide-react-native';
+import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check, Fingerprint, ChevronLeft, Plus, Palette, Moon, Sun, Smartphone, Sparkles, RefreshCw, ExternalLink, Eye, EyeOff, Layers, Type, Sliders, CheckCircle2, Coins, Calendar, CreditCard, Home, Target, Receipt } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppContext } from '../context/AppContext';
 import { requestPinTotalBalanceWidget, syncWidgetBalance, getWidgetConfig, saveWidgetConfig, WIDGET_THEMES, WidgetConfig, DEFAULT_WIDGET_CONFIG } from '../services/WidgetService';
@@ -494,7 +494,7 @@ export default function SettingsScreen() {
       <ActionSheet
         visible={notifModalVisible}
         onClose={() => setNotifModalVisible(false)}
-        title="Notifications & Permissions"
+        title="Notifications"
       >
         <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
           <View style={styles.securityHeader}>
@@ -545,7 +545,9 @@ export default function SettingsScreen() {
               onPress={() => Linking.openSettings()}
             >
               <View style={styles.configItemLeft}>
-                <Smartphone size={20} color={colors.primary} />
+                <View style={styles.notifVectorBox}>
+                  <Smartphone size={18} color="#10b981" />
+                </View>
                 <View style={{ marginLeft: 12 }}>
                   <Text style={styles.configText}>App Permissions & Overlays</Text>
                   <Text style={styles.configSubText}>Allow popup banners & show over other apps</Text>
@@ -574,7 +576,9 @@ export default function SettingsScreen() {
               }}
             >
               <View style={styles.configItemLeft}>
-                <Sparkles size={20} color="#10b981" />
+                <View style={styles.notifVectorBox}>
+                  <Sparkles size={18} color="#10b981" />
+                </View>
                 <View style={{ marginLeft: 12 }}>
                   <Text style={styles.configText}>Send Test Notification</Text>
                   <Text style={styles.configSubText}>Verify popup alert appears immediately</Text>
@@ -588,7 +592,9 @@ export default function SettingsScreen() {
           <Text style={styles.configLabel}>What You'll Be Notified About</Text>
           <View style={styles.configGroup}>
             <View style={styles.notifFeatureItem}>
-              <Text style={styles.notifFeatureIcon}>💰</Text>
+              <View style={styles.notifVectorBox}>
+                <Coins size={18} color="#10b981" />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.notifFeatureTitle}>Payday & Salary Alerts</Text>
                 <Text style={styles.notifFeatureDesc}>Pop up notification on your recurring payday</Text>
@@ -597,7 +603,9 @@ export default function SettingsScreen() {
             <View style={styles.divider} />
 
             <View style={styles.notifFeatureItem}>
-              <Text style={styles.notifFeatureIcon}>📅</Text>
+              <View style={styles.notifVectorBox}>
+                <Calendar size={18} color="#10b981" />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.notifFeatureTitle}>Subscription Due Dates</Text>
                 <Text style={styles.notifFeatureDesc}>Alert on the exact payment day of your subscriptions</Text>
@@ -606,7 +614,9 @@ export default function SettingsScreen() {
             <View style={styles.divider} />
 
             <View style={styles.notifFeatureItem}>
-              <Text style={styles.notifFeatureIcon}>💳</Text>
+              <View style={styles.notifVectorBox}>
+                <CreditCard size={18} color="#10b981" />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.notifFeatureTitle}>Installment Payment Days</Text>
                 <Text style={styles.notifFeatureDesc}>Payment due alerts for your product installments</Text>
@@ -615,7 +625,9 @@ export default function SettingsScreen() {
             <View style={styles.divider} />
 
             <View style={styles.notifFeatureItem}>
-              <Text style={styles.notifFeatureIcon}>🏠</Text>
+              <View style={styles.notifVectorBox}>
+                <Home size={18} color="#10b981" />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.notifFeatureTitle}>Rent Properties Due Dates</Text>
                 <Text style={styles.notifFeatureDesc}>Reminders when your monthly rent payment is due</Text>
@@ -624,7 +636,9 @@ export default function SettingsScreen() {
             <View style={styles.divider} />
 
             <View style={styles.notifFeatureItem}>
-              <Text style={styles.notifFeatureIcon}>🎯</Text>
+              <View style={styles.notifVectorBox}>
+                <Target size={18} color="#10b981" />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.notifFeatureTitle}>Goal Milestones & Completion</Text>
                 <Text style={styles.notifFeatureDesc}>Celebrations when you reach savings targets</Text>
@@ -633,7 +647,9 @@ export default function SettingsScreen() {
             <View style={styles.divider} />
 
             <View style={styles.notifFeatureItem}>
-              <Text style={styles.notifFeatureIcon}>💸</Text>
+              <View style={styles.notifVectorBox}>
+                <Receipt size={18} color="#10b981" />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.notifFeatureTitle}>Debts & Grocery Schedules</Text>
                 <Text style={styles.notifFeatureDesc}>Reminders for debt due dates and grocery shopping</Text>
@@ -685,18 +701,33 @@ export default function SettingsScreen() {
                 >
                   {/* Header */}
                   <View style={styles.widgetHeader}>
-                    <View style={styles.widgetBrandRow}>
+                    <View style={styles.widgetBrandCol}>
                       <Text style={[styles.widgetBrand, { color: activeTheme.accentColor }]}>
                         {cleanTitle}
                       </Text>
                       <Text style={[styles.widgetSubBrand, { color: activeTheme.subTextColor }]}>
-                        {' '}• TOTAL BALANCE
+                        TOTAL BALANCE
                       </Text>
                     </View>
-                    <View style={[styles.widgetLivePill, { backgroundColor: activeTheme.pillBgColor, borderColor: activeTheme.borderColor }]}>
-                      <View style={[styles.widgetLiveDot, { backgroundColor: activeTheme.accentColor }]} />
-                      <Text style={[styles.widgetLiveText, { color: activeTheme.accentColor }]}>Synced</Text>
-                    </View>
+                    
+                    {/* Right Action: Eye Privacy Button (Replaces Synced) */}
+                    <TouchableOpacity
+                      style={[styles.widgetLivePill, { backgroundColor: activeTheme.pillBgColor, borderColor: activeTheme.borderColor }]}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        Vibration.vibrate(15);
+                        setWidgetConfig(prev => ({ ...prev, hideBalance: !prev.hideBalance }));
+                      }}
+                    >
+                      {widgetConfig.hideBalance ? (
+                        <Eye size={12} color={activeTheme.accentColor} style={{ marginRight: 4 }} />
+                      ) : (
+                        <EyeOff size={12} color={activeTheme.accentColor} style={{ marginRight: 4 }} />
+                      )}
+                      <Text style={[styles.widgetLiveText, { color: activeTheme.accentColor }]}>
+                        {widgetConfig.hideBalance ? 'Show' : 'Hide'}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
 
                   {/* Big Balance */}
@@ -1392,21 +1423,22 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  widgetBrandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  widgetBrandCol: {
+    flexDirection: 'column',
+    justifyContent: 'center',
   },
   widgetBrand: {
     fontFamily: theme.fonts.bold,
-    fontSize: 12,
+    fontSize: 13,
     color: '#34d399',
     letterSpacing: 1,
   },
   widgetSubBrand: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 11,
+    fontSize: 9,
     color: '#a7f3d0',
     letterSpacing: 0.5,
+    marginTop: 1,
   },
   widgetLivePill: {
     flexDirection: 'row',
@@ -1585,8 +1617,15 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     paddingHorizontal: 16,
     gap: 12,
   },
-  notifFeatureIcon: {
-    fontSize: 22,
+  notifVectorBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#10b98115',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#10b98130',
   },
   notifFeatureTitle: {
     fontFamily: theme.fonts.semiBold,

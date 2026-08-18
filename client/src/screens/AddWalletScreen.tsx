@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image as RNImage, Modal, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
-import { ChevronLeft, User, AlertTriangle, ShoppingBag, Plane, Wallet as WalletIcon, QrCode, Image as ImageIcon, X, ChevronRight, Search } from 'lucide-react-native';
+import { ChevronLeft, User, AlertTriangle, ShoppingBag, Plane, Wallet as WalletIcon, QrCode, Image as ImageIcon, X, ChevronRight, Search, Building2, Smartphone, Sparkles, Globe } from 'lucide-react-native';
 import { useAppContext, WalletCategory } from '../context/AppContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import AdvancedColorPicker from '../components/AdvancedColorPicker';
+import WalletBrandLogo from '../components/WalletBrandLogo';
+import { PHILIPPINE_BANKS_AND_WALLETS, BankBrandItem } from '../constants/philippineBanks';
 
 const { height } = Dimensions.get('window');
 
@@ -29,24 +31,7 @@ export default function AddWalletScreen() {
   const [walletColor, setWalletColor] = useState<string>(editingWallet?.color || colors.primary);
   const [logoModalVisible, setLogoModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
-  const brandLogos: { [key: string]: any } = {
-    'gcash.png': require('../../public/walletimages/gcash.png'),
-    'maya.png': require('../../public/walletimages/maya.png'),
-    'paypal.png': require('../../public/walletimages/paypal.png'),
-    'wise.png': require('../../public/walletimages/wise.png'),
-    'maribank.png': require('../../public/walletimages/maribank.png'),
-    'gotyme.png': require('../../public/walletimages/gotyme.png'),
-  };
-
-  const presetLogos = [
-    { name: 'GCash', file: 'gcash.png' },
-    { name: 'Maya', file: 'maya.png' },
-    { name: 'PayPal', file: 'paypal.png' },
-    { name: 'Wise', file: 'wise.png' },
-    { name: 'MariBank', file: 'maribank.png' },
-    { name: 'GoTyme', file: 'gotyme.png' },
-  ];
+  const [activeTab, setActiveTab] = useState<'All' | 'Banks' | 'Digital Bank' | 'E-Wallet' | 'International'>('All');
 
   const walletPresets = [
     { name: 'Emerald', color: '#10b981' },
@@ -211,8 +196,15 @@ export default function AddWalletScreen() {
 
         {iconType === 'preset' && selectedPreset && (
           <TouchableOpacity style={styles.selectedIconPreview} onPress={() => setLogoModalVisible(true)}>
-            <RNImage source={brandLogos[selectedPreset]} style={styles.previewLogo as any} />
-            <Text style={styles.previewLogoName}>{presetLogos.find(l => l.file === selectedPreset)?.name}</Text>
+            <WalletBrandLogo logoKey={selectedPreset} size={42} style={{ marginRight: 12 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.previewLogoName}>
+                {PHILIPPINE_BANKS_AND_WALLETS.find(l => l.id === selectedPreset)?.name || selectedPreset}
+              </Text>
+              <Text style={{ fontFamily: theme.fonts.regular, fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
+                {PHILIPPINE_BANKS_AND_WALLETS.find(l => l.id === selectedPreset)?.category || 'Brand Logo'}
+              </Text>
+            </View>
             <ChevronRight size={16} color={colors.textMuted} />
           </TouchableOpacity>
         )}
@@ -227,13 +219,13 @@ export default function AddWalletScreen() {
 
         {iconType === 'purpose' && (
           <View style={styles.selectedIconPreview}>
-             <View style={styles.defaultIconBox}>
-                {(() => {
-                  const CurrentIcon = tags.find(t => t.label === purpose)?.icon || WalletIcon;
-                  return <CurrentIcon size={24} color={walletColor} />;
-                })()}
-             </View>
-             <Text style={styles.previewLogoName}>Default ({purpose})</Text>
+            <View style={styles.defaultIconBox}>
+              {(() => {
+                const CurrentIcon = tags.find(t => t.label === purpose)?.icon || WalletIcon;
+                return <CurrentIcon size={24} color={walletColor} />;
+              })()}
+            </View>
+            <Text style={styles.previewLogoName}>Default ({purpose})</Text>
           </View>
         )}
 
@@ -307,11 +299,11 @@ export default function AddWalletScreen() {
           </View>
         </View>
         <Text style={styles.inputSubtitle}>Interest will be calculated and credited daily based on your balance.</Text>
-        <AdvancedColorPicker 
-          color={walletColor} 
-          onColorChange={setWalletColor} 
-          colors={colors} 
-          isDarkMode={isDarkMode} 
+        <AdvancedColorPicker
+          color={walletColor}
+          onColorChange={setWalletColor}
+          colors={colors}
+          isDarkMode={isDarkMode}
         />
 
         {isEditing && (
@@ -339,50 +331,120 @@ export default function AddWalletScreen() {
       <Modal
         visible={logoModalVisible}
         transparent
-        animationType="none"
+        animationType="slide"
         onRequestClose={() => setLogoModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.logoModalContent}>
             <View style={styles.logoModalHeader}>
-              <Text style={styles.logoModalTitle}>Select Brand Logo</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.logoModalTitle}>Philippine Banks & Logos</Text>
+                <Text style={styles.logoModalSubtitle}>Select your bank or e-wallet to set brand logo</Text>
+              </View>
               <TouchableOpacity onPress={() => setLogoModalVisible(false)} style={styles.logoModalClose}>
                 <X size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
+            {/* Search Bar */}
             <View style={styles.searchBar}>
               <Search size={20} color={colors.textMuted} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search brands (e.g. GCash)..."
+                placeholder="Type to search"
                 placeholderTextColor={colors.textMuted}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+                  <X size={16} color={colors.textMuted} />
+                </TouchableOpacity>
+              )}
             </View>
 
+            {/* Category Filter Tabs */}
+            <View style={{ maxHeight: 44, marginBottom: 16 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryTabsContainer}>
+                {(['All', 'Banks', 'Digital Bank', 'E-Wallet', 'International'] as const).map((tab) => {
+                  const isActive = activeTab === tab;
+                  return (
+                    <TouchableOpacity
+                      key={tab}
+                      style={[styles.modalFilterTab, isActive && styles.modalFilterTabActive]}
+                      onPress={() => setActiveTab(tab)}
+                    >
+                      <Text style={[styles.modalFilterTabText, isActive && styles.modalFilterTabTextActive]}>
+                        {tab === 'All' ? `All (${PHILIPPINE_BANKS_AND_WALLETS.length})` : tab}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {/* Brand Logo Grid */}
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.logoGrid}
             >
-              {presetLogos.filter(l => l.name.toLowerCase().includes(searchQuery.toLowerCase())).map((logo) => (
-                <TouchableOpacity
-                  key={logo.file}
-                  style={styles.logoItem}
-                  onPress={() => {
-                    setSelectedPreset(logo.file);
-                    setIconType('preset');
-                    setLogoModalVisible(false);
-                    setSearchQuery('');
-                  }}
-                >
-                  <View style={styles.logoIconBox}>
-                    <RNImage source={brandLogos[logo.file]} style={styles.logoImageGrid as any} />
-                  </View>
-                  <Text style={styles.logoItemName}>{logo.name}</Text>
-                </TouchableOpacity>
-              ))}
+              {PHILIPPINE_BANKS_AND_WALLETS
+                .filter((item) => {
+                  const matchesTab = activeTab === 'All' || item.category === activeTab;
+                  const q = searchQuery.toLowerCase().trim();
+                  const matchesQuery = !q ||
+                    item.name.toLowerCase().includes(q) ||
+                    item.shortName.toLowerCase().includes(q) ||
+                    (item.description && item.description.toLowerCase().includes(q));
+                  return matchesTab && matchesQuery;
+                })
+                .map((logo) => {
+                  const isSelected = selectedPreset === logo.id && iconType === 'preset';
+                  return (
+                    <TouchableOpacity
+                      key={logo.id}
+                      style={[styles.logoItem, isSelected && styles.logoItemActive]}
+                      onPress={() => {
+                        setSelectedPreset(logo.id);
+                        setIconType('preset');
+
+                        // Auto-fill wallet name if empty or previous bank name
+                        if (!walletName.trim() || PHILIPPINE_BANKS_AND_WALLETS.some(b => b.name === walletName.trim())) {
+                          setWalletName(logo.name);
+                        }
+                        if (logo.category === 'Banks' || logo.category === 'Digital Bank') {
+                          setCategory('Banks');
+                        } else if (logo.category === 'E-Wallet' || logo.category === 'International') {
+                          setCategory('E-Wallet');
+                        }
+                        if (logo.brandColor) {
+                          setWalletColor(logo.brandColor);
+                        }
+                        if (logo.suggestedInterestRate && !interestRate) {
+                          setInterestRate(logo.suggestedInterestRate.toString());
+                        }
+
+                        setLogoModalVisible(false);
+                        setSearchQuery('');
+                      }}
+                    >
+                      <View style={[styles.logoIconBox, isSelected && { borderColor: colors.primary, borderWidth: 2 }]}>
+                        <WalletBrandLogo logoKey={logo.id} size={44} />
+                      </View>
+                      <Text
+                        style={[styles.logoItemName, isSelected && { color: colors.primary, fontFamily: theme.fonts.bold }]}
+                        numberOfLines={2}
+                      >
+                        {logo.shortName || logo.name}
+                      </Text>
+                      {logo.category === 'Digital Bank' && logo.suggestedInterestRate && (
+                        <View style={styles.interestBadge}>
+                          <Text style={styles.interestBadgeText}>{logo.suggestedInterestRate}% p.a.</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
             </ScrollView>
           </View>
         </View>
@@ -425,43 +487,43 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     marginBottom: 12,
     marginTop: 8,
   },
-    input: {
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 16,
-      padding: 16,
-      fontFamily: theme.fonts.regular,
-      fontSize: 16,
-      color: colors.text,
-      marginBottom: 24,
-    },
-    interestInputContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      marginBottom: 8,
-    },
-    percentBadge: {
-      backgroundColor: colors.primary + '15',
-      paddingHorizontal: 12,
-      paddingVertical: 16,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.primary + '33',
-    },
-    percentBadgeText: {
-      fontFamily: theme.fonts.bold,
-      fontSize: 14,
-      color: colors.primary,
-    },
-    inputSubtitle: {
-      fontFamily: theme.fonts.medium,
-      fontSize: 12,
-      color: colors.textMuted,
-      marginBottom: 24,
-      marginLeft: 4,
-    },
+  input: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    padding: 16,
+    fontFamily: theme.fonts.regular,
+    fontSize: 16,
+    color: colors.text,
+    marginBottom: 24,
+  },
+  interestInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  percentBadge: {
+    backgroundColor: colors.primary + '15',
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.primary + '33',
+  },
+  percentBadgeText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 14,
+    color: colors.primary,
+  },
+  inputSubtitle: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+    color: colors.textMuted,
+    marginBottom: 24,
+    marginLeft: 4,
+  },
   categoryRow: {
     flexDirection: 'row',
     gap: 10,
@@ -582,26 +644,22 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderColor: colors.border,
   },
   defaultIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 42,
+    height: 42,
+    borderRadius: 10,
     backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   previewLogo: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#ffffff',
-    resizeMode: 'contain',
-    marginRight: 12,
+    width: 42,
+    height: 42,
+    borderRadius: 10,
   },
   previewLogoName: {
-    flex: 1,
     fontFamily: theme.fonts.semiBold,
-    fontSize: 14,
+    fontSize: 15,
     color: colors.text,
   },
   imagePicker: {
@@ -687,77 +745,129 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'flex-end',
   },
   logoModalContent: {
     backgroundColor: colors.card,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    height: height * 0.8,
+    height: height * 0.85,
     padding: 24,
   },
   logoModalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
+    alignItems: 'flex-start',
+    marginBottom: 16,
   },
   logoModalTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 22,
+    fontSize: 20,
     color: colors.text,
   },
+  logoModalSubtitle: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
   logoModalClose: {
-    padding: 4,
+    padding: 6,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    marginBottom: 20,
-    height: 50,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : '#f1f5f9',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+    height: 48,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   searchInput: {
     flex: 1,
     marginLeft: 10,
     fontFamily: theme.fonts.regular,
-    fontSize: 16,
+    fontSize: 15,
     color: colors.text,
+  },
+  categoryTabsContainer: {
+    gap: 8,
+    paddingRight: 16,
+  },
+  modalFilterTab: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalFilterTabActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  modalFilterTabText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  modalFilterTabTextActive: {
+    color: '#ffffff',
+    fontFamily: theme.fonts.bold,
   },
   logoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
+    gap: 12,
     paddingBottom: 40,
+    paddingTop: 8,
   },
   logoItem: {
-    width: (Dimensions.get('window').width - 48 - 32) / 3, // 3 columns
+    width: (Dimensions.get('window').width - 48 - 24) / 3, // 3 columns
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+    padding: 8,
+    borderRadius: 16,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : '#ffffff',
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+  },
+  logoItemActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '12',
   },
   logoIconBox: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
+    width: 54,
+    height: 54,
+    borderRadius: 14,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.04)' : '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
     borderWidth: 1,
     borderColor: colors.border,
-  },
-  logoImageGrid: {
-    width: 40,
-    height: 40,
-    resizeMode: 'contain',
+    overflow: 'hidden',
   },
   logoItemName: {
     fontFamily: theme.fonts.medium,
-    fontSize: 12,
+    fontSize: 11,
     color: colors.text,
     textAlign: 'center',
+    lineHeight: 14,
+  },
+  interestBadge: {
+    marginTop: 4,
+    backgroundColor: colors.primary + '20',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  interestBadgeText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 9,
+    color: colors.primary,
   },
 });

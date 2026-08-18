@@ -6,7 +6,7 @@ import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { navigationRef } from '../navigation/navigationUtils';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, User, Settings, LogOut, Info, ChevronRight, Flame, Sprout, TreeDeciduous, Egg, X, Image as ImageIcon, HelpCircle, Bell, Target, AlertCircle, ShoppingCart, Coins } from 'lucide-react-native';
+import { Plus, User, Settings, LogOut, Info, ChevronRight, Flame, Sprout, TreeDeciduous, Egg, X, Image as ImageIcon, HelpCircle, Bell, Target, AlertCircle, ShoppingCart, Coins, Calendar, CreditCard, Home, Receipt, Sparkles } from 'lucide-react-native';
 import { Dimensions } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -19,7 +19,7 @@ export interface MainHeaderProps {
 }
 
 export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderProps) {
-  const { username, userImage, streakCount, transactionDates, showConfirm, clearData, colors, isDarkMode, toggleTheme, startTutorial, goals, wallets, debts, groceryLists, totalBalance, transactions } = useAppContext();
+  const { username, userImage, streakCount, transactionDates, showConfirm, clearData, colors, isDarkMode, toggleTheme, startTutorial, goals, wallets, debts, groceryLists, subscriptions, installments, rents, recursions, totalBalance, transactions } = useAppContext();
 
   const navigation = useNavigation<any>();
   const [internalActiveRoute, setInternalActiveRoute] = useState('Home');
@@ -51,46 +51,121 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
   const notifications = useMemo(() => {
     const list = [];
     const todayStr = currentDate.toISOString().split('T')[0];
-    const todayIndex = currentDate.getDay();
+    const todayDateNumber = currentDate.getDate();
+    const todayDayOfWeek = currentDate.getDay();
+    const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
 
-    // Goals at 100%
+    // 1. Paydays & Recurring Income Scheduled Today
+    if (recursions && recursions.length > 0) {
+      recursions.forEach(rec => {
+        let isPaydayToday = false;
+        if (rec.frequency === 'monthly' && rec.dayOfMonth === todayDateNumber) {
+          isPaydayToday = true;
+        } else if (rec.frequency === 'weekly' && rec.dayOfWeek === todayDayOfWeek) {
+          isPaydayToday = true;
+        } else if (rec.frequency === 'bi-monthly' && (todayDateNumber === 15 || todayDateNumber === lastDayOfMonth)) {
+          isPaydayToday = true;
+        }
+
+        if (isPaydayToday) {
+          list.push({
+            id: `payday-${rec.id}-${todayStr}`,
+            title: 'Payday Alert',
+            message: `Payday from ${rec.companyName}: Expecting ₱${rec.amount.toLocaleString()} today.`,
+            icon: Coins,
+            color: '#10b981',
+            screen: 'Recursion'
+          });
+        }
+      });
+    }
+
+    // 2. Subscriptions Due Today
+    if (subscriptions && subscriptions.length > 0) {
+      subscriptions.forEach(sub => {
+        if (sub.dayOfMonth === todayDateNumber) {
+          list.push({
+            id: `sub-${sub.id}-${todayStr}`,
+            title: 'Subscription Due Today',
+            message: `Your subscription "${sub.title}" (₱${sub.amount.toLocaleString()}) is due today.`,
+            icon: Calendar,
+            color: '#10b981',
+            screen: 'Subscription'
+          });
+        }
+      });
+    }
+
+    // 3. Installments Due Today
+    if (installments && installments.length > 0) {
+      installments.forEach(item => {
+        if (item.dueDate && item.dueDate === todayStr && item.paidMonths < item.monthsToPay) {
+          list.push({
+            id: `installment-${item.id}-${todayStr}`,
+            title: 'Installment Due Today',
+            message: `Payment for "${item.productName}" (${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()}) is due today.`,
+            icon: CreditCard,
+            color: '#10b981',
+            screen: 'Installment'
+          });
+        }
+      });
+    }
+
+    // 4. Rent Properties Due Today
+    if (rents && rents.length > 0) {
+      rents.forEach(rent => {
+        if (rent.dueDate && rent.dueDate === todayStr) {
+          list.push({
+            id: `rent-${rent.id}-${todayStr}`,
+            title: 'Rent Payment Due Today',
+            message: `Monthly rent for "${rent.propertyName}" (${rent.currency === 'USD' ? '$' : '₱'}${rent.monthlyAmount.toLocaleString()}) is due today.`,
+            icon: Home,
+            color: '#10b981',
+            screen: 'Rent'
+          });
+        }
+      });
+    }
+
+    // 5. Goals Reached 100% Target
     if (goals && wallets) {
       goals.forEach(g => {
         const wallet = wallets.find(w => w.id === g.walletId);
         if (wallet && g.targetAmount > 0 && wallet.balance >= g.targetAmount) {
           list.push({
             id: `goal-${g.id}-complete`,
-            title: 'Goal Achieved!',
-            message: `Your goal "${g.title}" is 100% complete! 🎉`,
+            title: 'Goal Target Reached',
+            message: `Congratulations! Your goal "${g.title}" has reached 100% target!`,
             icon: Target,
-            color: colors.primary,
+            color: '#10b981',
             screen: 'Goals'
           });
         }
       });
     }
 
-    // Active Debts (Due Today or Overdue)
+    // 6. Active Debts (Due Today or Overdue)
     if (debts && debts.length > 0) {
-      const dueToday = debts.filter(d => d.dueDate && d.dueDate === todayStr).length;
-      const overdue = debts.filter(d => d.dueDate && d.dueDate < todayStr).length;
+      const dueToday = debts.filter(d => d.dueDate && d.dueDate === todayStr);
+      const overdue = debts.filter(d => d.dueDate && d.dueDate < todayStr);
 
-      if (dueToday > 0 || overdue > 0) {
+      dueToday.forEach(d => {
         list.push({
-          id: `debts-urgent-${todayStr}-${dueToday}-${overdue}`,
-          title: dueToday > 0 ? 'Debt Due Today!' : 'Overdue Debt!',
-          message: dueToday > 0
-            ? `You have ${dueToday} debt${dueToday > 1 ? 's' : ''} to pay today.`
-            : `You have ${overdue} overdue debt${overdue > 1 ? 's' : ''}.`,
-          icon: AlertCircle,
-          color: colors.danger,
+          id: `debt-due-${d.id}-${todayStr}`,
+          title: 'Debt Payment Due Today',
+          message: `Don't forget to pay ${d.personName}: ₱${d.amount.toLocaleString()} for ${d.taskName}.`,
+          icon: Receipt,
+          color: '#10b981',
           screen: 'Debts'
         });
-      } else {
+      });
+
+      if (overdue.length > 0 && dueToday.length === 0) {
         list.push({
-          id: `debts-summary-${debts.length}`,
-          title: 'Outstanding Debts',
-          message: `You have ${debts.length} active debt${debts.length > 1 ? 's' : ''} to settle.`,
+          id: `debt-overdue-${todayStr}-${overdue.length}`,
+          title: 'Overdue Debt Reminder',
+          message: `You have ${overdue.length} overdue debt${overdue.length > 1 ? 's' : ''} to settle.`,
           icon: AlertCircle,
           color: colors.danger,
           screen: 'Debts'
@@ -98,34 +173,23 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
       }
     }
 
-    // Grocery Lists (Scheduled Today or Active)
+    // 7. Grocery Lists Scheduled Today
     if (groceryLists && groceryLists.length > 0) {
-      const scheduledToday = groceryLists.filter(l => l.scheduledDays?.includes(todayIndex)).length;
-      const activeLists = groceryLists.filter(l => l.items.some(i => !i.completed)).length;
-
-      if (scheduledToday > 0) {
+      const scheduledToday = groceryLists.filter(l => l.scheduledDays?.includes(todayDayOfWeek));
+      scheduledToday.forEach(l => {
         list.push({
-          id: `grocery-today-${todayStr}-${scheduledToday}`,
-          title: 'Shopping Day!',
-          message: `You have ${scheduledToday} grocery list${scheduledToday > 1 ? 's' : ''} for today.`,
+          id: `grocery-${l.id}-${todayStr}`,
+          title: 'Grocery Day',
+          message: `Scheduled grocery shopping today for: ${l.title}`,
           icon: ShoppingCart,
-          color: colors.primary,
+          color: '#10b981',
           screen: 'Grocery'
         });
-      } else if (activeLists > 0) {
-        list.push({
-          id: `grocery-summary-${activeLists}`,
-          title: 'Grocery Lists',
-          message: `You have ${activeLists} active shopping list${activeLists > 1 ? 's' : ''}.`,
-          icon: ShoppingCart,
-          color: colors.primary,
-          screen: 'Grocery'
-        });
-      }
+      });
     }
 
     return list.filter(n => !dismissedIds.includes(n.id));
-  }, [goals, wallets, debts, groceryLists, colors, dismissedIds, currentDate]);
+  }, [goals, wallets, debts, groceryLists, subscriptions, installments, rents, recursions, colors, dismissedIds, currentDate]);
 
   const statusMessage = useMemo(() => {
     const today = new Date();

@@ -19,7 +19,8 @@ export function TotalBalanceWidget({
   const theme = WIDGET_THEMES.find(t => t.id === currentConfig.themeId) || WIDGET_THEMES[0];
   const curr = currentConfig.currencySymbol || currency || '₱';
 
-  const formattedBalance = currentConfig.hideBalance
+  const isHidden = currentConfig.hideBalance;
+  const formattedBalance = isHidden
     ? `${curr} ••••••`
     : `${curr} ${balance.toLocaleString('en-US', {
         minimumFractionDigits: 2,
@@ -46,8 +47,6 @@ export function TotalBalanceWidget({
         borderColor: theme.borderColor,
         borderWidth: 1,
       }}
-      clickAction="OPEN_URI"
-      clickActionData={{ uri: 'leapon://home' }}
     >
       {/* Top Header Row */}
       <FlexWidget
@@ -58,48 +57,55 @@ export function TotalBalanceWidget({
           width: 'match_parent',
         }}
       >
-        {/* App Title & Badge */}
+        {/* App Title & Label (Stacked: Leapon with TOTAL BALANCE below) */}
         <FlexWidget
           style={{
-            flexDirection: 'row',
-            alignItems: 'center',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            flex: 1,
           }}
+          clickAction="OPEN_URI"
+          clickActionData={{ uri: 'leapon://home' }}
         >
           <TextWidget
             text={cleanTitle}
             style={{
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: 'bold',
               color: theme.accentColor,
               letterSpacing: 1,
             }}
           />
           <TextWidget
-            text=" • TOTAL BALANCE"
+            text="TOTAL BALANCE"
             style={{
-              fontSize: 11,
+              fontSize: 9,
               fontWeight: '600',
               color: theme.subTextColor,
               letterSpacing: 0.5,
+              marginTop: 1,
             }}
           />
         </FlexWidget>
 
-        {/* Live Indicator Pill */}
+        {/* Right Action: Eye / Hide Button (Replaces Synced) */}
         <FlexWidget
           style={{
             backgroundColor: theme.pillBgColor,
             borderRadius: 12,
-            paddingHorizontal: 8,
-            paddingVertical: 3,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
             borderColor: theme.borderColor,
             borderWidth: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
+          clickAction="TOGGLE_PRIVACY"
         >
           <TextWidget
-            text="Synced"
+            text={isHidden ? "👁 Show" : "👁 Hide"}
             style={{
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: 'bold',
               color: theme.accentColor,
             }}
@@ -113,7 +119,10 @@ export function TotalBalanceWidget({
           flexDirection: 'column',
           justifyContent: 'center',
           marginVertical: 6,
+          width: 'match_parent',
         }}
+        clickAction="OPEN_URI"
+        clickActionData={{ uri: 'leapon://home' }}
       >
         <TextWidget
           text={formattedBalance}
@@ -145,6 +154,8 @@ export function TotalBalanceWidget({
           backgroundColor: theme.pillBgColor,
           borderRadius: 2,
         }}
+        clickAction="OPEN_URI"
+        clickActionData={{ uri: 'leapon://home' }}
       />
     </FlexWidget>
   );

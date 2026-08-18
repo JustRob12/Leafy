@@ -9,19 +9,11 @@ import { useNavigation } from '@react-navigation/native';
 import { 
   ChevronLeft, ArrowRightLeft, CreditCard, Check 
 } from 'lucide-react-native';
+import WalletBrandLogo from '../components/WalletBrandLogo';
 
 const { width } = Dimensions.get('window');
 const scale = width / 375;
 const rf = (size: number) => Math.round(size * scale);
-
-const BRAND_LOGOS: { [key: string]: any } = {
-  'gcash.png': require('../../public/walletimages/gcash.png'),
-  'maya.png': require('../../public/walletimages/maya.png'),
-  'paypal.png': require('../../public/walletimages/paypal.png'),
-  'wise.png': require('../../public/walletimages/wise.png'),
-  'maribank.png': require('../../public/walletimages/maribank.png'),
-  'gotyme.png': require('../../public/walletimages/gotyme.png'),
-};
 
 export default function TransferScreen() {
   const { colors, isDarkMode, wallets, transferMoney, showFeedback, usdToPhpRate } = useAppContext();
@@ -120,7 +112,7 @@ export default function TransferScreen() {
         <View style={styles.miniWalletIconBox}>
           {(() => {
             if (wallet.iconType === 'preset' && wallet.presetLogo) {
-              return <RNImage source={BRAND_LOGOS[wallet.presetLogo]} style={styles.miniWalletLogo as any} />;
+              return <WalletBrandLogo logoKey={wallet.presetLogo} size={20} style={styles.miniWalletLogo} />;
             }
             return <CreditCard size={14} color="#ffffff" />;
           })()}

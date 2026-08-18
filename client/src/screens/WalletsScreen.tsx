@@ -5,6 +5,7 @@ import { Plus, Wallet as WalletIcon, MoreHorizontal, QrCode, X, ChevronUp, Chevr
 import { useAppContext, WalletCategory, getWalletTotalBalanceInPhp } from '../context/AppContext';
 import { useNavigation, useRoute, useScrollToTop } from '@react-navigation/native';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
+import WalletBrandLogo from '../components/WalletBrandLogo';
 
 export default function WalletsScreen() {
   const [selectedWalletDetail, setSelectedWalletDetail] = useState<any | null>(null);
@@ -12,15 +13,6 @@ export default function WalletsScreen() {
   const { wallets, colors, isDarkMode, usdToPhpRate } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const { handleScroll } = useScrollHideTabBar();
-
-  const brandLogos: { [key: string]: any } = {
-    'gcash.png': require('../../public/walletimages/gcash.png'),
-    'maya.png': require('../../public/walletimages/maya.png'),
-    'paypal.png': require('../../public/walletimages/paypal.png'),
-    'wise.png': require('../../public/walletimages/wise.png'),
-    'maribank.png': require('../../public/walletimages/maribank.png'),
-    'gotyme.png': require('../../public/walletimages/gotyme.png'),
-  };
 
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -113,7 +105,7 @@ export default function WalletsScreen() {
                                     return <RNImage source={{ uri: wallet.customIcon }} style={styles.cardIconImage as any} />;
                                   }
                                   if (wallet.iconType === 'preset' && wallet.presetLogo) {
-                                    return <RNImage source={brandLogos[wallet.presetLogo]} style={[styles.cardIconImage as any, { resizeMode: 'contain' }]} />;
+                                    return <WalletBrandLogo logoKey={wallet.presetLogo} size={28} style={styles.cardIconImage as any} />;
                                   }
                                   const PurposeIcon = purposes.find(p => p.label === wallet.purpose)?.icon || WalletIcon;
                                   return <PurposeIcon size={16} color="#ffffff" />;

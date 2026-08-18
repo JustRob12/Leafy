@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { palettes, TreeType } from '../theme';
 import { requestNotificationPermissions, syncAllNotifications, notifyGoalCompletion, updateBadgeCount } from '../services/NotificationService';
 import { saveImagePermanently, saveBase64Image } from '../services/FileService';
+import { syncWidgetBalance } from '../services/WidgetService';
 
 export type WalletCategory = 'E-Wallet' | 'Banks' | 'Personal';
 
@@ -504,35 +505,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (isNotificationsEnabled) {
           const hasPermission = await requestNotificationPermissions();
           if (hasPermission) {
-            syncAllNotifications(debts, groceryLists, installments, true);
+            syncAllNotifications(debts, groceryLists, installments, subscriptions, rents, recursions, goals, true);
           }
         } else {
-          syncAllNotifications(debts, groceryLists, installments, false);
+          syncAllNotifications(debts, groceryLists, installments, subscriptions, rents, recursions, goals, false);
         }
       };
       setupNotifications();
     }
-  }, [isLoaded, recursions.length, debts, groceryLists, installments, isNotificationsEnabled]);
+  }, [isLoaded, recursions.length, debts, groceryLists, installments, subscriptions, rents, goals, isNotificationsEnabled]);
 
   useEffect(() => {
     if (isLoaded) {
-      syncAllNotifications(debts, groceryLists, installments, isNotificationsEnabled);
+      syncAllNotifications(debts, groceryLists, installments, subscriptions, rents, recursions, goals, isNotificationsEnabled);
     }
-  }, [debts, groceryLists, installments, isNotificationsEnabled]);
+  }, [debts, groceryLists, installments, subscriptions, rents, recursions, goals, isNotificationsEnabled]);
 
   useEffect(() => {
     if (isLoaded) {
       const todayStr = new Date().toISOString().split('T')[0];
       const todayIndex = new Date().getDay();
+      const todayDateNumber = new Date().getDate();
 
       const todayDebts = debts.filter(d => d.dueDate === todayStr).length;
       const todayGroceries = groceryLists.filter(list => 
         list.scheduledDays && list.scheduledDays.includes(todayIndex)
       ).length;
+      const todaySubs = subscriptions.filter(s => s.dayOfMonth === todayDateNumber).length;
+      const todayInstalls = installments.filter(i => i.dueDate === todayStr).length;
+      const todayRents = rents.filter(r => r.dueDate === todayStr).length;
 
-      updateBadgeCount(todayDebts + todayGroceries);
+      updateBadgeCount(todayDebts + todayGroceries + todaySubs + todayInstalls + todayRents);
     }
-  }, [isLoaded, debts, groceryLists]);
+  }, [isLoaded, debts, groceryLists, subscriptions, installments, rents]);
 
   const checkAndProcessRecursions = async () => {
     const today = new Date();
@@ -1516,6 +1521,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const totalReceivables = receivables.reduce((acc, r) => acc + r.amount, 0);
   const totalDebts = debts.reduce((acc, d) => acc + d.amount, 0);
   const totalBalance = wallets.reduce((acc, wallet) => acc + getWalletTotalBalanceInPhp(wallet, usdToPhpRate), 0);
+
+  // Sync Total Balance widget for phone home screen
+  useEffect(() => {
+    if (isLoaded) {
+      syncWidgetBalance(totalBalance, wallets.length);
+    }
+  }, [isLoaded, totalBalance, wallets.length]);
 
   const calculateStreak = () => {
     if (transactions.length === 0) return 0;

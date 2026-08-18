@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './src/navigation/navigationUtils';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, Platform, Text, TextInput } from 'react-native';
+import { View, StyleSheet, Platform, Text, TextInput, Linking } from 'react-native';
 import * as QuickActions from 'expo-quick-actions';
 import * as Notifications from 'expo-notifications';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
@@ -236,11 +236,11 @@ function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
   const [didTimeout, setDidTimeout] = useState(false);
   const [pendingWidgetAction, setPendingWidgetAction] = useState<string | null>(null);
 
-  // Quick Action / Widget Handling
+  // Quick Action / Deep Link / Widget Action Handling
   useEffect(() => {
     if (!isLoaded) return;
 
-    // 1. Set up the shortcuts (only needs to be done once)
+    // 1. Set up quick action shortcuts
     const setupShortcuts = async () => {
       try {
         await QuickActions.setItems([
@@ -267,24 +267,41 @@ function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
       const routeMap: Record<string, string> = {
         deposit: 'Deposit',
         withdraw: 'Withdraw',
-        add_goal: 'AddGoal'
+        add_goal: 'AddGoal',
+        home: 'Main',
       };
       
-      const route = routeMap[actionId];
+      const route = routeMap[actionId] || (actionId === 'income' ? 'Deposit' : actionId === 'expense' ? 'Withdraw' : null);
       if (!route) return;
 
       if (isSecurityEnabled && !isUnlocked) {
         setPendingWidgetAction(route);
       } else {
         setTimeout(() => {
-            if (navigationRef.isReady()) {
-                navigationRef.navigate(route as never);
+          if (navigationRef.isReady()) {
+            if (route === 'Main') {
+              (navigationRef.navigate as any)('Main', { screen: 'Home' });
+            } else {
+              (navigationRef.navigate as any)(route);
             }
-        }, 100);
+          }
+        }, 150);
       }
     };
 
-    // 2. Listen for shortcut interactions
+    const handleUrl = (url: string | null) => {
+      if (!url) return;
+      const lower = url.toLowerCase();
+      if (lower.includes('deposit') || lower.includes('income')) {
+        handleAction('deposit');
+      } else if (lower.includes('withdraw') || lower.includes('expense')) {
+        handleAction('withdraw');
+      } else if (lower.includes('home')) {
+        handleAction('home');
+      }
+    };
+
+    // 2. Listen for QuickAction shortcut interactions
     const deviceSubscription = QuickActions.addListener((action) => {
       handleAction(action.id);
     });
@@ -295,8 +312,15 @@ function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
       handleAction(initialAction.id);
     }
 
-    return () => deviceSubscription.remove();
-  }, [isLoaded]); // Re-run when app data is ready
+    // 4. Handle initial deep link and incoming URLs
+    Linking.getInitialURL().then(handleUrl);
+    const linkingSub = Linking.addEventListener('url', (event) => handleUrl(event.url));
+
+    return () => {
+      deviceSubscription.remove();
+      linkingSub.remove();
+    };
+  }, [isLoaded, isSecurityEnabled, isUnlocked]);
 
   // Notification Response Handling
   useEffect(() => {

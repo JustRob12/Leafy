@@ -61,7 +61,24 @@
       "expo-notifications",
       "expo-quick-actions",
       "./withShortcutIcons",
-      "expo-audio"
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "TotalBalanceWidget",
+              "label": "Total Balance (Horizontal)",
+              "minWidth": "320dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "description": "Displays your total balance horizontally on your home screen",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ]
     ],
     "extra": {
       "eas": {

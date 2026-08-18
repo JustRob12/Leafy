@@ -1,22 +1,23 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Animated, Easing, TextInput, Vibration } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Animated, Easing, TextInput, Vibration, Linking } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { theme } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check, Fingerprint, ChevronLeft, Plus, Palette, Moon, Sun } from 'lucide-react-native';
+import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check, Fingerprint, ChevronLeft, Plus, Palette, Moon, Sun, Smartphone, Sparkles, RefreshCw, ExternalLink, Eye, EyeOff, Layers, Type, Sliders, CheckCircle2 } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAppContext } from '../context/AppContext';
+import { requestPinTotalBalanceWidget, syncWidgetBalance, getWidgetConfig, saveWidgetConfig, WIDGET_THEMES, WidgetConfig, DEFAULT_WIDGET_CONFIG } from '../services/WidgetService';
+import { requestNotificationPermissions, sendTestNotification, checkNotificationPermissionStatus } from '../services/NotificationService';
 
 import { useNavigation } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 
 export default function SettingsScreen() {
-  const { username, setUsername, userImage, setUserImage, clearData, showConfirm, showFeedback, isDarkMode, toggleTheme, treeType, setTreeType, colors, appPin, setAppPin, isSecurityEnabled, toggleSecurity, isBiometricsEnabled, toggleBiometrics, isNotificationsEnabled, toggleNotifications } = useAppContext();
+  const { username, setUsername, userImage, setUserImage, clearData, showConfirm, showFeedback, isDarkMode, toggleTheme, treeType, setTreeType, colors, appPin, setAppPin, isSecurityEnabled, toggleSecurity, isBiometricsEnabled, toggleBiometrics, isNotificationsEnabled, toggleNotifications, totalBalance, wallets } = useAppContext();
   const navigation = useNavigation<any>();
 
   const styles = getStyles(colors, isDarkMode);
-
-
 
   const [privacyModalVisible, setPrivacyModalVisible] = React.useState(false);
   const [helpModalVisible, setHelpModalVisible] = React.useState(false);
@@ -24,13 +25,28 @@ export default function SettingsScreen() {
   const [securityModalVisible, setSecurityModalVisible] = React.useState(false);
   const [accountModalVisible, setAccountModalVisible] = React.useState(false);
   const [notifModalVisible, setNotifModalVisible] = React.useState(false);
+  const [hasNotifPermission, setHasNotifPermission] = React.useState(true);
   const [widgetModalVisible, setWidgetModalVisible] = React.useState(false);
+  const [widgetConfig, setWidgetConfig] = React.useState<WidgetConfig>(DEFAULT_WIDGET_CONFIG);
+  const [isApplyingWidget, setIsApplyingWidget] = React.useState(false);
   const [pinSetupVisible, setPinSetupVisible] = React.useState(false);
   const [editName, setEditName] = React.useState(username || '');
   const [newPin, setNewPin] = React.useState('');
   const [firstPin, setFirstPin] = React.useState('');
   const [pinStep, setPinStep] = React.useState<'create' | 'confirm'>('create');
   const [pinError, setPinError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (widgetModalVisible) {
+      getWidgetConfig().then(setWidgetConfig);
+    }
+  }, [widgetModalVisible]);
+
+  React.useEffect(() => {
+    if (notifModalVisible) {
+      checkNotificationPermissionStatus().then(setHasNotifPermission);
+    }
+  }, [notifModalVisible]);
 
   const resetPinState = () => {
     setNewPin('');
@@ -77,11 +93,11 @@ export default function SettingsScreen() {
       options: [
         { id: '1', title: 'Change Name', icon: User, action: () => { setEditName(username || ''); setAccountModalVisible(true); } },
         { id: '10', title: 'Appearance & Themes', icon: Palette, action: () => setAppearanceModalVisible(true) },
-        { 
-          id: '11', 
-          title: 'Dark Mode', 
-          icon: isDarkMode ? Moon : Sun, 
-          action: toggleTheme 
+        {
+          id: '11',
+          title: 'Dark Mode',
+          icon: isDarkMode ? Moon : Sun,
+          action: toggleTheme
         },
       ]
     },
@@ -97,7 +113,7 @@ export default function SettingsScreen() {
       title: 'Preferences',
       options: [
         { id: '8', title: 'Notifications', icon: Bell, action: () => { setNotifModalVisible(true); } },
-        { id: '9', title: 'Widgets & Shortcuts', icon: Plus, action: () => { setWidgetModalVisible(true); } },
+        { id: '9', title: 'Phone Widgets & Shortcuts', icon: Smartphone, action: () => { setWidgetModalVisible(true); } },
       ]
     },
     {
@@ -377,8 +393,8 @@ export default function SettingsScreen() {
       >
         <View style={styles.modalContent}>
           <Text style={[styles.pinDesc, pinError ? { color: '#ef4444', fontFamily: theme.fonts.bold } : null]}>
-            {pinError || (pinStep === 'create' 
-              ? 'Enter a 6-digit PIN to secure your application. You will be asked for this PIN every time you open Leapon.' 
+            {pinError || (pinStep === 'create'
+              ? 'Enter a 6-digit PIN to secure your application. You will be asked for this PIN every time you open Leapon.'
               : 'Re-enter your 6-digit PIN to verify and complete setup.')}
           </Text>
 
@@ -478,76 +494,451 @@ export default function SettingsScreen() {
       <ActionSheet
         visible={notifModalVisible}
         onClose={() => setNotifModalVisible(false)}
-        title="Notifications"
+        title="Notifications & Permissions"
       >
-        <View style={styles.modalContent}>
+        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
           <View style={styles.securityHeader}>
             <View style={[styles.securityIconBox, isNotificationsEnabled && styles.securityIconBoxActive]}>
               <Bell size={24} color={isNotificationsEnabled ? colors.primary : colors.textMuted} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.securityHeaderTitle}>Activity Reminders</Text>
-              <Text style={styles.securityHeaderSubtitle}>Get notified about debts due today and grocery schedules.</Text>
+              <Text style={styles.securityHeaderTitle}>
+                {isNotificationsEnabled ? 'Notifications Active' : 'Notifications Paused'}
+              </Text>
+              <Text style={styles.securityHeaderSubtitle}>
+                Get real-time pop up alerts for Paydays, Subscriptions, Goals, Installments, and Rent.
+              </Text>
             </View>
           </View>
 
+          {/* Master Toggle */}
           <View style={styles.configGroup}>
             <TouchableOpacity
               style={styles.configItem}
-              onPress={() => toggleNotifications(!isNotificationsEnabled)}
+              onPress={async () => {
+                const nextState = !isNotificationsEnabled;
+                if (nextState) {
+                  const granted = await requestNotificationPermissions();
+                  setHasNotifPermission(granted);
+                }
+                await toggleNotifications(nextState);
+                showFeedback('success', nextState ? 'Notifications Enabled' : 'Notifications Disabled');
+              }}
             >
               <View style={styles.configItemLeft}>
                 <View style={[styles.checkbox, isNotificationsEnabled && styles.checkboxActive]}>
                   {isNotificationsEnabled && <Check size={14} color="#ffffff" />}
                 </View>
-                <Text style={styles.configText}>Enabled Notifications</Text>
+                <View>
+                  <Text style={styles.configText}>Enable App Notifications</Text>
+                  <Text style={styles.configSubText}>Receive popup alerts on your phone screen</Text>
+                </View>
               </View>
             </TouchableOpacity>
+          </View>
+
+          {/* Phone Overlays & System Permissions */}
+          <Text style={styles.configLabel}>Phone Permissions & Overlays</Text>
+          <View style={styles.configGroup}>
+            <TouchableOpacity
+              style={styles.configItem}
+              onPress={() => Linking.openSettings()}
+            >
+              <View style={styles.configItemLeft}>
+                <Smartphone size={20} color={colors.primary} />
+                <View style={{ marginLeft: 12 }}>
+                  <Text style={styles.configText}>App Permissions & Overlays</Text>
+                  <Text style={styles.configSubText}>Allow popup banners & show over other apps</Text>
+                </View>
+              </View>
+              <ChevronRight size={18} color={colors.border} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.configItem}
+              onPress={async () => {
+                Vibration.vibrate(25);
+                const sent = await sendTestNotification();
+                if (sent) {
+                  showFeedback('success', 'Test Notification Sent!');
+                  Alert.alert(
+                    "Test Notification Sent",
+                    "A test popup notification has been dispatched to your phone!"
+                  );
+                } else {
+                  Alert.alert(
+                    "Notification Permission Needed",
+                    "Please allow notifications in your device settings to receive popups."
+                  );
+                }
+              }}
+            >
+              <View style={styles.configItemLeft}>
+                <Sparkles size={20} color="#10b981" />
+                <View style={{ marginLeft: 12 }}>
+                  <Text style={styles.configText}>Send Test Notification</Text>
+                  <Text style={styles.configSubText}>Verify popup alert appears immediately</Text>
+                </View>
+              </View>
+              <ChevronRight size={18} color={colors.border} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Supported Notification Triggers Breakdown */}
+          <Text style={styles.configLabel}>What You'll Be Notified About</Text>
+          <View style={styles.configGroup}>
+            <View style={styles.notifFeatureItem}>
+              <Text style={styles.notifFeatureIcon}>💰</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.notifFeatureTitle}>Payday & Salary Alerts</Text>
+                <Text style={styles.notifFeatureDesc}>Pop up notification on your recurring payday</Text>
+              </View>
+            </View>
+            <View style={styles.divider} />
+
+            <View style={styles.notifFeatureItem}>
+              <Text style={styles.notifFeatureIcon}>📅</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.notifFeatureTitle}>Subscription Due Dates</Text>
+                <Text style={styles.notifFeatureDesc}>Alert on the exact payment day of your subscriptions</Text>
+              </View>
+            </View>
+            <View style={styles.divider} />
+
+            <View style={styles.notifFeatureItem}>
+              <Text style={styles.notifFeatureIcon}>💳</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.notifFeatureTitle}>Installment Payment Days</Text>
+                <Text style={styles.notifFeatureDesc}>Payment due alerts for your product installments</Text>
+              </View>
+            </View>
+            <View style={styles.divider} />
+
+            <View style={styles.notifFeatureItem}>
+              <Text style={styles.notifFeatureIcon}>🏠</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.notifFeatureTitle}>Rent Properties Due Dates</Text>
+                <Text style={styles.notifFeatureDesc}>Reminders when your monthly rent payment is due</Text>
+              </View>
+            </View>
+            <View style={styles.divider} />
+
+            <View style={styles.notifFeatureItem}>
+              <Text style={styles.notifFeatureIcon}>🎯</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.notifFeatureTitle}>Goal Milestones & Completion</Text>
+                <Text style={styles.notifFeatureDesc}>Celebrations when you reach savings targets</Text>
+              </View>
+            </View>
+            <View style={styles.divider} />
+
+            <View style={styles.notifFeatureItem}>
+              <Text style={styles.notifFeatureIcon}>💸</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.notifFeatureTitle}>Debts & Grocery Schedules</Text>
+                <Text style={styles.notifFeatureDesc}>Reminders for debt due dates and grocery shopping</Text>
+              </View>
+            </View>
           </View>
 
           <TouchableOpacity style={styles.closeBtn} onPress={() => setNotifModalVisible(false)}>
             <Text style={styles.closeBtnText}>Done</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </ActionSheet>
 
       {/* Widgets & Shortcuts Modal */}
       <ActionSheet
         visible={widgetModalVisible}
         onClose={() => setWidgetModalVisible(false)}
-        title="Widgets & Shortcuts"
+        title="Customize Widget"
       >
-        <View style={styles.modalContent}>
+        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
           <View style={styles.infoSection}>
-            <Text style={styles.infoTitle}>Home Screen Shortcuts</Text>
+            <Text style={styles.infoTitle}>Home Screen Phone Widget</Text>
             <Text style={styles.infoDescription}>
-              Quickly access Income and Expense screens directly from your home screen icon.
+              Customize the appearance, information, and quick action shortcuts of the widget displayed on your phone's home screen.
             </Text>
           </View>
 
+          {/* Big Live Interactive Widget Preview */}
+          {(() => {
+            const activeTheme = WIDGET_THEMES.find(t => t.id === widgetConfig.themeId) || WIDGET_THEMES[0];
+            const curr = widgetConfig.currencySymbol || '₱';
+            const displayBal = widgetConfig.hideBalance
+              ? `${curr} ••••••`
+              : `${curr} ${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const cleanTitle = (widgetConfig.customTitle || 'LEAPON').replace(/^[^\w\s]+/, '').trim() || 'LEAPON';
+
+            return (
+              <View style={styles.widgetPreviewContainer}>
+                <View style={styles.widgetPreviewBadge}>
+                  <Sparkles size={12} color="#10b981" />
+                  <Text style={styles.widgetPreviewBadgeText}>LIVE PREVIEW • TOTAL BALANCE</Text>
+                </View>
+
+                <LinearGradient
+                  colors={[activeTheme.gradientFrom, activeTheme.gradientTo]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.widgetCard, { borderColor: activeTheme.borderColor }]}
+                >
+                  {/* Header */}
+                  <View style={styles.widgetHeader}>
+                    <View style={styles.widgetBrandRow}>
+                      <Text style={[styles.widgetBrand, { color: activeTheme.accentColor }]}>
+                        {cleanTitle}
+                      </Text>
+                      <Text style={[styles.widgetSubBrand, { color: activeTheme.subTextColor }]}>
+                        {' '}• TOTAL BALANCE
+                      </Text>
+                    </View>
+                    <View style={[styles.widgetLivePill, { backgroundColor: activeTheme.pillBgColor, borderColor: activeTheme.borderColor }]}>
+                      <View style={[styles.widgetLiveDot, { backgroundColor: activeTheme.accentColor }]} />
+                      <Text style={[styles.widgetLiveText, { color: activeTheme.accentColor }]}>Synced</Text>
+                    </View>
+                  </View>
+
+                  {/* Big Balance */}
+                  <View style={styles.widgetBalanceSection}>
+                    <Text style={styles.widgetBalanceAmount} numberOfLines={1} adjustsFontSizeToFit>
+                      {displayBal}
+                    </Text>
+                    {widgetConfig.showWalletCount && (
+                      <Text style={styles.widgetWalletCount}>
+                        {wallets.length} Active Wallet{wallets.length !== 1 ? 's' : ''}
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* Bottom Accent Line */}
+                  <View
+                    style={{
+                      width: '100%',
+                      height: 3,
+                      backgroundColor: activeTheme.accentColor,
+                      borderRadius: 2,
+                      opacity: 0.3,
+                      marginTop: 10,
+                    }}
+                  />
+                </LinearGradient>
+              </View>
+            );
+          })()}
+
+          {/* Primary Apply Button */}
+          <TouchableOpacity
+            style={[styles.applyWidgetBtn, isApplyingWidget && { opacity: 0.7 }]}
+            activeOpacity={0.8}
+            disabled={isApplyingWidget}
+            onPress={async () => {
+              setIsApplyingWidget(true);
+              Vibration.vibrate(40);
+              const success = await saveWidgetConfig(widgetConfig);
+              await syncWidgetBalance(totalBalance, wallets.length, widgetConfig);
+              setIsApplyingWidget(false);
+              if (success) {
+                showFeedback('success', 'Widget Settings Applied & Synced!');
+                Alert.alert(
+                  "Widget Updated Successfully",
+                  "Your phone's home screen widget has been updated with your new customizations and latest balance."
+                );
+              } else {
+                showFeedback('error', 'Failed to update widget');
+              }
+            }}
+          >
+            <CheckCircle2 size={18} color="#ffffff" style={{ marginRight: 8 }} />
+            <Text style={styles.applyWidgetBtnText}>
+              {isApplyingWidget ? 'Applying to Widget...' : 'Apply Changes to Widget'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Section 1: Themes & Color Palette */}
+          <Text style={styles.configLabel}>Widget Theme & Style</Text>
+          <View style={styles.themeGrid}>
+            {WIDGET_THEMES.map((themeOption) => {
+              const isSelected = widgetConfig.themeId === themeOption.id;
+              return (
+                <TouchableOpacity
+                  key={themeOption.id}
+                  style={[styles.themeOption, isSelected && styles.themeOptionActive]}
+                  onPress={() => {
+                    setWidgetConfig(prev => ({ ...prev, themeId: themeOption.id }));
+                    Vibration.vibrate(15);
+                  }}
+                >
+                  <View
+                    style={[
+                      styles.themeColor,
+                      {
+                        backgroundColor: themeOption.previewColor || themeOption.gradientFrom,
+                        borderColor: themeOption.borderColor,
+                        borderWidth: 1.5,
+                      },
+                    ]}
+                  />
+                  <Text style={[styles.themeName, isSelected && styles.themeNameActive]}>
+                    {themeOption.name}
+                  </Text>
+                  {isSelected && (
+                    <View style={styles.themeCheck}>
+                      <Check size={10} color="#ffffff" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Section 2: Display Elements & Toggles */}
+          <Text style={styles.configLabel}>Display Information</Text>
+          <View style={styles.configGroup}>
+            <TouchableOpacity
+              style={styles.configItem}
+              onPress={() => {
+                setWidgetConfig(prev => ({ ...prev, showWalletCount: !prev.showWalletCount }));
+                Vibration.vibrate(15);
+              }}
+            >
+              <View style={styles.configItemLeft}>
+                <View style={[styles.checkbox, widgetConfig.showWalletCount && styles.checkboxActive]}>
+                  {widgetConfig.showWalletCount && <Check size={14} color="#ffffff" />}
+                </View>
+                <View>
+                  <Text style={styles.configText}>Show Active Wallets Count</Text>
+                  <Text style={styles.configSubText}>Displays total number of connected wallets</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.configItem}
+              onPress={() => {
+                setWidgetConfig(prev => ({ ...prev, hideBalance: !prev.hideBalance }));
+                Vibration.vibrate(15);
+              }}
+            >
+              <View style={styles.configItemLeft}>
+                <View style={[styles.checkbox, widgetConfig.hideBalance && styles.checkboxActive]}>
+                  {widgetConfig.hideBalance && <Check size={14} color="#ffffff" />}
+                </View>
+                <View>
+                  <Text style={styles.configText}>Privacy Mode (Mask Balance)</Text>
+                  <Text style={styles.configSubText}>Replaces balance numbers with dots (••••••)</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Section 3: Currency Symbol */}
+          <Text style={styles.configLabel}>Currency Symbol</Text>
+          <View style={styles.currencyChipsContainer}>
+            {['₱', '$', '€', '£', '¥'].map((curr) => {
+              const isSelected = (widgetConfig.currencySymbol || '₱') === curr;
+              return (
+                <TouchableOpacity
+                  key={curr}
+                  style={[styles.currencyChip, isSelected && styles.currencyChipActive]}
+                  onPress={() => {
+                    setWidgetConfig(prev => ({ ...prev, currencySymbol: curr }));
+                    Vibration.vibrate(15);
+                  }}
+                >
+                  <Text style={[styles.currencyChipText, isSelected && styles.currencyChipTextActive]}>
+                    {curr}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Section 4: Widget Title / Label */}
+          <Text style={styles.configLabel}>Widget Brand Title</Text>
+          <View style={styles.titlePresetRow}>
+            {['LEAPON', 'MY FINANCES', 'WEALTH TRACKER', 'MY VAULT'].map((titlePreset) => {
+              const cleanCurrent = (widgetConfig.customTitle || 'LEAPON').replace(/^[^\w\s]+/, '').trim();
+              const isSelected = cleanCurrent === titlePreset;
+              return (
+                <TouchableOpacity
+                  key={titlePreset}
+                  style={[styles.titlePresetBtn, isSelected && styles.titlePresetBtnActive]}
+                  onPress={() => {
+                    setWidgetConfig(prev => ({ ...prev, customTitle: titlePreset }));
+                    Vibration.vibrate(15);
+                  }}
+                >
+                  <Text style={[styles.titlePresetText, isSelected && styles.titlePresetTextActive]}>
+                    {titlePreset}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Placement & Sync Buttons */}
+          <View style={styles.widgetButtonsContainer}>
+            <TouchableOpacity
+              style={styles.addWidgetBtn}
+              activeOpacity={0.8}
+              onPress={async () => {
+                const success = await requestPinTotalBalanceWidget();
+                if (success) {
+                  Alert.alert(
+                    "Widget Pin Requested",
+                    "Please check your phone's home screen or approve the launcher prompt to place the widget."
+                  );
+                } else {
+                  Alert.alert(
+                    "Add Widget Manually",
+                    "To place this widget on your home screen:\n\n1. Long-press any empty area on your phone's home screen.\n2. Tap 'Widgets' and choose 'Leapon'.\n3. Select 'Total Balance (Horizontal)' and place it on your screen."
+                  );
+                }
+              }}
+            >
+              <Smartphone size={18} color="#ffffff" style={{ marginRight: 8 }} />
+              <Text style={styles.addWidgetBtnText}>Add Widget to Phone Screen</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.syncWidgetBtn, { borderColor: colors.border }]}
+              activeOpacity={0.8}
+              onPress={async () => {
+                await syncWidgetBalance(totalBalance, wallets.length, widgetConfig);
+                showFeedback('success', 'Home Widget Synchronized');
+                Alert.alert(
+                  "Widget Synchronized",
+                  `Updated home screen total balance to ${widgetConfig.currencySymbol || '₱'} ${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} across ${wallets.length} wallets.`
+                );
+              }}
+            >
+              <RefreshCw size={16} color={colors.text} style={{ marginRight: 8 }} />
+              <Text style={[styles.syncWidgetBtnText, { color: colors.text }]}>Sync Widget Data Now</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Step-by-Step Instructions */}
           <View style={styles.configGroup}>
             <View style={styles.infoSection}>
-              <Text style={[styles.infoTitle, { fontSize: 16 }]}>How to use:</Text>
+              <Text style={[styles.infoTitle, { fontSize: 15 }]}>How to place & resize widget:</Text>
               <Text style={styles.infoDescription}>
-                1. Go to your phone's home screen.{"\n"}
-                2. Long-press the Leapon app icon.{"\n"}
-                3. Select "Income" or "Expense".{"\n"}
-                4. (Android) You can drag these items to your home screen as standalone widgets.
+                1. Go to your phone's Home Screen.{"\n"}
+                2. Touch and hold any empty area.{"\n"}
+                3. Tap <Text style={{ fontWeight: 'bold' }}>Widgets</Text> and scroll or search for <Text style={{ fontWeight: 'bold' }}>Leapon</Text>.{"\n"}
+                4. Select <Text style={{ fontWeight: 'bold' }}>Total Balance (Horizontal)</Text> and drag it to your screen.{"\n"}
+                5. Long-press the widget on your screen and drag its side handles to expand it horizontally as big as you like!
               </Text>
             </View>
           </View>
 
           <TouchableOpacity
             style={styles.closeBtn}
-            onPress={() => {
-              // Trigger a refresh/setup check
-              Alert.alert("Shortcut Synchronized", "Your home screen shortcuts have been updated with the latest premium design.");
-              setWidgetModalVisible(false);
-            }}
+            onPress={() => setWidgetModalVisible(false)}
           >
-            <Text style={styles.closeBtnText}>Check Shortcuts</Text>
+            <Text style={styles.closeBtnText}>Done</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </ActionSheet>
 
       {/* About Leapon Modal */}
@@ -960,4 +1351,257 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  widgetPreviewContainer: {
+    marginVertical: 12,
+    alignItems: 'center',
+    width: '100%',
+  },
+  widgetPreviewBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#10b98140',
+    gap: 6,
+  },
+  widgetPreviewBadgeText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 10,
+    color: '#10b981',
+    letterSpacing: 0.5,
+  },
+  widgetCard: {
+    width: '100%',
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#059669',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  widgetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  widgetBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  widgetBrand: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 12,
+    color: '#34d399',
+    letterSpacing: 1,
+  },
+  widgetSubBrand: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 11,
+    color: '#a7f3d0',
+    letterSpacing: 0.5,
+  },
+  widgetLivePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#065f46',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderColor: '#10b981',
+    borderWidth: 1,
+    gap: 4,
+  },
+  widgetLiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#34d399',
+  },
+  widgetLiveText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 10,
+    color: '#6ee7b7',
+  },
+  widgetBalanceSection: {
+    marginVertical: 4,
+  },
+  widgetBalanceAmount: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 28,
+    color: '#ffffff',
+    letterSpacing: -0.5,
+  },
+  widgetWalletCount: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  widgetActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 10,
+  },
+  widgetActionPill: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  widgetActionPillText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 12,
+    color: '#ffffff',
+  },
+  applyWidgetBtn: {
+    flexDirection: 'row',
+    backgroundColor: '#10b981',
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+    marginBottom: 18,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  applyWidgetBtnText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 15,
+    color: '#ffffff',
+  },
+  configSubText: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  currencyChipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+  },
+  currencyChip: {
+    flex: 1,
+    minWidth: 48,
+    paddingVertical: 10,
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  currencyChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '18',
+  },
+  currencyChipText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 16,
+    color: colors.text,
+  },
+  currencyChipTextActive: {
+    color: colors.primary,
+  },
+  titlePresetRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+  },
+  titlePresetBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  titlePresetBtnActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '18',
+  },
+  titlePresetText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+    color: colors.text,
+  },
+  titlePresetTextActive: {
+    fontFamily: theme.fonts.bold,
+    color: colors.primary,
+  },
+  widgetButtonsContainer: {
+    marginVertical: 12,
+    gap: 10,
+    width: '100%',
+  },
+  addWidgetBtn: {
+    flexDirection: 'row',
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  addWidgetBtnText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 15,
+    color: '#ffffff',
+  },
+  syncWidgetBtn: {
+    flexDirection: 'row',
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#f1f5f9',
+    borderRadius: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  notifFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  notifFeatureIcon: {
+    fontSize: 22,
+  },
+  notifFeatureTitle: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 14,
+    color: colors.text,
+  },
+  notifFeatureDesc: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  syncWidgetBtnText: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 14,
+  },
 });
+

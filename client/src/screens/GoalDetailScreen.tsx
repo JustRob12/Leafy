@@ -9,20 +9,27 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 const { width } = Dimensions.get('window');
 
 export default function GoalDetailScreen() {
-  const { wallets, deleteGoal, showConfirm, colors, isDarkMode, usdToPhpRate } = useAppContext();
+  const { wallets, goals, deleteGoal, showConfirm, colors, isDarkMode, usdToPhpRate } = useAppContext();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const styles = getStyles(colors, isDarkMode);
 
-  const goal = route.params?.goal;
+  const initialGoal = route.params?.goal;
+  const goal = (goals || []).find(g => g.id === initialGoal?.id);
   const [isImageFullVisible, setIsImageFullVisible] = React.useState(false);
+
+  React.useEffect(() => {
+    if (initialGoal?.id && !goals.some(g => g.id === initialGoal.id)) {
+      navigation.navigate('Main', { screen: 'Goals' });
+    }
+  }, [goals, initialGoal?.id, navigation]);
 
   if (!goal) {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Goal not found</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>Go Back</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Main', { screen: 'Goals' })} style={styles.backBtn}>
+          <Text style={styles.backBtnText}>Go to Goals</Text>
         </TouchableOpacity>
       </View>
     );
@@ -45,9 +52,9 @@ export default function GoalDetailScreen() {
     showConfirm(
       "Delete Goal",
       `Are you sure you want to delete "${goal.title}"?`,
-      () => {
-        deleteGoal(goal.id);
-        navigation.goBack();
+      async () => {
+        await deleteGoal(goal.id);
+        navigation.navigate('Main', { screen: 'Goals' });
       }
     );
   };

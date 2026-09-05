@@ -1,6 +1,7 @@
 import React from 'react';
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 import { TotalBalanceWidget } from './TotalBalanceWidget';
+import { TotalExpenseWidget } from './TotalExpenseWidget';
 import { getCachedWidgetData, saveWidgetConfig } from '../services/WidgetService';
 
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
@@ -16,6 +17,8 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
           <TotalBalanceWidget
             balance={data.balance}
             walletCount={data.walletCount}
+            expense={data.expense}
+            expenseCount={data.expenseCount}
             currency={data.config?.currencySymbol || '₱'}
             config={data.config}
           />
@@ -34,6 +37,8 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
             <TotalBalanceWidget
               balance={data.balance}
               walletCount={data.walletCount}
+              expense={data.expense}
+              expenseCount={data.expenseCount}
               currency={nextConfig.currencySymbol || '₱'}
               config={nextConfig}
             />
@@ -46,6 +51,57 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
           <TotalBalanceWidget
             balance={data.balance}
             walletCount={data.walletCount}
+            expense={data.expense}
+            expenseCount={data.expenseCount}
+            currency={data.config?.currencySymbol || '₱'}
+            config={data.config}
+          />
+        );
+        break;
+      }
+      default:
+        break;
+    }
+  } else if (widgetInfo.widgetName === 'TotalExpenseWidget') {
+    switch (widgetAction) {
+      case 'WIDGET_ADDED':
+      case 'WIDGET_UPDATE':
+      case 'WIDGET_RESIZED': {
+        const data = await getCachedWidgetData();
+        renderWidget(
+          <TotalExpenseWidget
+            expense={data.expense}
+            expenseCount={data.expenseCount}
+            currency={data.config?.currencySymbol || '₱'}
+            config={data.config}
+          />
+        );
+        break;
+      }
+      case 'WIDGET_CLICK': {
+        if (clickAction === 'TOGGLE_PRIVACY') {
+          const data = await getCachedWidgetData();
+          const nextConfig = {
+            ...data.config,
+            hideBalance: !data.config.hideBalance,
+          };
+          await saveWidgetConfig(nextConfig);
+          renderWidget(
+            <TotalExpenseWidget
+              expense={data.expense}
+              expenseCount={data.expenseCount}
+              currency={nextConfig.currencySymbol || '₱'}
+              config={nextConfig}
+            />
+          );
+          break;
+        }
+
+        const data = await getCachedWidgetData();
+        renderWidget(
+          <TotalExpenseWidget
+            expense={data.expense}
+            expenseCount={data.expenseCount}
             currency={data.config?.currencySymbol || '₱'}
             config={data.config}
           />

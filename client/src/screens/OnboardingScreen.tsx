@@ -24,13 +24,13 @@ export default function OnboardingScreen() {
   const triggerTransition = (nextStep: 1 | 2 | 3) => {
     Animated.timing(fadeAnim, {
       toValue: 0,
-      duration: 150,
+      duration: 80,
       useNativeDriver: true,
     }).start(() => {
       setStep(nextStep);
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 200,
+        duration: 100,
         useNativeDriver: true,
       }).start();
     });
@@ -127,7 +127,7 @@ export default function OnboardingScreen() {
                   <View style={styles.iconContainer}>
                     <Image source={LogoSource} style={styles.logoImage} />
                   </View>
-                  <Text style={styles.title}>Welcome to Leapon</Text>
+                  <Text style={styles.title}>Welcome to Leon</Text>
                   <Text style={styles.subtitle}>Your Invisible Architect for personal finance.</Text>
                 </View>
 
@@ -215,7 +215,7 @@ export default function OnboardingScreen() {
                   <Fingerprint size={38} color={colors.primary} />
                 </View>
                 <Text style={styles.titleCenter}>Enable Biometrics</Text>
-                <Text style={styles.subtitleCenter}>Unlock Leapon faster with your fingerprint or face ID.</Text>
+                <Text style={styles.subtitleCenter}>Unlock Leon faster with your fingerprint or face ID.</Text>
 
                 <View style={styles.step3Actions}>
                   <TouchableOpacity

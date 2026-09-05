@@ -43,7 +43,7 @@ export function useScrollHideTabBar() {
     isHidden.current = false;
     Animated.timing(globalTabBarTranslateY, {
       toValue: 0,
-      duration: 250,
+      duration: 120,
       useNativeDriver: true,
     }).start();
   };
@@ -52,7 +52,7 @@ export function useScrollHideTabBar() {
     isHidden.current = true;
     Animated.timing(globalTabBarTranslateY, {
       toValue: 120, // push down enough to clear the 60px height + bottom margin
-      duration: 250,
+      duration: 120,
       useNativeDriver: true,
     }).start();
   };

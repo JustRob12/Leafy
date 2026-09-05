@@ -33,14 +33,36 @@ export default function WalletsScreen() {
     { label: 'Travel', icon: Plane },
   ];
 
+  const [categoryFilter, setCategoryFilter] = useState<'all' | WalletCategory>('all');
+
+  const categoryCounts = useMemo(() => {
+    return {
+      all: wallets.length,
+      'E-Wallet': wallets.filter(w => (w.category || 'Personal') === 'E-Wallet').length,
+      'Banks': wallets.filter(w => (w.category || 'Personal') === 'Banks').length,
+      'Personal': wallets.filter(w => (w.category || 'Personal') === 'Personal').length,
+    };
+  }, [wallets]);
+
+  const filterOptions = [
+    { key: 'all' as const, label: 'All', count: categoryCounts.all },
+    { key: 'E-Wallet' as const, label: 'E-Wallet', count: categoryCounts['E-Wallet'] },
+    { key: 'Banks' as const, label: 'Banks', count: categoryCounts['Banks'] },
+    { key: 'Personal' as const, label: 'Personal', count: categoryCounts['Personal'] },
+  ];
+
   const groupedWallets = useMemo(() => {
     const categories: WalletCategory[] = ['E-Wallet', 'Banks', 'Personal'];
-    return categories.map(cat => ({
+    const activeCategories = categoryFilter === 'all' 
+      ? categories 
+      : categories.filter(c => c === categoryFilter);
+
+    return activeCategories.map(cat => ({
       title: cat,
       data: wallets.filter(w => (w.category || 'Personal') === cat)
         .sort((a, b) => b.balance - a.balance)
     })).filter(group => group.data.length > 0);
-  }, [wallets]);
+  }, [wallets, categoryFilter]);
 
   const handleEditWallet = (wallet: any) => {
     setSelectedWalletDetail(null);
@@ -56,16 +78,46 @@ export default function WalletsScreen() {
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
+        {/* Top Control Bar: Category Filter Chips & Balance Visibility */}
         {wallets.length > 0 && (
-          <TouchableOpacity
-            style={[styles.visibilityToggle, !showBalances && styles.visibilityToggleActive]}
-            onPress={() => setShowBalances(!showBalances)}
-          >
-            {showBalances ? <Eye size={18} color={colors.textMuted} /> : <EyeOff size={18} color={colors.primary} />}
-            <Text style={[styles.visibilityToggleText, !showBalances && { color: colors.primary }]}>
-              {showBalances ? 'Hide Balances' : 'Balances Hidden'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.topControlRow}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={styles.filterChipScroll}
+            >
+              {filterOptions.map((opt) => {
+                const isActive = categoryFilter === opt.key;
+                return (
+                  <TouchableOpacity
+                    key={opt.key}
+                    style={[styles.filterChip, isActive && styles.filterChipActive]}
+                    onPress={() => setCategoryFilter(opt.key)}
+                    activeOpacity={0.7}
+                    delayPressIn={0}
+                  >
+                    <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                      {opt.label}
+                    </Text>
+                    <View style={[styles.filterChipBadge, isActive && styles.filterChipBadgeActive]}>
+                      <Text style={[styles.filterChipBadgeText, isActive && styles.filterChipBadgeTextActive]}>
+                        {opt.count}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={[styles.visibilityToggle, !showBalances && styles.visibilityToggleActive]}
+              onPress={() => setShowBalances(!showBalances)}
+              activeOpacity={0.7}
+              delayPressIn={0}
+            >
+              {showBalances ? <Eye size={18} color={colors.textMuted} /> : <EyeOff size={18} color={colors.primary} />}
+            </TouchableOpacity>
+          </View>
         )}
 
         {wallets.length === 0 ? (
@@ -81,6 +133,23 @@ export default function WalletsScreen() {
             >
               <Plus size={20} color="#ffffff" />
               <Text style={styles.emptyBtnText}>Create Wallet</Text>
+            </TouchableOpacity>
+          </View>
+        ) : groupedWallets.length === 0 ? (
+          <View style={styles.emptyFilteredState}>
+            <View style={styles.emptyIconWrapper}>
+              <WalletIcon size={28} color={colors.textMuted} />
+            </View>
+            <Text style={styles.emptyTitle}>No {categoryFilter} Wallets</Text>
+            <Text style={styles.emptySubtitle}>You don't have any wallets under this category yet.</Text>
+            <TouchableOpacity 
+              style={styles.emptyBtn}
+              onPress={() => navigation.navigate('AddWallet')}
+              activeOpacity={0.7}
+              delayPressIn={0}
+            >
+              <Plus size={18} color="#ffffff" />
+              <Text style={styles.emptyBtnText}>Add {categoryFilter} Wallet</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -559,27 +628,82 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       color: colors.text,
       textAlign: 'center',
     },
-  visibilityToggle: {
-    alignSelf: 'flex-end',
+  topControlRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+    justifyContent: 'space-between',
     marginBottom: 16,
+    gap: 10,
+  },
+  filterChipScroll: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingRight: 6,
+    alignItems: 'center',
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  filterChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterChipText: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: rf(12),
+    color: colors.textMuted,
+  },
+  filterChipTextActive: {
+    color: '#ffffff',
+  },
+  filterChipBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 10,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
+  },
+  filterChipBadgeActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.28)',
+  },
+  filterChipBadgeText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(10),
+    color: colors.textMuted,
+  },
+  filterChipBadgeTextActive: {
+    color: '#ffffff',
+  },
+  visibilityToggle: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
     borderWidth: 1,
     borderColor: colors.border,
   },
   visibilityToggleActive: {
     borderColor: colors.primary + '33',
-    backgroundColor: colors.primary + '08',
+    backgroundColor: colors.primary + '15',
   },
-  visibilityToggleText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(12),
-    color: colors.textMuted,
+  emptyFilteredState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.xxl,
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginTop: 8,
   },
     inputLabel: {
       fontFamily: theme.fonts.medium,

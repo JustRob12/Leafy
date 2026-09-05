@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { Plus, ChevronLeft, Calendar, Plane, MapPin } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
-import LeaponDatePicker from '../components/LeaponDatePicker';
+import LeonDatePicker from '../components/LeonDatePicker';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, Image as ImageIcon, X } from 'lucide-react-native';
@@ -225,7 +225,7 @@ export default function AddTravelScreen({ route }: any) {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <LeaponDatePicker
+      <LeonDatePicker
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
         onSelect={handleDateSelect}

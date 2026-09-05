@@ -89,7 +89,7 @@ export default function AddGoalScreen() {
           description: description.trim()
         });
       }
-      navigation.goBack();
+      navigation.navigate('Main', { screen: 'Goals' });
     }
   };
 
@@ -97,9 +97,9 @@ export default function AddGoalScreen() {
     showConfirm(
       "Delete Goal",
       `Are you sure you want to delete "${title}"?`,
-      () => {
-        deleteGoal(editingGoal.id);
-        navigation.goBack();
+      async () => {
+        await deleteGoal(editingGoal.id);
+        navigation.navigate('Main', { screen: 'Goals' });
       }
     );
   };

@@ -21,7 +21,8 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Clock,
-  Zap
+  Zap,
+  Pencil
 } from 'lucide-react-native';
 import { useAppContext, InstallmentType } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
@@ -208,15 +209,28 @@ export default function InstallmentScreen() {
                     style={styles.cardUrgentGradient}
                   >
                     <View style={styles.cardHeaderRow}>
-                      <View style={styles.cardTitleBox}>
+                      <TouchableOpacity 
+                        style={styles.cardTitleBox}
+                        onPress={() => navigation.navigate('AddInstallment', { installment: item })}
+                        activeOpacity={0.7}
+                      >
                         <Text style={styles.urgentBadgeText}>
                           🚨 DUE IN {daysRemaining <= 0 ? 'TODAY' : `${daysRemaining} DAYS`}
                         </Text>
                         <Text style={styles.cardProductNameWhite}>{item.productName}</Text>
-                      </View>
-                      <TouchableOpacity onPress={() => handleDelete(item)} style={styles.deleteBtnUrgent}>
-                        <Trash2 size={18} color="rgba(255, 255, 255, 0.9)" />
                       </TouchableOpacity>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <TouchableOpacity 
+                          onPress={() => navigation.navigate('AddInstallment', { installment: item })} 
+                          style={styles.deleteBtnUrgent}
+                          activeOpacity={0.7}
+                        >
+                          <Pencil size={18} color="rgba(255, 255, 255, 0.9)" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDelete(item)} style={styles.deleteBtnUrgent}>
+                          <Trash2 size={18} color="rgba(255, 255, 255, 0.9)" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
 
                     <View style={styles.cardBodyRow}>
@@ -301,7 +315,11 @@ export default function InstallmentScreen() {
                   ]}
                 >
                   <View style={styles.cardHeaderRow}>
-                    <View style={styles.cardTitleBox}>
+                    <TouchableOpacity 
+                      style={styles.cardTitleBox}
+                      onPress={() => navigation.navigate('AddInstallment', { installment: item })}
+                      activeOpacity={0.7}
+                    >
                       <View style={styles.titleIconRow}>
                         <View style={[styles.iconBox, { backgroundColor: isCompleted ? colors.border : colors.primary + '20' }]}>
                           <Layers size={18} color={isCompleted ? colors.textMuted : colors.primary} />
@@ -320,11 +338,20 @@ export default function InstallmentScreen() {
                           )}
                         </View>
                       </View>
-                    </View>
-
-                    <TouchableOpacity onPress={() => handleDelete(item)} style={styles.deleteBtn}>
-                      <Trash2 size={18} color={colors.textMuted} />
                     </TouchableOpacity>
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <TouchableOpacity 
+                        onPress={() => navigation.navigate('AddInstallment', { installment: item })} 
+                        style={styles.deleteBtn}
+                        activeOpacity={0.7}
+                      >
+                        <Pencil size={18} color={colors.textMuted} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDelete(item)} style={styles.deleteBtn}>
+                        <Trash2 size={18} color={colors.textMuted} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
                   <View style={styles.cardBodyRow}>

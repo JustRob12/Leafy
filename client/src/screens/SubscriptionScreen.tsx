@@ -5,6 +5,7 @@ import { theme } from '../theme';
 import { ChevronLeft, Plus, CreditCard, Trash2, Calendar, AlertTriangle } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
+import { resolveSubscriptionLogo } from '../services/SubscriptionCatalogService';
 
 const SUBS_ICONS: { [key: string]: any } = {
   'capcut.png': require('../../public/subs/capcut.png'),
@@ -77,6 +78,8 @@ export default function SubscriptionScreen() {
             const daysRemaining = getDaysRemaining(sub.dayOfMonth);
             const isDueSoon = daysRemaining <= 3;
 
+            const logo = resolveSubscriptionLogo(sub.title, sub.icon);
+
             return (
               <TouchableOpacity 
                 key={sub.id} 
@@ -84,9 +87,11 @@ export default function SubscriptionScreen() {
                 onPress={() => navigation.navigate('AddSubscription', { subscription: sub })}
               >
                 <View style={styles.cardLeft}>
-                  <View style={[styles.iconWrapper, isDueSoon && styles.dueSoonIconWrapper, sub.icon && { backgroundColor: 'transparent', borderWidth: 0 }]}>
-                    {sub.icon ? (
-                      <Image source={SUBS_ICONS[sub.icon]} style={styles.subIcon} />
+                  <View style={[styles.iconWrapper, isDueSoon && styles.dueSoonIconWrapper, logo && { backgroundColor: 'transparent', borderWidth: 0 }]}>
+                    {logo && SUBS_ICONS[logo] ? (
+                      <Image source={SUBS_ICONS[logo]} style={styles.subIcon} />
+                    ) : logo && (logo.startsWith('http://') || logo.startsWith('https://')) ? (
+                      <Image source={{ uri: logo }} style={styles.subIcon} />
                     ) : (
                       <CreditCard size={20} color={isDueSoon ? '#ef4444' : colors.primary} />
                     )}

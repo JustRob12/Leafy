@@ -4,19 +4,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { ChevronLeft, User, FileText } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 export default function AddDebtScreen() {
-  const { addDebt, colors, isDarkMode } = useAppContext();
+  const { addDebt, editDebt, colors, isDarkMode } = useAppContext();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const styles = getStyles(colors, isDarkMode);
 
-  const [personName, setPersonName] = useState('');
-  const [taskName, setTaskName] = useState('');
-  const [amount, setAmount] = useState('');
-  const [dueDay, setDueDay] = useState('');
-  const [dueMonth, setDueMonth] = useState('');
-  const [dueYear, setDueYear] = useState(new Date().getFullYear().toString());
+  const editingDebt = route.params?.debt;
+  const isEditing = !!editingDebt;
+
+  const dueDateParts = editingDebt?.dueDate ? editingDebt.dueDate.split('-') : [];
+
+  const [personName, setPersonName] = useState(editingDebt?.personName || '');
+  const [taskName, setTaskName] = useState(editingDebt?.taskName || '');
+  const [amount, setAmount] = useState(editingDebt?.amount !== undefined ? editingDebt.amount.toString() : '');
+  const [dueDay, setDueDay] = useState(dueDateParts[2] || '');
+  const [dueMonth, setDueMonth] = useState(dueDateParts[1] || '');
+  const [dueYear, setDueYear] = useState(dueDateParts[0] || (editingDebt ? '' : new Date().getFullYear().toString()));
 
   const formatAmount = (text: string) => {
     const raw = text.replace(/,/g, '').replace(/[^0-9.]/g, '');
@@ -35,12 +41,21 @@ export default function AddDebtScreen() {
         dueDate = `${dueYear}-${month}-${day}`;
       }
 
-      await addDebt({
-        personName: personName.trim(),
-        taskName: taskName.trim(),
-        amount: numericAmount,
-        dueDate,
-      });
+      if (isEditing) {
+        await editDebt(editingDebt.id, {
+          personName: personName.trim(),
+          taskName: taskName.trim(),
+          amount: numericAmount,
+          dueDate,
+        });
+      } else {
+        await addDebt({
+          personName: personName.trim(),
+          taskName: taskName.trim(),
+          amount: numericAmount,
+          dueDate,
+        });
+      }
       navigation.goBack();
     }
   };
@@ -54,7 +69,7 @@ export default function AddDebtScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Record New Debt</Text>
+        <Text style={styles.headerTitle}>{isEditing ? 'Edit Debt' : 'Record New Debt'}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -68,7 +83,7 @@ export default function AddDebtScreen() {
             placeholderTextColor={colors.textMuted}
             value={personName}
             onChangeText={setPersonName}
-            autoFocus
+            autoFocus={!isEditing}
           />
         </View>
 
@@ -143,7 +158,7 @@ export default function AddDebtScreen() {
           onPress={handleSave}
           disabled={!isFormValid}
         >
-          <Text style={styles.saveBtnText}>Record Debt</Text>
+          <Text style={styles.saveBtnText}>{isEditing ? 'Save Changes' : 'Record Debt'}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

@@ -59,7 +59,6 @@ import AddRentScreen from './src/screens/AddRentScreen';
 import MainHeader from './src/components/MainHeader';
 import FeedbackModal from './src/components/FeedbackModal';
 import ConfirmModal from './src/components/ConfirmModal';
-import LoadingOverlay from './src/components/LoadingOverlay';
 import BottomTabNavigator from './src/navigation/BottomTabNavigator';
 import CurrencyConverterScreen from './src/screens/CurrencyConverterScreen';
 import TransferScreen from './src/screens/TransferScreen';
@@ -95,7 +94,7 @@ function MainNavigation() {
         screenOptions={{ 
           headerShown: false, 
           animation: 'slide_from_right',
-          animationDuration: 250,
+          animationDuration: 100,
           contentStyle: { backgroundColor: colors.background }
         }}
       >
@@ -123,8 +122,16 @@ function MainNavigation() {
             <Stack.Screen name="RecordMemories" component={RecordMemoriesScreen} />
             <Stack.Screen name="Security" component={SecurityScreen} />
             <Stack.Screen name="StatusCard" component={StatusCardScreen} />
-            <Stack.Screen name="Withdraw" component={WithdrawScreen} />
-            <Stack.Screen name="Deposit" component={DepositScreen} />
+            <Stack.Screen 
+              name="Withdraw" 
+              component={WithdrawScreen} 
+              options={{ animation: 'fade', animationDuration: 90 }}
+            />
+            <Stack.Screen 
+              name="Deposit" 
+              component={DepositScreen} 
+              options={{ animation: 'fade', animationDuration: 90 }}
+            />
             <Stack.Screen name="Recursion" component={RecursionScreen} />
             <Stack.Screen name="AddWallet" component={AddWalletScreen} />
             <Stack.Screen name="WalletDetail" component={WalletDetailScreen} />
@@ -192,7 +199,7 @@ const styles = StyleSheet.create({
 });
 
 const linking = {
-  prefixes: ['leapon://', 'leafy://'],
+  prefixes: ['leon://', 'leafy://'],
   config: {
     screens: {
       Main: {
@@ -248,13 +255,13 @@ function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
             id: 'deposit',
             title: 'Income',
             icon: Platform.OS === 'ios' ? 'symbol:plus.circle.fill' : 'shortcut_add_savings', 
-            params: { href: 'leapon://deposit' }
+            params: { href: 'leon://deposit' }
           },
           {
             id: 'withdraw',
             title: 'Expense',
             icon: Platform.OS === 'ios' ? 'symbol:arrow.up.right.circle.fill' : 'shortcut_withdraw',
-            params: { href: 'leapon://withdraw' }
+            params: { href: 'leon://withdraw' }
           }
         ]);
       } catch (e) {
@@ -406,7 +413,6 @@ function AppContent({ fontsLoaded }: { fontsLoaded: boolean }) {
 
       <FeedbackModal />
       <ConfirmModal />
-      <LoadingOverlay />
     </View>
   );
 }

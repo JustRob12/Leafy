@@ -1,50 +1,97 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  TextInput, 
-  Animated, 
-  Dimensions, 
-  Platform, 
-  FlatList, 
-  Image as RNImage,
-  Modal
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Dimensions,
+  Platform,
+  FlatList,
+  Modal,
 } from 'react-native';
 import { theme } from '../theme';
 import { useAppContext, DEFAULT_WITHDRAW_PRESETS, getWalletTotalBalanceInPhp } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
-import { 
-  ChevronLeft, Plus, Utensils, Car, Receipt, Heart, ShoppingBag, 
-  MoreHorizontal, Coffee, Home, Gift, Smartphone, Gamepad, 
-  CreditCard, Briefcase, Camera, Film, Music, Globe, Map, Search, Check, ArrowRight, X, ListFilter, Sliders
+import {
+  ChevronLeft,
+  Plus,
+  Utensils,
+  Car,
+  Receipt,
+  Heart,
+  ShoppingBag,
+  MoreHorizontal,
+  Coffee,
+  Home,
+  Gift,
+  Smartphone,
+  Gamepad,
+  CreditCard,
+  Briefcase,
+  Camera,
+  Film,
+  Music,
+  Globe,
+  Map,
+  X,
+  TrendingDown,
 } from 'lucide-react-native';
-import WalletBrandLogo from '../components/WalletBrandLogo';
+import CalculatorKeypad from '../components/CalculatorKeypad';
+import BottomWalletBar from '../components/BottomWalletBar';
+import WalletPickerModal from '../components/WalletPickerModal';
 
-const { width, height } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = SCREEN_WIDTH / 375;
+const rf = (size: number) => Math.round(size * scale);
 
 const ICON_MAP: { [key: string]: any } = {
-  Utensils, Car, Receipt, Heart, ShoppingBag, MoreHorizontal,
-  Coffee, Home, Gift, Smartphone, Gamepad, CreditCard,
-  Briefcase, Camera, Film, Music, Globe, Map
+  Utensils,
+  Car,
+  Receipt,
+  Heart,
+  ShoppingBag,
+  MoreHorizontal,
+  Coffee,
+  Home,
+  Gift,
+  Smartphone,
+  Gamepad,
+  CreditCard,
+  Briefcase,
+  Camera,
+  Film,
+  Music,
+  Globe,
+  Map,
 };
 
 const AVAILABLE_ICONS = Object.keys(ICON_MAP);
-
 const defaultIds = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
 
 export default function WithdrawScreen() {
-  const { colors, isDarkMode, withdrawPresets, addWithdrawPreset, deleteWithdrawPreset, wallets, addTransaction, showFeedback, usdToPhpRate } = useAppContext();
+  const {
+    colors,
+    isDarkMode,
+    withdrawPresets,
+    addWithdrawPreset,
+    wallets,
+    transactions,
+    addTransaction,
+    showFeedback,
+    usdToPhpRate,
+  } = useAppContext();
   const navigation = useNavigation<any>();
-  const styles = getStyles(colors, isDarkMode);
+  const styles = useMemo(() => getStyles(colors, isDarkMode), [colors, isDarkMode]);
 
-  const [step, setStep] = useState(0); // 0: Keypad & Amount, 1: Full Presets Page
   const [selectedPreset, setSelectedPreset] = useState<any>(null);
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
-  
+  const [expression, setExpression] = useState('');
+  const [isResult, setIsResult] = useState(false);
+  const [showWalletPicker, setShowWalletPicker] = useState(false);
+
   // Custom Preset Modal State
   const [showAddPreset, setShowAddPreset] = useState(false);
   const [newPresetName, setNewPresetName] = useState('');
@@ -57,34 +104,99 @@ export default function WithdrawScreen() {
     }
   }, [wallets]);
 
-  const formatDisplayAmount = (raw: string) => {
-    if (!raw) return '0.00';
-    const parts = raw.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    return parts.join('.');
+  // Safe arithmetic evaluator
+  const evaluateMath = (expr: string): number => {
+    if (!expr.trim()) return 0;
+    const parts = expr.trim().split(/\s+/);
+    let total = parseFloat(parts[0]) || 0;
+    for (let i = 1; i < parts.length; i += 2) {
+      const op = parts[i];
+      const val = parseFloat(parts[i + 1]) || 0;
+      if (op === '+') total += val;
+      else if (op === '-' || op === '−') total -= val;
+    }
+    return isNaN(total) ? 0 : total;
   };
 
-  const handleSelectPreset = (preset: any) => {
-    setSelectedPreset(preset);
-    if (step === 1) {
-      setStep(0); // Go back to keypad/amount step once preset is chosen
+  const handleDigit = (digit: string) => {
+    if (isResult) {
+      setAmount(digit);
+      setIsResult(false);
+    } else {
+      if (amount === '0') {
+        setAmount(digit);
+      } else {
+        if (amount.includes('.')) {
+          const decimals = amount.split('.')[1];
+          if (decimals && decimals.length >= 2) return;
+        }
+        setAmount(prev => prev + digit);
+      }
     }
   };
 
-  const handleExpense = async (presetOverride?: any) => {
-    const numericAmount = parseFloat(amount);
-    const preset = presetOverride || selectedPreset;
+  const handleDot = () => {
+    if (isResult) {
+      setAmount('0.');
+      setIsResult(false);
+    } else {
+      if (!amount) {
+        setAmount('0.');
+      } else if (!amount.includes('.')) {
+        setAmount(prev => prev + '.');
+      }
+    }
+  };
 
+  const handleOperator = (op: '+' | '-') => {
+    const currentVal = amount || '0';
+    if (expression && !isResult) {
+      const computed = evaluateMath(expression + currentVal);
+      const rounded = String(Math.round(computed * 100) / 100);
+      setExpression(rounded + ' ' + op + ' ');
+      setAmount(rounded);
+      setIsResult(true);
+    } else {
+      setExpression(currentVal + ' ' + op + ' ');
+      setIsResult(true);
+    }
+  };
+
+  const handleEquals = () => {
+    if (expression) {
+      const currentVal = amount || '0';
+      const computed = evaluateMath(expression + currentVal);
+      const rounded = String(Math.max(0, Math.round(computed * 100) / 100));
+      setAmount(rounded);
+      setExpression('');
+      setIsResult(true);
+    }
+  };
+
+  const handleClear = () => {
+    setAmount('');
+    setExpression('');
+    setIsResult(false);
+  };
+
+  const handleBackspace = () => {
+    if (isResult) {
+      setAmount('');
+      setExpression('');
+      setIsResult(false);
+    } else if (amount.length > 0) {
+      setAmount(prev => prev.slice(0, -1));
+    }
+  };
+
+  const handleExpense = async () => {
+    const numericAmount = parseFloat(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
       showFeedback('error', 'Please enter a valid amount');
       return;
     }
     if (!selectedWalletId) {
       showFeedback('error', 'Please select a wallet');
-      return;
-    }
-    if (!preset) {
-      showFeedback('error', 'Please select an expense preset / reason');
       return;
     }
 
@@ -94,14 +206,26 @@ export default function WithdrawScreen() {
       return;
     }
 
-    await addTransaction({
-      title: preset.name,
-      amount: numericAmount,
-      type: 'withdrawal',
-      walletId: selectedWalletId,
-      icon: preset.iconName
-    });
-    navigation.navigate('Main');
+    const title = selectedPreset ? selectedPreset.name : 'Expense';
+    const icon = selectedPreset ? selectedPreset.iconName : 'Receipt';
+
+    // 1. Show the confirmation modal first
+    showFeedback('success', '');
+
+    // 2. Wait for modal to display before clearing inputs and adding to recent expenses
+    setTimeout(async () => {
+      await addTransaction({
+        title,
+        amount: numericAmount,
+        type: 'withdrawal',
+        walletId: selectedWalletId,
+        icon,
+      }, { skipFeedback: true });
+      setAmount('');
+      setExpression('');
+      setIsResult(false);
+      setSelectedPreset(null);
+    }, 400);
   };
 
   const handleAddPreset = async () => {
@@ -115,286 +239,62 @@ export default function WithdrawScreen() {
     }
   };
 
-  const effectivePresets = (withdrawPresets && withdrawPresets.length > 0) ? withdrawPresets : DEFAULT_WITHDRAW_PRESETS;
-  const customPresets = effectivePresets.filter(p => !defaultIds.includes(p.id));
-  const quickPresets = effectivePresets.filter(p => defaultIds.includes(p.id));
-
-  const renderPresetItem = (preset: any) => {
-    const Icon = ICON_MAP[preset.iconName] || MoreHorizontal;
-    const isCustom = !defaultIds.includes(preset.id);
-    const isSelected = selectedPreset?.id === preset.id;
-
-    return (
-      <TouchableOpacity 
-        key={preset.id} 
-        style={[
-          styles.simplePresetItem, 
-          { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderColor: colors.border },
-          isSelected && { backgroundColor: colors.primary, borderColor: colors.primary }
-        ]}
-        onPress={() => handleSelectPreset(preset)}
-      >
-        <View style={styles.presetItemLeft}>
-          <Icon color={isSelected ? '#ffffff' : colors.primary} size={20} />
-          <Text style={[styles.simplePresetText, { color: isSelected ? '#ffffff' : colors.text }]} numberOfLines={1}>
-            {preset.name}
-          </Text>
-        </View>
-
-        {isCustom && (
-          <TouchableOpacity 
-            style={styles.deletePresetBadge} 
-            onPress={(e) => {
-              e.stopPropagation();
-              deleteWithdrawPreset(preset.id);
-              if (selectedPreset?.id === preset.id) {
-                setSelectedPreset(null);
-              }
-            }}
-          >
-            <X size={14} color={isSelected ? '#ffffff' : '#ef4444'} />
-          </TouchableOpacity>
-        )}
-      </TouchableOpacity>
-    );
+  const formatDisplayAmount = (raw: string) => {
+    if (!raw) return '0.00';
+    const parts = raw.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
   };
 
-  const renderStep0 = () => {
-    return (
-      <View style={styles.stepContainer}>
-        {/* Amount Display */}
-        <View style={styles.amountDisplayWrapperCompact}>
-          <Text style={[styles.currencyPrefixCompact, { color: colors.primary }]}>₱</Text>
-          <Text style={[styles.amountTextCompact, { color: colors.text }, !amount && { color: colors.textMuted + '44' }]}>
-            {formatDisplayAmount(amount)}
-          </Text>
-        </View>
+  const effectivePresets =
+    withdrawPresets && withdrawPresets.length > 0 ? withdrawPresets : DEFAULT_WITHDRAW_PRESETS;
+  const selectedWallet = wallets.find(w => w.id === selectedWalletId);
+  const numericAmount = parseFloat(amount) || 0;
 
-        {/* Wallet Selector Header */}
-        <Text style={[styles.sectionLabelSmall, { color: colors.textMuted }]}>SELECT WALLET</Text>
-        <FlatList 
-          data={wallets}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.id}
-          style={{ flexGrow: 0 }}
-          contentContainerStyle={styles.walletSliderContent}
-          renderItem={({ item: wallet }) => (
-            <TouchableOpacity 
-              style={[
-                styles.miniWalletItem,
-                { backgroundColor: wallet.color || (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)') },
-                selectedWalletId === wallet.id && styles.miniWalletItemSelected
-              ]}
-              onPress={() => setSelectedWalletId(wallet.id)}
-            >
-              {selectedWalletId === wallet.id && (
-                <View style={styles.selectedIndicator}>
-                  <Check size={8} color="#ffffff" strokeWidth={3} />
-                </View>
-              )}
-              <View style={styles.miniWalletIconBox}>
-                {(() => {
-                  if (wallet.iconType === 'preset' && wallet.presetLogo) {
-                    return <WalletBrandLogo logoKey={wallet.presetLogo} size={20} style={styles.miniWalletLogo} />;
-                  }
-                  return <CreditCard size={14} color="#ffffff" />;
-                })()}
-              </View>
-              <View>
-                <Text style={[styles.miniWalletName, { color: '#ffffff' }]} numberOfLines={1}>
-                  {wallet.name}
-                </Text>
-                <Text style={[styles.miniWalletBalance, { color: 'rgba(255, 255, 255, 0.8)' }]} numberOfLines={1}>
-                  ₱{Math.floor(getWalletTotalBalanceInPhp(wallet, usdToPhpRate)).toLocaleString()}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
-        />
-
-        {/* Preset Selector Header */}
-        <View style={styles.presetHeaderRow}>
-          <Text style={[styles.sectionLabelSmall, { color: colors.textMuted }]}>PRESET / REASON (OPTIONAL)</Text>
-          <TouchableOpacity onPress={() => setStep(1)} style={styles.allPresetsLink}>
-            <Text style={[styles.allPresetsLinkText, { color: colors.primary }]}>All Presets Page ›</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Preset Horizontal Chips */}
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          style={{ flexGrow: 0 }}
-          contentContainerStyle={styles.presetSliderContent}
-        >
-          {effectivePresets.map((preset) => {
-            const Icon = ICON_MAP[preset.iconName] || MoreHorizontal;
-            const isSelected = selectedPreset?.id === preset.id;
-            return (
-              <TouchableOpacity
-                key={preset.id}
-                style={[
-                  styles.miniPresetChip,
-                  { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderColor: colors.border },
-                  isSelected && { backgroundColor: colors.primary, borderColor: colors.primary }
-                ]}
-                onPress={() => setSelectedPreset((prev: any) => prev?.id === preset.id ? null : preset)}
-              >
-                <Icon size={14} color={isSelected ? '#ffffff' : colors.text} />
-                <Text style={[styles.miniPresetChipText, { color: isSelected ? '#ffffff' : colors.text }]}>{preset.name}</Text>
-              </TouchableOpacity>
-            );
-          })}
-
-          {/* Add Preset Chip Button */}
-          <TouchableOpacity
-            style={[
-              styles.miniPresetChip,
-              { backgroundColor: isDarkMode ? 'rgba(16,185,129,0.15)' : 'rgba(16,185,129,0.1)', borderColor: colors.primary }
-            ]}
-            onPress={() => setShowAddPreset(true)}
-          >
-            <Plus size={14} color={colors.primary} />
-            <Text style={[styles.miniPresetChipText, { color: colors.primary, fontFamily: theme.fonts.bold }]}>+ Add Preset</Text>
-          </TouchableOpacity>
-        </ScrollView>
-
-        {/* Keypad */}
-        <View style={styles.keypadBottom}>
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, '.', 0, 'DEL'].map((key) => (
-            <TouchableOpacity 
-              key={key} 
-              style={[styles.keypadButtonCompact, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}
-              onPress={() => {
-                if (key === 'DEL') {
-                  setAmount(prev => prev.slice(0, -1));
-                } else if (key === '.') {
-                  if (!amount.includes('.')) setAmount(prev => prev + '.');
-                } else {
-                  if (amount.includes('.') && amount.split('.')[1].length >= 2) return;
-                  setAmount(prev => prev + key);
-                }
-              }}
-            >
-              <Text style={[styles.keypadButtonTextCompact, { color: colors.text }]}>{key}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Action Button */}
-        <TouchableOpacity 
-          style={[
-            styles.expenseBtnFinal, 
-            { backgroundColor: colors.primary },
-            (!amount || !selectedWalletId) && styles.expenseBtnDisabled
-          ]}
-          onPress={() => {
-            if (selectedPreset) {
-              handleExpense();
-            } else {
-              setStep(1);
-            }
-          }}
-          disabled={!amount || !selectedWalletId}
-        >
-          <Text style={styles.expenseBtnText}>
-            {selectedPreset ? `Confirm ${selectedPreset.name} Expense` : 'Next: Select Expense Preset'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  const renderStep1 = () => {
-    return (
-      <View style={{ flex: 1 }}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
-          {/* Summary Row */}
-          <View style={[styles.summaryRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.summaryTextMain, { color: colors.primary }]}>₱{formatDisplayAmount(amount)}</Text>
-            <ArrowRight size={14} color={colors.textMuted} />
-            <Text style={[styles.summaryTextWallet, { color: colors.text }]}>
-              {wallets.find(w => w.id === selectedWalletId)?.name || 'Select Wallet'}
-            </Text>
-          </View>
-
-          {/* Add Preset Top Banner Button */}
-          <TouchableOpacity
-            style={[styles.bigAddPresetCard, { backgroundColor: isDarkMode ? 'rgba(16,185,129,0.12)' : 'rgba(16,185,129,0.08)', borderColor: colors.primary }]}
-            onPress={() => setShowAddPreset(true)}
-            activeOpacity={0.8}
-          >
-            <Plus size={22} color={colors.primary} />
-            <Text style={[styles.bigAddPresetText, { color: colors.primary }]}>+ Add New Custom Preset</Text>
-          </TouchableOpacity>
-
-          <Text style={[styles.stepTitle, { color: colors.text }]}>Expense Presets & Reasons</Text>
-
-          {/* Custom User Presets Section */}
-          {customPresets.length > 0 && (
-            <>
-              <Text style={[styles.sectionLabel, { color: colors.primary, marginTop: 12 }]}>YOUR CUSTOM PRESETS</Text>
-              <View style={styles.simpleGrid}>
-                {customPresets.map(renderPresetItem)}
-              </View>
-            </>
-          )}
-          
-          {/* Default Quick Presets Section */}
-          <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 18 }]}>QUICK PRESETS</Text>
-          <View style={styles.simpleGrid}>
-            {quickPresets.map(renderPresetItem)}
-          </View>
-
-          {selectedPreset && (
-            <TouchableOpacity 
-              style={[styles.expenseBtnFinal, { backgroundColor: colors.primary, marginTop: 30 }]}
-              onPress={() => handleExpense()}
-            >
-              <Text style={styles.expenseBtnText}>Confirm {selectedPreset.name} Expense</Text>
-            </TouchableOpacity>
-          )}
-        </ScrollView>
-      </View>
-    );
-  };
+  // Recent expense transactions
+  const recentExpenses = (transactions || [])
+    .filter(tx => tx.type === 'withdrawal')
+    .slice(0, 15);
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => step > 0 ? setStep(step - 1) : navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
           <ChevronLeft color={colors.text} size={28} />
         </TouchableOpacity>
-        
-        <View style={styles.headerTitleWrapper}>
-          <Text style={styles.headerTitle}>Expense</Text>
-          <View style={styles.progressDots}>
-            {[0, 1].map((i) => (
-              <View key={i} style={[styles.dot, step >= i && styles.activeDot, step === i && styles.currentDot]} />
-            ))}
-          </View>
-        </View>
 
-        {/* Page Switcher Button */}
-        <TouchableOpacity 
-          style={[styles.headerPresetToggleBtn, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]} 
-          onPress={() => setStep(step === 1 ? 0 : 1)}
-        >
-          <ListFilter size={16} color={colors.primary} />
-          <Text style={[styles.headerPresetToggleText, { color: colors.primary }]}>
-            {step === 1 ? 'Amount' : 'Presets'}
-          </Text>
-        </TouchableOpacity>
+        {/* Selected Wallet Amount Badge (Medium-sized, Simple Badge) */}
+        {selectedWallet ? (
+          <TouchableOpacity
+            style={styles.walletHeaderBadge}
+            onPress={() => setShowWalletPicker(true)}
+            activeOpacity={0.75}
+          >
+            <View style={[styles.walletBadgeDot, { backgroundColor: selectedWallet.color || colors.primary }]} />
+            <Text style={[styles.walletBadgeName, { color: colors.text }]} numberOfLines={1}>
+              {selectedWallet.name}
+            </Text>
+            <Text style={[styles.walletBadgeDivider, { color: colors.textMuted }]}>•</Text>
+            <Text style={[styles.walletBadgeBalance, { color: colors.primary }]}>
+              ₱{(selectedWallet.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.headerTitleWrapper}>
+            <Text style={styles.headerTitle}>Expense</Text>
+          </View>
+        )}
+
+        <View style={{ width: 44 }} />
       </View>
 
       <View style={styles.mainContent}>
         {wallets.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={[styles.emptyStateText, { color: colors.text }]}>Please add a wallet first</Text>
-            <TouchableOpacity 
-              style={[styles.addWalletBtn, { backgroundColor: colors.primary }]} 
+            <TouchableOpacity
+              style={[styles.addWalletBtn, { backgroundColor: colors.primary }]}
               onPress={() => navigation.navigate('AddWallet')}
             >
               <Plus size={20} color="#fff" />
@@ -402,440 +302,553 @@ export default function WithdrawScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          step === 0 ? renderStep0() : renderStep1()
+          <View style={styles.contentFlex}>
+            {/* Top Display: Amount & Active Formula */}
+            <View style={styles.displaySection}>
+              {expression ? (
+                <Text style={[styles.expressionPreview, { color: colors.textMuted }]}>
+                  {expression} {isResult ? '' : amount}
+                </Text>
+              ) : null}
+
+              <View style={styles.amountDisplayRow}>
+                <Text style={[styles.currencyPrefix, { color: colors.primary }]}>₱</Text>
+                <Text
+                  style={[
+                    styles.amountText,
+                    { color: colors.text },
+                    !amount && { color: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)' },
+                  ]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {formatDisplayAmount(amount)}
+                </Text>
+              </View>
+
+              {/* Selected Preset Badge */}
+              <View style={styles.statusHintRow}>
+                {selectedPreset ? (
+                  <View style={[styles.selectedPresetBadge, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '30' }]}>
+                    {(() => {
+                      const Icon = ICON_MAP[selectedPreset.iconName] || MoreHorizontal;
+                      return <Icon size={12} color={colors.primary} style={{ marginRight: 4 }} />;
+                    })()}
+                    <Text style={[styles.selectedPresetBadgeText, { color: colors.primary }]}>
+                      {selectedPreset.name}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+
+            <View style={styles.bottomSection}>
+              {/* Horizontally Scrollable Recent Expenses */}
+              {recentExpenses.length > 0 && (
+                <View style={styles.recentSection}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.recentScrollContent}
+                  >
+                    {recentExpenses.map((tx) => {
+                      const Icon = tx.icon && ICON_MAP[tx.icon] ? ICON_MAP[tx.icon] : TrendingDown;
+                      const displayAmt = `-₱${tx.amount.toLocaleString('en-US', {
+                        minimumFractionDigits: tx.amount % 1 === 0 ? 0 : 2,
+                        maximumFractionDigits: 2,
+                      })}`;
+                      return (
+                        <TouchableOpacity
+                          key={tx.id}
+                          style={styles.recentChip}
+                          onPress={() => {
+                            setAmount(String(tx.amount));
+                            const matchPreset = effectivePresets.find(p => p.name.toLowerCase() === tx.title.toLowerCase());
+                            if (matchPreset) setSelectedPreset(matchPreset);
+                            setIsResult(false);
+                          }}
+                          activeOpacity={0.75}
+                        >
+                          <Icon size={11} color="#ef4444" style={{ marginRight: 4 }} />
+                          <Text style={styles.recentChipTitle} numberOfLines={1}>
+                            {tx.title}
+                          </Text>
+                          <Text style={[styles.recentChipAmount, { color: '#ef4444' }]}>
+                            {displayAmt}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+              {/* Presets Row: Small chips right above keyboard */}
+              <View style={styles.presetsContainer}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.presetsScrollContent}
+                >
+                  {/* Add Preset Button Chip */}
+                  <TouchableOpacity
+                    style={[
+                      styles.smallPresetChip,
+                      styles.addPresetChip,
+                      {
+                        backgroundColor: isDarkMode ? 'rgba(16,185,129,0.15)' : '#eaf8f0',
+                        borderColor: isDarkMode ? 'rgba(16,185,129,0.3)' : 'rgba(16,185,129,0.25)',
+                      },
+                    ]}
+                    onPress={() => setShowAddPreset(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Plus size={13} color={colors.primary} strokeWidth={2.5} />
+                    <Text style={[styles.smallPresetText, { color: colors.primary, fontFamily: theme.fonts.bold }]}>
+                      Add
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Preset Items */}
+                  {effectivePresets.map(preset => {
+                    const Icon = ICON_MAP[preset.iconName] || MoreHorizontal;
+                    const isSelected = selectedPreset?.id === preset.id;
+                    return (
+                      <TouchableOpacity
+                        key={preset.id}
+                        style={[
+                          styles.smallPresetChip,
+                          {
+                            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#f1f5f9',
+                            borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
+                          },
+                          isSelected && {
+                            backgroundColor: colors.primary,
+                            borderColor: colors.primary,
+                          },
+                        ]}
+                        onPress={() =>
+                          setSelectedPreset((prev: any) => (prev?.id === preset.id ? null : preset))
+                        }
+                        activeOpacity={0.75}
+                      >
+                        <Icon
+                          size={13}
+                          color={isSelected ? '#ffffff' : colors.primary}
+                          strokeWidth={2}
+                        />
+                        <Text
+                          style={[
+                            styles.smallPresetText,
+                            { color: isSelected ? '#ffffff' : colors.text },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {preset.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* 4x4 Calculator Keypad */}
+              <CalculatorKeypad
+                onDigit={handleDigit}
+                onDot={handleDot}
+                onOperator={handleOperator}
+                onClear={handleClear}
+                onBackspace={handleBackspace}
+                onEquals={handleEquals}
+              />
+
+              {/* Bottom Action Bar: [Account/Wallet Picker] + [Save Expense] */}
+              <BottomWalletBar
+                selectedWallet={selectedWallet}
+                onOpenWalletPicker={() => setShowWalletPicker(true)}
+                onSave={handleExpense}
+                saveLabel="Expense"
+                disabled={!amount || numericAmount <= 0 || !selectedWalletId}
+              />
+            </View>
+          </View>
         )}
       </View>
 
+      {/* Wallet Picker Modal */}
+      <WalletPickerModal
+        visible={showWalletPicker}
+        onClose={() => setShowWalletPicker(false)}
+        wallets={wallets}
+        selectedWalletId={selectedWalletId}
+        onSelectWallet={setSelectedWalletId}
+      />
+
       {/* Add Custom Preset Modal */}
-      <Modal
-        visible={showAddPreset}
-        transparent
-        animationType="none"
-        onRequestClose={() => setShowAddPreset(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Add Custom Preset</Text>
+      {showAddPreset && (
+        <Modal
+          visible={showAddPreset}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowAddPreset(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Add Preset</Text>
+                <TouchableOpacity onPress={() => setShowAddPreset(false)} style={styles.modalCloseBtn}>
+                  <X size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
 
-            <Text style={[styles.modalInputLabel, { color: colors.text }]}>Preset Name</Text>
-            <TextInput 
-              style={[styles.modalInput, { color: colors.text, borderColor: colors.border, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f8fafc' }]}
-              placeholder="e.g., Coffee, Tuition, Rent, Netflix..."
-              placeholderTextColor={colors.textMuted}
-              value={newPresetName}
-              onChangeText={setNewPresetName}
-              autoFocus
-            />
-            
-            <Text style={[styles.modalInputLabel, { color: colors.text, marginTop: 14 }]}>Choose Icon</Text>
-            <View style={styles.iconSelector}>
-              <FlatList 
-                data={AVAILABLE_ICONS}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item) => item}
-                renderItem={({ item }) => (
-                  <TouchableOpacity 
-                    style={[
-                      styles.iconOption, 
-                      { borderColor: colors.border },
-                      newPresetIcon === item && { backgroundColor: colors.primary, borderColor: colors.primary }
-                    ]}
-                    onPress={() => setNewPresetIcon(item)}
-                  >
-                    {React.createElement(ICON_MAP[item], { size: 20, color: newPresetIcon === item ? '#fff' : colors.primary })}
-                  </TouchableOpacity>
-                )}
+              <Text style={[styles.modalInputLabel, { color: colors.textMuted }]}>PRESET NAME</Text>
+              <TextInput
+                style={[
+                  styles.modalInput,
+                  {
+                    color: colors.text,
+                    borderColor: colors.border,
+                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+                  },
+                ]}
+                placeholder="e.g., Coffee, Tuition, Rent..."
+                placeholderTextColor={colors.textMuted}
+                value={newPresetName}
+                onChangeText={setNewPresetName}
+                autoFocus
               />
-            </View>
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity 
-                style={[styles.modalCancel, { backgroundColor: colors.border }]} 
-                onPress={() => setShowAddPreset(false)}
-              >
-                <Text style={[styles.modalCancelText, { color: colors.text }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalAdd, { backgroundColor: colors.primary }]} 
-                onPress={handleAddPreset}
-              >
-                <Text style={styles.modalAddText}>Save Preset</Text>
-              </TouchableOpacity>
+              <Text style={[styles.modalInputLabel, { color: colors.textMuted, marginTop: 14 }]}>CHOOSE ICON</Text>
+              <View style={styles.iconSelector}>
+                <FlatList
+                  data={AVAILABLE_ICONS}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={item => item}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={[
+                        styles.iconOption,
+                        { borderColor: colors.border },
+                        newPresetIcon === item && { backgroundColor: colors.primary, borderColor: colors.primary },
+                      ]}
+                      onPress={() => setNewPresetIcon(item)}
+                    >
+                      {React.createElement(ICON_MAP[item], {
+                        size: 20,
+                        color: newPresetIcon === item ? '#fff' : colors.primary,
+                      })}
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={[styles.modalCancelBtn, { borderColor: colors.border }]}
+                  onPress={() => setShowAddPreset(false)}
+                >
+                  <Text style={[styles.modalCancelText, { color: colors.text }]}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.modalSaveBtn,
+                    { backgroundColor: colors.primary },
+                    !newPresetName.trim() && { opacity: 0.5 },
+                  ]}
+                  onPress={handleAddPreset}
+                  disabled={!newPresetName.trim()}
+                >
+                  <Text style={styles.modalSaveText}>Create Preset</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
     </View>
   );
 }
 
-const rf = (size: number) => Math.round(size * (width / 375));
-
-const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 10,
-  },
-  backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitleWrapper: {
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(20),
-    color: colors.text,
-    marginBottom: 4,
-  },
-  headerPresetToggleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 14,
-  },
-  headerPresetToggleText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(13),
-  },
-  progressDots: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.border,
-  },
-  activeDot: {
-    backgroundColor: colors.primary,
-  },
-  currentDot: {
-    width: 14,
-    backgroundColor: colors.primary,
-  },
-  mainContent: {
-    flex: 1,
-  },
-  stepContainer: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  amountDisplayWrapperCompact: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 6,
-  },
-  currencyPrefixCompact: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(26),
-    marginRight: 4,
-  },
-  amountTextCompact: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(32),
-  },
-  sectionLabelSmall: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(11),
-    letterSpacing: 0.8,
-    marginBottom: 5,
-  },
-  walletSliderContent: {
-    gap: 8,
-    paddingVertical: 4,
-  },
-  miniWalletItem: {
-    width: 86,
-    height: 86,
-    padding: 8,
-    borderRadius: 16,
-    justifyContent: 'space-between',
-    position: 'relative',
-  },
-  miniWalletItemSelected: {
-    borderWidth: 2,
-    borderColor: '#ffffff',
-  },
-  selectedIndicator: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  miniWalletIconBox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  miniWalletLogo: {
-    width: 22,
-    height: 22,
-    borderRadius: 5,
-  },
-  miniWalletName: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(11),
-  },
-  miniWalletBalance: {
-    fontFamily: theme.fonts.medium,
-    fontSize: rf(9.5),
-    marginTop: 1,
-  },
-  presetHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  allPresetsLink: {
-    paddingVertical: 2,
-  },
-  allPresetsLinkText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(12),
-  },
-  presetSliderContent: {
-    gap: 8,
-    paddingVertical: 4,
-  },
-  miniPresetChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    height: 36,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 5,
-  },
-  miniPresetChipText: {
-    fontFamily: theme.fonts.semiBold,
-    fontSize: rf(12),
-  },
-  keypadBottom: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginVertical: 6,
-  },
-  keypadButtonCompact: {
-    width: '31%',
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  keypadButtonTextCompact: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(18),
-  },
-  expenseBtnFinal: {
-    height: 50,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 4,
-    marginBottom: 8,
-  },
-  expenseBtnDisabled: {
-    opacity: 0.5,
-  },
-  expenseBtnText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(16),
-    color: '#ffffff',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: 16,
-  },
-  summaryTextMain: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(20),
-  },
-  summaryTextWallet: {
-    fontFamily: theme.fonts.semiBold,
-    fontSize: rf(15),
-  },
-  bigAddPresetCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 54,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    gap: 8,
-    marginBottom: 20,
-  },
-  bigAddPresetText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(15),
-  },
-  stepTitle: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(18),
-    marginBottom: 12,
-  },
-  sectionLabel: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(12),
-    letterSpacing: 0.8,
-    marginBottom: 10,
-  },
-  simpleGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  simplePresetItem: {
-    width: '48%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  presetItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-  },
-  simplePresetText: {
-    fontFamily: theme.fonts.semiBold,
-    fontSize: rf(14),
-    flex: 1,
-  },
-  deletePresetBadge: {
-    padding: 4,
-    marginLeft: 4,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 30,
-  },
-  emptyStateText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(18),
-    marginBottom: 16,
-  },
-  addWalletBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 16,
-    gap: 8,
-  },
-  addWalletBtnText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(15),
-    color: '#ffffff',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-  },
-  modalContent: {
-    borderRadius: 24,
-    padding: 24,
-  },
-  modalTitle: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(18),
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  modalInputLabel: {
-    fontFamily: theme.fonts.semiBold,
-    fontSize: rf(13),
-    marginBottom: 6,
-  },
-  modalInput: {
-    height: 50,
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    fontFamily: theme.fonts.medium,
-    fontSize: rf(15),
-  },
-  iconSelector: {
-    marginVertical: 12,
-  },
-  iconOption: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 20,
-  },
-  modalCancel: {
-    flex: 1,
-    height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalCancelText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(14),
-  },
-  modalAdd: {
-    flex: 1,
-    height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalAddText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: rf(14),
-    color: '#ffffff',
-  },
-});
+const getStyles = (colors: any, isDarkMode: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: Platform.OS === 'ios' ? 56 : 36,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      marginBottom: 6,
+    },
+    backBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
+    },
+    headerTitleWrapper: {
+      alignItems: 'center',
+    },
+    headerTitle: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(20),
+      color: colors.text,
+    },
+    mainContent: {
+      flex: 1,
+      paddingHorizontal: 20,
+      paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+    },
+    contentFlex: {
+      flex: 1,
+      justifyContent: 'space-between',
+    },
+    displaySection: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 10,
+    },
+    expressionPreview: {
+      fontFamily: theme.fonts.medium,
+      fontSize: rf(16),
+      marginBottom: 4,
+      letterSpacing: 0.5,
+    },
+    amountDisplayRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'center',
+    },
+    currencyPrefix: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(28),
+      marginRight: 6,
+    },
+    amountText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(46),
+      letterSpacing: -0.5,
+    },
+    statusHintRow: {
+      marginTop: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 24,
+    },
+    selectedPresetBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    selectedPresetBadgeText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(12),
+    },
+    walletBalanceHint: {
+      fontFamily: theme.fonts.medium,
+      fontSize: rf(12),
+    },
+    bottomSection: {
+      justifyContent: 'flex-end',
+    },
+    presetsContainer: {
+      marginBottom: 6,
+    },
+    presetsScrollContent: {
+      gap: 6,
+      paddingVertical: 2,
+    },
+    smallPresetChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 16,
+      borderWidth: 1,
+      gap: 5,
+    },
+    addPresetChip: {},
+    smallPresetText: {
+      fontFamily: theme.fonts.medium,
+      fontSize: rf(12),
+    },
+    emptyState: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emptyStateText: {
+      fontFamily: theme.fonts.medium,
+      fontSize: rf(16),
+      marginBottom: 16,
+    },
+    addWalletBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 16,
+      gap: 8,
+    },
+    addWalletBtnText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(15),
+      color: '#ffffff',
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    modalContent: {
+      width: '100%',
+      maxWidth: 380,
+      borderRadius: 24,
+      padding: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.25,
+      shadowRadius: 20,
+      elevation: 20,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+    },
+    modalTitle: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(18),
+    },
+    modalCloseBtn: {
+      padding: 4,
+    },
+    modalInputLabel: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(11),
+      letterSpacing: 0.6,
+      marginBottom: 6,
+    },
+    modalInput: {
+      fontFamily: theme.fonts.medium,
+      fontSize: rf(15),
+      borderWidth: 1,
+      borderRadius: 14,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      marginBottom: 4,
+    },
+    iconSelector: {
+      marginBottom: 20,
+    },
+    iconOption: {
+      width: 42,
+      height: 42,
+      borderRadius: 12,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 8,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    modalCancelBtn: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 14,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalCancelText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(14),
+    },
+    modalSaveBtn: {
+      flex: 1.5,
+      paddingVertical: 12,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalSaveText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(14),
+      color: '#ffffff',
+    },
+    walletHeaderBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+      paddingHorizontal: 13,
+      paddingVertical: 6,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.07)',
+      maxWidth: SCREEN_WIDTH * 0.65,
+    },
+    walletBadgeDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
+      marginRight: 6,
+    },
+    walletBadgeName: {
+      fontFamily: theme.fonts.semiBold,
+      fontSize: rf(13),
+      maxWidth: 100,
+    },
+    walletBadgeDivider: {
+      marginHorizontal: 5,
+      fontSize: rf(11),
+    },
+    walletBadgeBalance: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(13.5),
+    },
+    recentSection: {
+      marginBottom: 8,
+    },
+    recentScrollContent: {
+      paddingHorizontal: 2,
+      gap: 8,
+    },
+    recentChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : '#f1f5f9',
+      paddingHorizontal: 11,
+      paddingVertical: 7,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+      gap: 6,
+    },
+    recentChipTitle: {
+      fontFamily: theme.fonts.medium,
+      fontSize: rf(12),
+      color: colors.text,
+      maxWidth: 90,
+    },
+    recentChipAmount: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(12),
+    },
+  });

@@ -21,33 +21,38 @@ import {
   FileText
 } from 'lucide-react-native';
 import { useAppContext, calculateNextDueDate } from '../context/AppContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = SCREEN_WIDTH / 375;
 const rf = (size: number) => Math.round(size * scale);
 
 export default function AddRentScreen() {
-  const { wallets, addRent, showFeedback, colors, isDarkMode, usdToPhpRate } = useAppContext();
+  const { wallets, addRent, editRent, showFeedback, colors, isDarkMode, usdToPhpRate } = useAppContext();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
 
-  const [propertyName, setPropertyName] = useState('');
-  const [location, setLocation] = useState('');
-  const [monthlyAmount, setMonthlyAmount] = useState('');
-  const [currency, setCurrency] = useState<'PHP' | 'USD'>('PHP');
-  const [alreadyPaidMonths, setAlreadyPaidMonths] = useState('0');
-  const [selectedWalletId, setSelectedWalletId] = useState<string>(''); // Optional: '' means None / Manual
-  const [notes, setNotes] = useState('');
+  const editingRent = route.params?.rent;
+  const isEditing = !!editingRent;
 
-  // Start Date (defaults to today)
+  const [propertyName, setPropertyName] = useState(editingRent?.propertyName || '');
+  const [location, setLocation] = useState(editingRent?.location || '');
+  const [monthlyAmount, setMonthlyAmount] = useState(editingRent?.monthlyAmount !== undefined ? editingRent.monthlyAmount.toString() : '');
+  const [currency, setCurrency] = useState<'PHP' | 'USD'>(editingRent?.currency || 'PHP');
+  const [alreadyPaidMonths, setAlreadyPaidMonths] = useState(editingRent?.paidCycles !== undefined ? editingRent.paidCycles.toString() : '0');
+  const [selectedWalletId, setSelectedWalletId] = useState<string>(editingRent?.walletId || ''); // Optional: '' means None / Manual
+  const [notes, setNotes] = useState(editingRent?.notes || '');
+
+  // Start Date (defaults to editing item or today)
   const todayDate = new Date();
-  const [startDateStr, setStartDateStr] = useState(todayDate.toISOString().split('T')[0]);
+  const [startDateStr, setStartDateStr] = useState(editingRent?.startDate || todayDate.toISOString().split('T')[0]);
 
   // Date Picker Modal state
+  const initialDateParts = (editingRent?.startDate || todayDate.toISOString().split('T')[0]).split('-');
   const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
-  const [pickerDay, setPickerDay] = useState(todayDate.getDate().toString());
-  const [pickerMonth, setPickerMonth] = useState((todayDate.getMonth() + 1).toString());
-  const [pickerYear, setPickerYear] = useState(todayDate.getFullYear().toString());
+  const [pickerDay, setPickerDay] = useState(initialDateParts[2] || todayDate.getDate().toString());
+  const [pickerMonth, setPickerMonth] = useState(initialDateParts[1] || (todayDate.getMonth() + 1).toString());
+  const [pickerYear, setPickerYear] = useState(initialDateParts[0] || todayDate.getFullYear().toString());
 
   const parsedMonthly = parseFloat(monthlyAmount) || 0;
   const parsedAlreadyPaid = Math.max(0, parseInt(alreadyPaidMonths, 10) || 0);
@@ -67,16 +72,29 @@ export default function AddRentScreen() {
       return;
     }
 
-    await addRent({
-      propertyName: propertyName.trim(),
-      location: location.trim(),
-      monthlyAmount: parsedMonthly,
-      startDate: startDateStr,
-      paidCycles: parsedAlreadyPaid,
-      walletId: selectedWalletId || undefined,
-      currency,
-      notes: notes.trim() || undefined,
-    });
+    if (isEditing) {
+      await editRent(editingRent.id, {
+        propertyName: propertyName.trim(),
+        location: location.trim(),
+        monthlyAmount: parsedMonthly,
+        startDate: startDateStr,
+        paidCycles: parsedAlreadyPaid,
+        walletId: selectedWalletId || undefined,
+        currency,
+        notes: notes.trim() || undefined,
+      });
+    } else {
+      await addRent({
+        propertyName: propertyName.trim(),
+        location: location.trim(),
+        monthlyAmount: parsedMonthly,
+        startDate: startDateStr,
+        paidCycles: parsedAlreadyPaid,
+        walletId: selectedWalletId || undefined,
+        currency,
+        notes: notes.trim() || undefined,
+      });
+    }
 
     navigation.goBack();
   };
@@ -100,7 +118,7 @@ export default function AddRentScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Add Rent Property</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{isEditing ? 'Edit Rent Property' : 'Add Rent Property'}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -271,7 +289,7 @@ export default function AddRentScreen() {
           activeOpacity={0.85}
         >
           <Check size={20} color="#ffffff" />
-          <Text style={styles.saveBtnText}>Record Rent Property</Text>
+          <Text style={styles.saveBtnText}>{isEditing ? 'Save Changes' : 'Record Rent Property'}</Text>
         </TouchableOpacity>
       </ScrollView>
 

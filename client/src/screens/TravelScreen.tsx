@@ -6,7 +6,7 @@ import { theme } from '../theme';
 import { Plus, Trash2, ChevronLeft, Calendar, Plane, MapPin, Wallet } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
-import LeaponDatePicker from '../components/LeaponDatePicker';
+import LeonDatePicker from '../components/LeonDatePicker';
 import { useNavigation } from '@react-navigation/native';
 import { X, Image as ImageIcon } from 'lucide-react-native';
 

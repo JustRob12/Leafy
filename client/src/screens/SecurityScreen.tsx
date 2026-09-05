@@ -36,7 +36,7 @@ export default function SecurityScreen() {
 
     if (hasHardware && isEnrolled) {
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Unlock Leapon',
+        promptMessage: 'Unlock Leon',
         fallbackLabel: 'Use PIN',
       });
 
@@ -97,13 +97,13 @@ export default function SecurityScreen() {
   const switchToPin = () => {
     Animated.timing(fadeAnim, {
       toValue: 0,
-      duration: 150,
+      duration: 80,
       useNativeDriver: true,
     }).start(() => {
       setScreen('pin');
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 200,
+        duration: 100,
         useNativeDriver: true,
       }).start();
     });
@@ -118,7 +118,7 @@ export default function SecurityScreen() {
           <View style={styles.header}>
             <View style={styles.brand}>
               <Image source={LogoSource} style={styles.brandLogo} />
-              <Text style={styles.brandText}>Leapon</Text>
+              <Text style={styles.brandText}>Leon</Text>
             </View>
             <View style={[styles.iconWrapper, error && styles.iconWrapperError]}>
               <Lock size={28} color={error ? UI_COLORS.error : UI_COLORS.text} />

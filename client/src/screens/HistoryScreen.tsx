@@ -22,6 +22,15 @@ const ICON_MAP: { [key: string]: any } = {
   Smartphone: LucideIcons.Smartphone,
   Gamepad: LucideIcons.Gamepad,
   Briefcase: LucideIcons.Briefcase,
+  Laptop: LucideIcons.Laptop,
+  Store: LucideIcons.Store,
+  Coins: LucideIcons.Coins,
+  Award: LucideIcons.Award,
+  TrendingUp: LucideIcons.TrendingUp,
+  Sparkles: LucideIcons.Sparkles,
+  Percent: LucideIcons.Percent,
+  RefreshCw: LucideIcons.RefreshCw,
+  CreditCard: LucideIcons.CreditCard,
   Camera: LucideIcons.Camera,
   Film: LucideIcons.Film,
   Music: LucideIcons.Music,
@@ -51,6 +60,7 @@ export default function HistoryScreen() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [typeFilter, setTypeFilter] = useState<'all' | 'deposit' | 'withdrawal'>('all');
+  const [walletFilter, setWalletFilter] = useState<string | 'all'>('all');
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -75,9 +85,10 @@ export default function HistoryScreen() {
       const txDate = new Date(tx.date);
       const matchesMonthYear = txDate.getMonth() === selectedMonth && txDate.getFullYear() === selectedYear;
       const matchesType = typeFilter === 'all' || tx.type === typeFilter;
-      return matchesMonthYear && matchesType;
+      const matchesWallet = walletFilter === 'all' || tx.walletId === walletFilter;
+      return matchesMonthYear && matchesType && matchesWallet;
     });
-  }, [transactions, selectedMonth, selectedYear, typeFilter]);
+  }, [transactions, selectedMonth, selectedYear, typeFilter, walletFilter]);
 
   const formatTxDate = (dateString: string) => {
     const d = new Date(dateString);
@@ -133,6 +144,8 @@ export default function HistoryScreen() {
         <TouchableOpacity 
           style={[styles.typeChip, typeFilter === 'all' && styles.typeChipActiveAll]}
           onPress={() => setTypeFilter('all')}
+          activeOpacity={0.7}
+          delayPressIn={0}
         >
           <Text style={[styles.typeChipText, typeFilter === 'all' && styles.typeChipTextActive]}>All</Text>
         </TouchableOpacity>
@@ -140,6 +153,8 @@ export default function HistoryScreen() {
         <TouchableOpacity 
           style={[styles.typeChip, typeFilter === 'deposit' && styles.typeChipActiveDeposit]}
           onPress={() => setTypeFilter('deposit')}
+          activeOpacity={0.7}
+          delayPressIn={0}
         >
           <ArrowDownRight size={14} color={typeFilter === 'deposit' ? '#ffffff' : colors.success} style={{ marginRight: 4 }} />
           <Text style={[styles.typeChipText, typeFilter === 'deposit' && styles.typeChipTextActive]}>Incomes</Text>
@@ -148,11 +163,44 @@ export default function HistoryScreen() {
         <TouchableOpacity 
           style={[styles.typeChip, typeFilter === 'withdrawal' && styles.typeChipActiveWithdraw]}
           onPress={() => setTypeFilter('withdrawal')}
+          activeOpacity={0.7}
+          delayPressIn={0}
         >
           <ArrowUpRight size={14} color={typeFilter === 'withdrawal' ? '#ffffff' : colors.danger} style={{ marginRight: 4 }} />
           <Text style={[styles.typeChipText, typeFilter === 'withdrawal' && styles.typeChipTextActive]}>Expenses</Text>
         </TouchableOpacity>
       </View>
+
+      {/* WALLET FILTER ROW */}
+      {wallets.length > 0 && (
+        <View style={styles.walletFilterContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.walletFilterScroll}>
+            <TouchableOpacity 
+              style={[styles.walletChip, walletFilter === 'all' && styles.walletChipActive]}
+              onPress={() => setWalletFilter('all')}
+              activeOpacity={0.7}
+              delayPressIn={0}
+            >
+              <Text style={[styles.walletChipText, walletFilter === 'all' && styles.walletChipTextActive]}>All Accounts</Text>
+            </TouchableOpacity>
+            {wallets.map(w => {
+              const isActive = walletFilter === w.id;
+              return (
+                <TouchableOpacity
+                  key={w.id}
+                  style={[styles.walletChip, isActive && styles.walletChipActive]}
+                  onPress={() => setWalletFilter(w.id)}
+                  activeOpacity={0.7}
+                  delayPressIn={0}
+                >
+                  <View style={[styles.walletDot, { backgroundColor: w.color || colors.primary }]} />
+                  <Text style={[styles.walletChipText, isActive && styles.walletChipTextActive]}>{w.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       {/* LIST */}
       <ScrollView 
@@ -353,5 +401,43 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     width: 28,
     height: 28,
     resizeMode: 'contain',
+  },
+  walletFilterContainer: {
+    paddingBottom: theme.spacing.sm,
+  },
+  walletFilterScroll: {
+    flexDirection: 'row',
+    paddingHorizontal: theme.spacing.lg,
+    gap: 8,
+    alignItems: 'center',
+  },
+  walletChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 18,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  walletChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  walletChipText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: rf(11),
+    color: colors.textMuted,
+  },
+  walletChipTextActive: {
+    color: '#ffffff',
+    fontFamily: theme.fonts.bold,
+  },
+  walletDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 });

@@ -16,6 +16,7 @@ import AnimatedCounter from '../components/AnimatedCounter';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 import * as LucideIcons from 'lucide-react-native';
 import WalletBrandLogo from '../components/WalletBrandLogo';
+import { resolveSubscriptionLogo } from '../services/SubscriptionCatalogService';
 
 const SUBS_ICONS: { [key: string]: any } = {
   'capcut.png': require('../../public/subs/capcut.png'),
@@ -46,9 +47,19 @@ const ICON_MAP: { [key: string]: any } = {
   Gift: LucideIcons.Gift,
   Gamepad: LucideIcons.Gamepad2,
   Phone: LucideIcons.Smartphone,
+  Smartphone: LucideIcons.Smartphone,
   MoreHorizontal: LucideIcons.MoreHorizontal,
   Home: LucideIcons.Home,
   Briefcase: LucideIcons.Briefcase,
+  Laptop: LucideIcons.Laptop,
+  Store: LucideIcons.Store,
+  Coins: LucideIcons.Coins,
+  Award: LucideIcons.Award,
+  TrendingUp: LucideIcons.TrendingUp,
+  Sparkles: LucideIcons.Sparkles,
+  Percent: LucideIcons.Percent,
+  RefreshCw: LucideIcons.RefreshCw,
+  CreditCard: LucideIcons.CreditCard,
   Book: LucideIcons.BookOpen,
   Camera: LucideIcons.Camera,
   Film: LucideIcons.Film,
@@ -86,7 +97,7 @@ export default function HomeScreen() {
         // 1. Fade out current
         Animated.timing(goalFadeAnim, {
           toValue: 0,
-          duration: 1000,
+          duration: 250,
           useNativeDriver: true,
         }).start(() => {
           // 2. Change index
@@ -94,7 +105,7 @@ export default function HomeScreen() {
           // 3. Fade in new
           Animated.timing(goalFadeAnim, {
             toValue: 1,
-            duration: 1000,
+            duration: 250,
             useNativeDriver: true,
           }).start(() => {
             startFadeTransition();
@@ -387,14 +398,29 @@ export default function HomeScreen() {
     }
   };
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayIndex = new Date().getDay();
-  const pendingDebts = debts.filter(d => d.dueDate === todayStr).length;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const isDueTodayOrOverdue = (dateStr?: string) => {
+    if (!dateStr) return false;
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      d.setHours(0, 0, 0, 0);
+      return d.getTime() <= today.getTime();
+    }
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return false;
+    d.setHours(0, 0, 0, 0);
+    return d.getTime() <= today.getTime();
+  };
+
+  const todayIndex = today.getDay();
+  const pendingDebts = debts.filter(d => isDueTodayOrOverdue(d.dueDate)).length;
   const pendingGroceries = groceryLists.filter(list => list.scheduledDays && list.scheduledDays.includes(todayIndex)).length;
 
-  // Subscription due soon count
+  // Subscription due soon count (due within 3 days or today)
   const pendingSubscriptions = subscriptions.filter(sub => {
-    const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth();
     let targetDate = new Date(currentYear, currentMonth, sub.dayOfMonth);
@@ -406,32 +432,16 @@ export default function HomeScreen() {
     return daysRemaining <= 3;
   }).length;
 
+  // Active installments due today or overdue
   const activeInstallmentsList = (installments || []).filter(i => i.paidMonths < i.monthsToPay);
-  const pendingInstallments = activeInstallmentsList.length;
-  const urgentInstallmentsCount = activeInstallmentsList.filter(item => {
-    if (!item.dueDate) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const due = new Date(item.dueDate);
-    due.setHours(0, 0, 0, 0);
-    const diffTime = due.getTime() - today.getTime();
-    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return daysRemaining <= 3;
-  }).length;
+  const dueInstallmentsCount = activeInstallmentsList.filter(item => isDueTodayOrOverdue(item.dueDate)).length;
 
+  // Rents due today or overdue
   const activeRentsList = (rents || []);
-  const urgentRentsCount = activeRentsList.filter(item => {
-    if (!item.dueDate) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const due = new Date(item.dueDate);
-    due.setHours(0, 0, 0, 0);
-    const diffTime = due.getTime() - today.getTime();
-    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return daysRemaining <= 3;
-  }).length;
+  const dueRentsCount = activeRentsList.filter(item => isDueTodayOrOverdue(item.dueDate)).length;
 
-  const totalMoreBadge = pendingDebts + pendingGroceries + urgentInstallmentsCount + urgentRentsCount;
+  // Total badge for "More" container button = sum of all badges inside More modal
+  const totalMoreBadge = pendingDebts + pendingGroceries + pendingSubscriptions + dueInstallmentsCount + dueRentsCount;
 
   return (
     <View style={styles.container}>
@@ -441,6 +451,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        keyboardShouldPersistTaps="handled"
       >
 
         {/* PREMIUM BALANCE CARD (Glass Green Palette) */}
@@ -522,28 +533,48 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Explore</Text>
         </View>
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Deposit')}>
+          <TouchableOpacity 
+            style={styles.actionItem} 
+            onPress={() => navigation.navigate('Deposit')}
+            activeOpacity={0.65}
+            delayPressIn={0}
+          >
             <View ref={addSavingsRef} collapsable={false} style={styles.actionIconBorder}>
               <Plus size={20} color={colors.text} />
             </View>
             <Text style={styles.actionText}>Income</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Withdraw')}>
+          <TouchableOpacity 
+            style={styles.actionItem} 
+            onPress={() => navigation.navigate('Withdraw')}
+            activeOpacity={0.65}
+            delayPressIn={0}
+          >
             <View ref={withdrawRef} collapsable={false} style={styles.actionIconBorder}>
               <ArrowUpRight size={20} color={colors.text} />
             </View>
             <Text style={styles.actionText}>Expense</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Transfer')}>
+          <TouchableOpacity 
+            style={styles.actionItem} 
+            onPress={() => navigation.navigate('Transfer')}
+            activeOpacity={0.65}
+            delayPressIn={0}
+          >
             <View ref={transferRef} collapsable={false} style={styles.actionIconBorder}>
               <ArrowRightLeft size={20} color={colors.text} />
             </View>
             <Text style={styles.actionText}>Transfer</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionItem} onPress={() => setMoreActionsVisible(true)}>
+          <TouchableOpacity 
+            style={styles.actionItem} 
+            onPress={() => setMoreActionsVisible(true)}
+            activeOpacity={0.65}
+            delayPressIn={0}
+          >
             <View style={styles.actionIconBorder}>
               <LucideIcons.MoreHorizontal size={20} color={colors.text} />
               {totalMoreBadge > 0 && (
@@ -649,6 +680,7 @@ export default function HomeScreen() {
                 const diffTime = targetDate.getTime() - today.getTime();
                 const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 const isDueSoon = daysRemaining <= 3;
+                const logo = resolveSubscriptionLogo(sub.title, sub.icon);
 
                 return (
                   <TouchableOpacity
@@ -656,9 +688,11 @@ export default function HomeScreen() {
                     style={[styles.homeSubCard, isDueSoon && styles.homeSubCardDueSoon]}
                     onPress={() => navigation.navigate('Subscription')}
                   >
-                    <View style={[styles.homeSubIconWrapper, isDueSoon && styles.homeSubIconWrapperDueSoon, sub.icon && { backgroundColor: 'transparent', borderWidth: 0 }]}>
-                      {sub.icon ? (
-                        <Image source={SUBS_ICONS[sub.icon]} style={styles.homeSubIcon} />
+                    <View style={[styles.homeSubIconWrapper, isDueSoon && styles.homeSubIconWrapperDueSoon, logo && { backgroundColor: 'transparent', borderWidth: 0 }]}>
+                      {logo && SUBS_ICONS[logo] ? (
+                        <Image source={SUBS_ICONS[logo]} style={styles.homeSubIcon} />
+                      ) : logo && (logo.startsWith('http://') || logo.startsWith('https://')) ? (
+                        <Image source={{ uri: logo }} style={styles.homeSubIcon} />
                       ) : (
                         <CreditCard size={18} color={isDueSoon ? '#ffffff' : colors.primary} />
                       )}
@@ -1196,25 +1230,40 @@ export default function HomeScreen() {
         title="More Actions"
       >
         <View style={styles.moreActionsGrid}>
-          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Calculator'); }}>
+          <TouchableOpacity 
+            style={styles.moreActionItem} 
+            activeOpacity={0.65}
+            delayPressIn={0}
+            onPress={() => { setMoreActionsVisible(false); navigation.navigate('Calculator'); }}
+          >
             <View style={styles.moreActionIconBox}>
               <Calculator size={22} color={colors.text} />
             </View>
             <Text style={styles.moreActionText}>Calculator</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Receivables'); }}>
+          <TouchableOpacity 
+            style={styles.moreActionItem} 
+            activeOpacity={0.65}
+            delayPressIn={0}
+            onPress={() => { setMoreActionsVisible(false); navigation.navigate('Receivables'); }}
+          >
             <View style={styles.moreActionIconBox}>
               <Clock size={22} color={colors.text} />
             </View>
             <Text style={styles.moreActionText}>Pending</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Debts'); }}>
+          <TouchableOpacity 
+            style={styles.moreActionItem} 
+            activeOpacity={0.65}
+            delayPressIn={0}
+            onPress={() => { setMoreActionsVisible(false); navigation.navigate('Debts'); }}
+          >
             <View style={styles.moreActionIconBox}>
               <AlertCircle size={22} color={colors.text} />
               {pendingDebts > 0 && (
-                <View style={styles.gridBadge}>
+                <View style={[styles.gridBadge, { backgroundColor: '#ef4444' }]}>
                   <Text style={styles.gridBadgeText}>{pendingDebts}</Text>
                 </View>
               )}
@@ -1222,7 +1271,12 @@ export default function HomeScreen() {
             <Text style={styles.moreActionText}>Debt</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Grocery'); }}>
+          <TouchableOpacity 
+            style={styles.moreActionItem} 
+            activeOpacity={0.65}
+            delayPressIn={0}
+            onPress={() => { setMoreActionsVisible(false); navigation.navigate('Grocery'); }}
+          >
             <View style={styles.moreActionIconBox}>
               <ShoppingCart size={22} color={colors.text} />
               {pendingGroceries > 0 && (
@@ -1234,42 +1288,72 @@ export default function HomeScreen() {
             <Text style={styles.moreActionText}>Grocery</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Travel'); }}>
+          <TouchableOpacity 
+            style={styles.moreActionItem} 
+            activeOpacity={0.65}
+            delayPressIn={0}
+            onPress={() => { setMoreActionsVisible(false); navigation.navigate('Travel'); }}
+          >
             <View style={styles.moreActionIconBox}>
               <Plane size={22} color={colors.text} />
             </View>
             <Text style={styles.moreActionText}>Travel</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Recursion'); }}>
+          <TouchableOpacity 
+            style={styles.moreActionItem} 
+            activeOpacity={0.65}
+            delayPressIn={0}
+            onPress={() => { setMoreActionsVisible(false); navigation.navigate('Recursion'); }}
+          >
             <View style={styles.moreActionIconBox}>
               <RefreshCw size={22} color={colors.text} />
             </View>
             <Text style={styles.moreActionText}>Recursion</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Calendar'); }}>
+          <TouchableOpacity 
+            style={styles.moreActionItem} 
+            activeOpacity={0.65}
+            delayPressIn={0}
+            onPress={() => { setMoreActionsVisible(false); navigation.navigate('Calendar'); }}
+          >
             <View style={styles.moreActionIconBox}>
               <CalendarIcon size={22} color={colors.text} />
             </View>
             <Text style={styles.moreActionText}>Calendar</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('CurrencyConverter'); }}>
+          <TouchableOpacity 
+            style={styles.moreActionItem} 
+            activeOpacity={0.65}
+            delayPressIn={0}
+            onPress={() => { setMoreActionsVisible(false); navigation.navigate('CurrencyConverter'); }}
+          >
             <View style={styles.moreActionIconBox}>
               <Coins size={22} color={colors.text} />
             </View>
             <Text style={styles.moreActionText}>Converter</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('StatusCard'); }}>
+          <TouchableOpacity 
+            style={styles.moreActionItem} 
+            activeOpacity={0.65}
+            delayPressIn={0}
+            onPress={() => { setMoreActionsVisible(false); navigation.navigate('StatusCard'); }}
+          >
             <View style={styles.moreActionIconBox}>
               <Sparkles size={22} color={colors.text} />
             </View>
             <Text style={styles.moreActionText}>Story</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Subscription'); }}>
+          <TouchableOpacity 
+            style={styles.moreActionItem} 
+            activeOpacity={0.65}
+            delayPressIn={0}
+            onPress={() => { setMoreActionsVisible(false); navigation.navigate('Subscription'); }}
+          >
             <View style={styles.moreActionIconBox}>
               <CreditCard size={22} color={colors.text} />
               {pendingSubscriptions > 0 && (
@@ -1281,24 +1365,34 @@ export default function HomeScreen() {
             <Text style={styles.moreActionText}>Subscription</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Installment'); }}>
+          <TouchableOpacity 
+            style={styles.moreActionItem} 
+            activeOpacity={0.65}
+            delayPressIn={0}
+            onPress={() => { setMoreActionsVisible(false); navigation.navigate('Installment'); }}
+          >
             <View style={styles.moreActionIconBox}>
               <Layers size={22} color={colors.text} />
-              {pendingInstallments > 0 && (
-                <View style={[styles.gridBadge, urgentInstallmentsCount > 0 && { backgroundColor: '#ef4444' }]}>
-                  <Text style={styles.gridBadgeText}>{pendingInstallments}</Text>
+              {dueInstallmentsCount > 0 && (
+                <View style={[styles.gridBadge, { backgroundColor: '#ef4444' }]}>
+                  <Text style={styles.gridBadgeText}>{dueInstallmentsCount}</Text>
                 </View>
               )}
             </View>
             <Text style={styles.moreActionText}>Installment</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.moreActionItem} onPress={() => { setMoreActionsVisible(false); navigation.navigate('Rent'); }}>
+          <TouchableOpacity 
+            style={styles.moreActionItem} 
+            activeOpacity={0.65}
+            delayPressIn={0}
+            onPress={() => { setMoreActionsVisible(false); navigation.navigate('Rent'); }}
+          >
             <View style={styles.moreActionIconBox}>
               <Home size={22} color={colors.text} />
-              {activeRentsList.length > 0 && (
-                <View style={[styles.gridBadge, urgentRentsCount > 0 && { backgroundColor: '#ef4444' }]}>
-                  <Text style={styles.gridBadgeText}>{activeRentsList.length}</Text>
+              {dueRentsCount > 0 && (
+                <View style={[styles.gridBadge, { backgroundColor: '#ef4444' }]}>
+                  <Text style={styles.gridBadgeText}>{dueRentsCount}</Text>
                 </View>
               )}
             </View>

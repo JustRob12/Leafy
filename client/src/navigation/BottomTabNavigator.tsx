@@ -30,8 +30,8 @@ const CustomTabBar = ({ state, descriptors, navigation, colors, isDarkMode }: Cu
       Animated.spring(translateX, {
         toValue: state.index * tabWidth,
         useNativeDriver: true,
-        tension: 50,
-        friction: 8,
+        tension: 160,
+        friction: 12,
       }).start();
     }
   }, [state.index, tabWidth]);

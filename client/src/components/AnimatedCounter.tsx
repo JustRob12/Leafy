@@ -13,7 +13,7 @@ interface AnimatedCounterProps {
 
 export default function AnimatedCounter({ 
   value, 
-  duration = 1500, 
+  duration = 350, 
   style, 
   prefix = '₱',
   minimumFractionDigits = 2,

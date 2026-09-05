@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
-import { ChevronLeft, Edit2, QrCode, CreditCard, PieChart, TrendingUp, Tag, X, Coins, User, AlertTriangle, ShoppingBag, Plane, Wallet as WalletIcon } from 'lucide-react-native';
+import { ChevronLeft, Edit2, QrCode, CreditCard, PieChart, TrendingUp, Tag, X, Coins, User, AlertTriangle, ShoppingBag, Plane, Wallet as WalletIcon, Trash2 } from 'lucide-react-native';
 import { useAppContext, getWalletTotalBalanceInPhp } from '../context/AppContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import WalletBrandLogo from '../components/WalletBrandLogo';
@@ -12,15 +12,36 @@ const scale = SCREEN_WIDTH / 375;
 const rf = (size: number) => Math.round(size * scale);
 
 export default function WalletDetailScreen() {
-  const { wallets, colors, isDarkMode, usdToPhpRate } = useAppContext();
+  const { wallets, colors, isDarkMode, usdToPhpRate, deleteWallet, showConfirm } = useAppContext();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const initialWallet = route.params?.wallet;
   
-  // Always get the freshest data from the global state
-  const wallet = wallets.find(w => w.id === initialWallet?.id) || initialWallet;
+  // All hooks must be at top level unconditionally
+  const [isQrEnlarged, setIsQrEnlarged] = useState(false);
 
-  if (!wallet) return null;
+  // Always get the freshest data from the global state
+  const wallet = wallets.find(w => w.id === initialWallet?.id);
+
+  useEffect(() => {
+    if (initialWallet?.id && !wallets.some(w => w.id === initialWallet.id)) {
+      navigation.navigate('Main', { screen: 'Wallets' });
+    }
+  }, [wallets, initialWallet?.id, navigation]);
+
+  if (!wallet) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => navigation.navigate('Main', { screen: 'Wallets' })} style={styles.backBtn}>
+            <ChevronLeft size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Wallet Details</Text>
+          <View style={{ width: 40 }} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const totalPhp = getWalletTotalBalanceInPhp(wallet, usdToPhpRate);
 
@@ -28,7 +49,17 @@ export default function WalletDetailScreen() {
     navigation.navigate('AddWallet', { wallet });
   };
 
-  const [isQrEnlarged, setIsQrEnlarged] = useState(false);
+  const handleDelete = () => {
+    showConfirm(
+      "Delete Wallet",
+      `Are you sure you want to delete "${wallet.name}"? This action cannot be undone.`,
+      async () => {
+        await deleteWallet(wallet.id);
+        navigation.navigate('Main', { screen: 'Wallets' });
+      },
+      true
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -155,7 +186,7 @@ export default function WalletDetailScreen() {
           <DetailItem 
             icon={<TrendingUp size={18} color={colors.primary} />}
             label="Interest Rate"
-            value={wallet.interestRate > 0 ? `${wallet.interestRate}% p.a.` : 'None'}
+            value={(wallet.interestRate || 0) > 0 ? `${wallet.interestRate}% p.a.` : 'None'}
             colors={colors}
           />
           <DetailItem 
@@ -166,11 +197,44 @@ export default function WalletDetailScreen() {
           />
         </View>
 
+        {/* Daily Interest Growth Card */}
+        {(wallet.interestRate || 0) > 0 && (
+          <View style={[styles.section, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc' }]}>
+            <View style={styles.sectionHeader}>
+              <TrendingUp size={18} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Daily Interest Growth ({wallet.interestRate}% p.a.)</Text>
+            </View>
+            <View style={[styles.interestCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.interestRow}>
+                <View>
+                  <Text style={[styles.interestLabel, { color: colors.textMuted }]}>Estimated Daily</Text>
+                  <Text style={[styles.interestValue, { color: colors.primary }]}>
+                    +₱{(((wallet.balance || 0) * (wallet.interestRate! / 100)) / 365).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={[styles.interestLabel, { color: colors.textMuted }]}>Estimated Monthly</Text>
+                  <Text style={[styles.interestValue, { color: colors.text }]}>
+                    +₱{(((wallet.balance || 0) * (wallet.interestRate! / 100)) / 12).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Text>
+                </View>
+              </View>
+              <Text style={[styles.interestNote, { color: colors.textMuted }]}>
+                Interest calculates daily based on your end-of-day balance and automatically credits to this wallet and your transaction history (offline supported).
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Actions */}
         <View style={styles.actions}>
-            <TouchableOpacity style={[styles.mainEditBtn, { backgroundColor: colors.primary }]} onPress={handleEdit}>
-                <Edit2 size={20} color="#ffffff" />
-                <Text style={styles.mainEditBtnText}>Edit Wallet Settings</Text>
+            <TouchableOpacity 
+              style={[styles.mainDeleteBtn, { backgroundColor: isDarkMode ? '#dc2626' : '#ef4444' }]} 
+              onPress={handleDelete}
+              activeOpacity={0.85}
+            >
+                <Trash2 size={20} color="#ffffff" />
+                <Text style={styles.mainDeleteBtnText}>Delete Wallet</Text>
             </TouchableOpacity>
         </View>
       </ScrollView>
@@ -359,7 +423,7 @@ const styles = StyleSheet.create({
   actions: {
     gap: 12,
   },
-  mainEditBtn: {
+  mainDeleteBtn: {
     flexDirection: 'row',
     height: 56,
     borderRadius: 16,
@@ -367,7 +431,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
   },
-  mainEditBtnText: {
+  mainDeleteBtnText: {
     fontFamily: theme.fonts.bold,
     fontSize: rf(16),
     color: '#ffffff',
@@ -431,5 +495,30 @@ const styles = StyleSheet.create({
   currencyCardSub: {
     fontFamily: theme.fonts.medium,
     fontSize: rf(11),
+  },
+  interestCard: {
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+  },
+  interestRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  interestLabel: {
+    fontFamily: theme.fonts.medium,
+    fontSize: rf(12),
+    marginBottom: 2,
+  },
+  interestValue: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(18),
+  },
+  interestNote: {
+    fontFamily: theme.fonts.regular,
+    fontSize: rf(11.5),
+    lineHeight: rf(16),
   },
 });

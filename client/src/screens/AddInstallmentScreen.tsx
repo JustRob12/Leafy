@@ -24,7 +24,7 @@ import {
   CheckCircle2
 } from 'lucide-react-native';
 import { useAppContext, calculateNextDueDate } from '../context/AppContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = SCREEN_WIDTH / 375;
@@ -33,26 +33,31 @@ const rf = (size: number) => Math.round(size * scale);
 const COMMON_MONTHS = [3, 6, 12, 18, 24, 36];
 
 export default function AddInstallmentScreen() {
-  const { wallets, addInstallment, showFeedback, colors, isDarkMode, usdToPhpRate } = useAppContext();
+  const { wallets, addInstallment, editInstallment, showFeedback, colors, isDarkMode, usdToPhpRate } = useAppContext();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
 
-  const [productName, setProductName] = useState('');
-  const [totalAmount, setTotalAmount] = useState('');
-  const [currency, setCurrency] = useState<'PHP' | 'USD'>('PHP');
-  const [monthsToPay, setMonthsToPay] = useState('12');
-  const [alreadyPaidMonths, setAlreadyPaidMonths] = useState('0');
-  const [customMonthlyAmount, setCustomMonthlyAmount] = useState('');
-  const [selectedWalletId, setSelectedWalletId] = useState<string>(''); // Optional: '' means None / Manual
+  const editingInstallment = route.params?.installment;
+  const isEditing = !!editingInstallment;
+
+  const [productName, setProductName] = useState(editingInstallment?.productName || '');
+  const [totalAmount, setTotalAmount] = useState(editingInstallment?.totalAmount !== undefined ? editingInstallment.totalAmount.toString() : '');
+  const [currency, setCurrency] = useState<'PHP' | 'USD'>(editingInstallment?.currency || 'PHP');
+  const [monthsToPay, setMonthsToPay] = useState(editingInstallment?.monthsToPay !== undefined ? editingInstallment.monthsToPay.toString() : '12');
+  const [alreadyPaidMonths, setAlreadyPaidMonths] = useState(editingInstallment?.paidMonths !== undefined ? editingInstallment.paidMonths.toString() : '0');
+  const [customMonthlyAmount, setCustomMonthlyAmount] = useState(editingInstallment?.monthlyAmount !== undefined ? editingInstallment.monthlyAmount.toString() : '');
+  const [selectedWalletId, setSelectedWalletId] = useState<string>(editingInstallment?.walletId || ''); // Optional: '' means None / Manual
   
-  // Installment Start Date (defaults to today)
+  // Installment Start Date (defaults to editing item or today)
   const todayDate = new Date();
-  const [startDateStr, setStartDateStr] = useState(todayDate.toISOString().split('T')[0]);
+  const [startDateStr, setStartDateStr] = useState(editingInstallment?.startDate || todayDate.toISOString().split('T')[0]);
 
   // Date Picker Modal state
+  const initialDateParts = (editingInstallment?.startDate || todayDate.toISOString().split('T')[0]).split('-');
   const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
-  const [pickerDay, setPickerDay] = useState(todayDate.getDate().toString());
-  const [pickerMonth, setPickerMonth] = useState((todayDate.getMonth() + 1).toString());
-  const [pickerYear, setPickerYear] = useState(todayDate.getFullYear().toString());
+  const [pickerDay, setPickerDay] = useState(initialDateParts[2] || todayDate.getDate().toString());
+  const [pickerMonth, setPickerMonth] = useState(initialDateParts[1] || (todayDate.getMonth() + 1).toString());
+  const [pickerYear, setPickerYear] = useState(initialDateParts[0] || todayDate.getFullYear().toString());
 
   const parsedTotal = parseFloat(totalAmount) || 0;
   const parsedMonths = parseInt(monthsToPay, 10) || 1;
@@ -75,16 +80,29 @@ export default function AddInstallmentScreen() {
       return;
     }
 
-    await addInstallment({
-      productName: productName.trim(),
-      totalAmount: parsedTotal,
-      monthlyAmount: finalMonthly,
-      monthsToPay: parsedMonths,
-      paidMonths: parsedAlreadyPaid,
-      startDate: startDateStr,
-      walletId: selectedWalletId || undefined,
-      currency,
-    });
+    if (isEditing) {
+      await editInstallment(editingInstallment.id, {
+        productName: productName.trim(),
+        totalAmount: parsedTotal,
+        monthlyAmount: finalMonthly,
+        monthsToPay: parsedMonths,
+        paidMonths: parsedAlreadyPaid,
+        startDate: startDateStr,
+        walletId: selectedWalletId || undefined,
+        currency,
+      });
+    } else {
+      await addInstallment({
+        productName: productName.trim(),
+        totalAmount: parsedTotal,
+        monthlyAmount: finalMonthly,
+        monthsToPay: parsedMonths,
+        paidMonths: parsedAlreadyPaid,
+        startDate: startDateStr,
+        walletId: selectedWalletId || undefined,
+        currency,
+      });
+    }
 
     navigation.goBack();
   };
@@ -108,7 +126,7 @@ export default function AddInstallmentScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>New Installment</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{isEditing ? 'Edit Installment' : 'New Installment'}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -320,7 +338,7 @@ export default function AddInstallmentScreen() {
           activeOpacity={0.85}
         >
           <Check size={20} color="#ffffff" />
-          <Text style={styles.saveBtnText}>Record Installment</Text>
+          <Text style={styles.saveBtnText}>{isEditing ? 'Save Changes' : 'Record Installment'}</Text>
         </TouchableOpacity>
       </ScrollView>
 

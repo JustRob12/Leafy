@@ -1,21 +1,21 @@
 {
   "expo": {
-    "name": "Leapon",
+    "name": "Leon",
     "slug": "client",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "leapon",
+    "scheme": "leon",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#10b981"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.devrob.leapon",
+      "bundleIdentifier": "com.devrob.leon",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -25,7 +25,7 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#10b981"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -33,7 +33,7 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
-      "package": "com.devrob.leapon",
+      "package": "com.devrob.leon",
       "softwareKeyboardLayoutMode": "adjustResize"
     },
     "web": {
@@ -80,6 +80,17 @@
               "targetCellHeight": 2,
               "resizeMode": "horizontal|vertical",
               "description": "Displays your total balance horizontally on your home screen",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "TotalExpenseWidget",
+              "label": "Total Expense (Compact Red)",
+              "minWidth": "160dp",
+              "minHeight": "48dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 1,
+              "resizeMode": "horizontal|vertical",
+              "description": "Displays your total expenses in a compact 1-row red widget on your home screen",
               "updatePeriodMillis": 1800000
             }
           ]

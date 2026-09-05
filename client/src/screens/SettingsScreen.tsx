@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 
 export default function SettingsScreen() {
-  const { username, setUsername, userImage, setUserImage, clearData, showConfirm, showFeedback, isDarkMode, toggleTheme, treeType, setTreeType, colors, appPin, setAppPin, isSecurityEnabled, toggleSecurity, isBiometricsEnabled, toggleBiometrics, isNotificationsEnabled, toggleNotifications, totalBalance, wallets } = useAppContext();
+  const { username, setUsername, userImage, setUserImage, clearData, showConfirm, showFeedback, isDarkMode, toggleTheme, treeType, setTreeType, colors, appPin, setAppPin, isSecurityEnabled, toggleSecurity, isBiometricsEnabled, toggleBiometrics, isNotificationsEnabled, toggleNotifications, totalBalance, wallets, transactions, usdToPhpRate } = useAppContext();
   const navigation = useNavigation<any>();
 
   const styles = getStyles(colors, isDarkMode);
@@ -120,7 +120,7 @@ export default function SettingsScreen() {
       title: 'Support',
       options: [
         { id: '4', title: 'Help & Support', icon: CircleHelp, action: () => { setHelpModalVisible(true); } },
-        { id: '6', title: 'About Leapon', icon: Leaf, action: () => { setAboutModalVisible(true); } },
+        { id: '6', title: 'About Leon', icon: Leaf, action: () => { setAboutModalVisible(true); } },
       ]
     }
   ];
@@ -266,7 +266,7 @@ export default function SettingsScreen() {
             <Shield size={24} color={theme.colors.primary} style={styles.infoIcon} />
             <Text style={styles.infoTitle}>Data Local Storage</Text>
             <Text style={styles.infoDescription}>
-              Leapon stores all your financial data locally on your device. We do not transmit or store your personal information on any external servers.
+              Leon stores all your financial data locally on your device. We do not transmit or store your personal information on any external servers.
             </Text>
           </View>
 
@@ -293,7 +293,7 @@ export default function SettingsScreen() {
       >
         <View style={styles.modalContent}>
           <View style={styles.infoSection}>
-            <Text style={styles.infoTitle}>How to use Leapon?</Text>
+            <Text style={styles.infoTitle}>How to use Leon?</Text>
             <Text style={styles.infoDescription}>
               1. Create Wallets to categorize your funds.{"\n"}
               2. Add Goals to track your savings targets.{"\n"}
@@ -394,7 +394,7 @@ export default function SettingsScreen() {
         <View style={styles.modalContent}>
           <Text style={[styles.pinDesc, pinError ? { color: '#ef4444', fontFamily: theme.fonts.bold } : null]}>
             {pinError || (pinStep === 'create'
-              ? 'Enter a 6-digit PIN to secure your application. You will be asked for this PIN every time you open Leapon.'
+              ? 'Enter a 6-digit PIN to secure your application. You will be asked for this PIN every time you open Leon.'
               : 'Re-enter your 6-digit PIN to verify and complete setup.')}
           </Text>
 
@@ -676,55 +676,64 @@ export default function SettingsScreen() {
               Customize the appearance, information, and quick action shortcuts of the widget displayed on your phone's home screen.
             </Text>
           </View>
-
           {/* Big Live Interactive Widget Preview */}
           {(() => {
+            const expenseTransactions = (transactions || []).filter(t => t.type === 'withdrawal');
+            const totalExpense = expenseTransactions.reduce((acc, t) => acc + (t.currency === 'USD' ? t.amount * (usdToPhpRate || 58.5) : t.amount), 0);
+
             const activeTheme = WIDGET_THEMES.find(t => t.id === widgetConfig.themeId) || WIDGET_THEMES[0];
             const curr = widgetConfig.currencySymbol || '₱';
+            
             const displayBal = widgetConfig.hideBalance
               ? `${curr} ••••••`
               : `${curr} ${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            const cleanTitle = (widgetConfig.customTitle || 'LEAPON').replace(/^[^\w\s]+/, '').trim() || 'LEAPON';
+            
+            const cleanTitle = (widgetConfig.customTitle || 'LEON').replace(/^[^\w\s]+/, '').trim() || 'LEON';
+            const gradColors = [activeTheme.gradientFrom, activeTheme.gradientTo] as [string, string];
+            
+            const borderColor = activeTheme.borderColor;
+            const subTextColor = activeTheme.subTextColor;
+            const pillBgColor = activeTheme.pillBgColor;
 
             return (
               <View style={styles.widgetPreviewContainer}>
                 <View style={styles.widgetPreviewBadge}>
                   <Sparkles size={12} color="#10b981" />
-                  <Text style={styles.widgetPreviewBadgeText}>LIVE PREVIEW • TOTAL BALANCE</Text>
+                  <Text style={styles.widgetPreviewBadgeText}>
+                    LIVE PREVIEW • TOTAL BALANCE & EXPENSE
+                  </Text>
                 </View>
 
                 <LinearGradient
-                  colors={[activeTheme.gradientFrom, activeTheme.gradientTo]}
+                  colors={gradColors}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={[styles.widgetCard, { borderColor: activeTheme.borderColor }]}
+                  style={[
+                    styles.widgetCard,
+                    { borderColor },
+                  ]}
                 >
                   {/* Header */}
                   <View style={styles.widgetHeader}>
                     <View style={styles.widgetBrandCol}>
-                      <Text style={[styles.widgetBrand, { color: activeTheme.accentColor }]}>
+                      <Text style={[styles.widgetBrand, { color: '#ffffff' }]}>
                         {cleanTitle}
                       </Text>
-                      <Text style={[styles.widgetSubBrand, { color: activeTheme.subTextColor }]}>
+                      <Text style={[styles.widgetSubBrand, { color: subTextColor }]}>
                         TOTAL BALANCE
                       </Text>
                     </View>
                     
-                    {/* Right Action: Eye Privacy Button (Replaces Synced) */}
+                    {/* Right Action: Show / Hide Button */}
                     <TouchableOpacity
-                      style={[styles.widgetLivePill, { backgroundColor: activeTheme.pillBgColor, borderColor: activeTheme.borderColor }]}
+                      style={[styles.widgetLivePill, { backgroundColor: pillBgColor, borderColor }]}
                       activeOpacity={0.7}
                       onPress={() => {
                         Vibration.vibrate(15);
                         setWidgetConfig(prev => ({ ...prev, hideBalance: !prev.hideBalance }));
                       }}
                     >
-                      {widgetConfig.hideBalance ? (
-                        <Eye size={12} color={activeTheme.accentColor} style={{ marginRight: 4 }} />
-                      ) : (
-                        <EyeOff size={12} color={activeTheme.accentColor} style={{ marginRight: 4 }} />
-                      )}
-                      <Text style={[styles.widgetLiveText, { color: activeTheme.accentColor }]}>
+                      <Text style={[styles.widgetLiveText, { color: '#ffffff' }]}>
                         {widgetConfig.hideBalance ? 'Show' : 'Hide'}
                       </Text>
                     </TouchableOpacity>
@@ -735,24 +744,38 @@ export default function SettingsScreen() {
                     <Text style={styles.widgetBalanceAmount} numberOfLines={1} adjustsFontSizeToFit>
                       {displayBal}
                     </Text>
-                    {widgetConfig.showWalletCount && (
-                      <Text style={styles.widgetWalletCount}>
+                    {widgetConfig.showWalletCount !== false ? (
+                      <Text style={[styles.widgetWalletCount, { color: subTextColor }]}>
                         {wallets.length} Active Wallet{wallets.length !== 1 ? 's' : ''}
                       </Text>
-                    )}
+                    ) : null}
                   </View>
 
-                  {/* Bottom Accent Line */}
-                  <View
-                    style={{
-                      width: '100%',
-                      height: 3,
-                      backgroundColor: activeTheme.accentColor,
-                      borderRadius: 2,
-                      opacity: 0.3,
-                      marginTop: 10,
-                    }}
-                  />
+                  {/* Bottom: Show Total Expense under Active Wallet Count */}
+                  {widgetConfig.showExpense !== false && (
+                    <View
+                      style={[
+                        styles.widgetQuoteContainer,
+                        {
+                          backgroundColor: pillBgColor,
+                          borderColor,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          marginTop: 4,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.widgetQuoteText, { color: subTextColor, fontSize: 10.5, fontStyle: 'normal', fontWeight: '600' }]}>
+                        Total Expense
+                      </Text>
+                      <Text style={[styles.widgetQuoteText, { color: '#ffffff', fontSize: 11.5, fontStyle: 'normal', fontWeight: 'bold' }]}>
+                        {widgetConfig.hideBalance ? `${curr} ••••••` : `${curr} ${totalExpense.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                      </Text>
+                    </View>
+                  )}
                 </LinearGradient>
               </View>
             );
@@ -767,13 +790,15 @@ export default function SettingsScreen() {
               setIsApplyingWidget(true);
               Vibration.vibrate(40);
               const success = await saveWidgetConfig(widgetConfig);
-              await syncWidgetBalance(totalBalance, wallets.length, widgetConfig);
+              const expenseTransactions = (transactions || []).filter(t => t.type === 'withdrawal');
+              const totalExpense = expenseTransactions.reduce((acc, t) => acc + (t.currency === 'USD' ? t.amount * (usdToPhpRate || 58.5) : t.amount), 0);
+              await syncWidgetBalance(totalBalance, wallets.length, widgetConfig, totalExpense, expenseTransactions.length);
               setIsApplyingWidget(false);
               if (success) {
                 showFeedback('success', 'Widget Settings Applied & Synced!');
                 Alert.alert(
                   "Widget Updated Successfully",
-                  "Your phone's home screen widget has been updated with your new customizations and latest balance."
+                  "Your widget appearance and preferences have been synchronized."
                 );
               } else {
                 showFeedback('error', 'Failed to update widget');
@@ -823,7 +848,7 @@ export default function SettingsScreen() {
             })}
           </View>
 
-          {/* Section 2: Display Elements & Toggles */}
+          {/* Section 2: Display Information & Toggles */}
           <Text style={styles.configLabel}>Display Information</Text>
           <View style={styles.configGroup}>
             <TouchableOpacity
@@ -834,12 +859,30 @@ export default function SettingsScreen() {
               }}
             >
               <View style={styles.configItemLeft}>
-                <View style={[styles.checkbox, widgetConfig.showWalletCount && styles.checkboxActive]}>
-                  {widgetConfig.showWalletCount && <Check size={14} color="#ffffff" />}
+                <View style={[styles.checkbox, (widgetConfig.showWalletCount !== false) && styles.checkboxActive]}>
+                  {(widgetConfig.showWalletCount !== false) && <Check size={14} color="#ffffff" />}
                 </View>
                 <View>
                   <Text style={styles.configText}>Show Active Wallets Count</Text>
                   <Text style={styles.configSubText}>Displays total number of connected wallets</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.configItem}
+              onPress={() => {
+                setWidgetConfig(prev => ({ ...prev, showExpense: prev.showExpense === false ? true : false }));
+                Vibration.vibrate(15);
+              }}
+            >
+              <View style={styles.configItemLeft}>
+                <View style={[styles.checkbox, (widgetConfig.showExpense !== false) && styles.checkboxActive]}>
+                  {(widgetConfig.showExpense !== false) && <Check size={14} color="#ffffff" />}
+                </View>
+                <View>
+                  <Text style={styles.configText}>Show Total Expense</Text>
+                  <Text style={styles.configSubText}>Displays spent amount under active wallets</Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -888,8 +931,8 @@ export default function SettingsScreen() {
           {/* Section 4: Widget Title / Label */}
           <Text style={styles.configLabel}>Widget Brand Title</Text>
           <View style={styles.titlePresetRow}>
-            {['LEAPON', 'MY FINANCES', 'WEALTH TRACKER', 'MY VAULT'].map((titlePreset) => {
-              const cleanCurrent = (widgetConfig.customTitle || 'LEAPON').replace(/^[^\w\s]+/, '').trim();
+            {['LEON', 'MY FINANCES', 'WEALTH TRACKER', 'MY VAULT'].map((titlePreset) => {
+              const cleanCurrent = (widgetConfig.customTitle || 'LEON').replace(/^[^\w\s]+/, '').trim();
               const isSelected = cleanCurrent === titlePreset;
               return (
                 <TouchableOpacity
@@ -923,29 +966,33 @@ export default function SettingsScreen() {
                 } else {
                   Alert.alert(
                     "Add Widget Manually",
-                    "To place this widget on your home screen:\n\n1. Long-press any empty area on your phone's home screen.\n2. Tap 'Widgets' and choose 'Leapon'.\n3. Select 'Total Balance (Horizontal)' and place it on your screen."
+                    "To place this widget on your home screen:\n\n1. Go to your phone's Home Screen.\n2. Touch and hold any empty area.\n3. Tap 'Widgets' and select 'Leon'.\n4. Choose 'Total Balance (Horizontal)' and place it on your screen."
                   );
                 }
               }}
             >
               <Smartphone size={18} color="#ffffff" style={{ marginRight: 8 }} />
-              <Text style={styles.addWidgetBtnText}>Add Widget to Phone Screen</Text>
+              <Text style={styles.addWidgetBtnText}>
+                Add Balance Widget to Phone Screen
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.syncWidgetBtn, { borderColor: colors.border }]}
               activeOpacity={0.8}
               onPress={async () => {
-                await syncWidgetBalance(totalBalance, wallets.length, widgetConfig);
+                const expenseTransactions = (transactions || []).filter(t => t.type === 'withdrawal');
+                const totalExpense = expenseTransactions.reduce((acc, t) => acc + (t.currency === 'USD' ? t.amount * (usdToPhpRate || 58.5) : t.amount), 0);
+                await syncWidgetBalance(totalBalance, wallets.length, widgetConfig, totalExpense, expenseTransactions.length);
                 showFeedback('success', 'Home Widget Synchronized');
                 Alert.alert(
                   "Widget Synchronized",
-                  `Updated home screen total balance to ${widgetConfig.currencySymbol || '₱'} ${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} across ${wallets.length} wallets.`
+                  `Updated home screen widget (Total Balance: ${widgetConfig.currencySymbol || '₱'} ${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, Total Expense: ${widgetConfig.currencySymbol || '₱'} ${totalExpense.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).`
                 );
               }}
             >
               <RefreshCw size={16} color={colors.text} style={{ marginRight: 8 }} />
-              <Text style={[styles.syncWidgetBtnText, { color: colors.text }]}>Sync Widget Data Now</Text>
+              <Text style={[styles.syncWidgetBtnText, { color: colors.text }]}>Sync Widget Now</Text>
             </TouchableOpacity>
           </View>
 
@@ -956,7 +1003,7 @@ export default function SettingsScreen() {
               <Text style={styles.infoDescription}>
                 1. Go to your phone's Home Screen.{"\n"}
                 2. Touch and hold any empty area.{"\n"}
-                3. Tap <Text style={{ fontWeight: 'bold' }}>Widgets</Text> and scroll or search for <Text style={{ fontWeight: 'bold' }}>Leapon</Text>.{"\n"}
+                3. Tap <Text style={{ fontWeight: 'bold' }}>Widgets</Text> and scroll or search for <Text style={{ fontWeight: 'bold' }}>Leon</Text>.{"\n"}
                 4. Select <Text style={{ fontWeight: 'bold' }}>Total Balance (Horizontal)</Text> and drag it to your screen.{"\n"}
                 5. Long-press the widget on your screen and drag its side handles to expand it horizontally as big as you like!
               </Text>
@@ -972,19 +1019,19 @@ export default function SettingsScreen() {
         </ScrollView>
       </ActionSheet>
 
-      {/* About Leapon Modal */}
+      {/* About Leon Modal */}
       <ActionSheet
         visible={aboutModalVisible}
         onClose={() => setAboutModalVisible(false)}
-        title="About Leapon"
+        title="About Leon"
       >
         <View style={styles.modalContent}>
           <View style={styles.aboutHeader}>
             <Leaf size={32} color={colors.primary} />
-            <Text style={styles.aboutTitle}>Leapon v1.1.0</Text>
+            <Text style={styles.aboutTitle}>Leon v1.1.0</Text>
           </View>
           <Text style={styles.aboutDescription}>
-            Leapon is your premium financial companion designed to help you track wallets, set savings goals, manage grocery lists, and plan your travels with ease. Grow your wealth one leaf at a time.
+            Leon is your premium financial companion designed to help you track wallets, set savings goals, manage grocery lists, and plan your travels with ease. Grow your wealth one leaf at a time.
           </Text>
           <View style={styles.aboutFooter}>
             <Text style={styles.aboutVersion}>Made with ❤️ by Roberto Prisoris together with his Girlfriend Lady Marianne Bauyot</Text>
@@ -1477,24 +1524,22 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     color: '#94a3b8',
     marginTop: 2,
   },
-  widgetActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 10,
-    gap: 10,
-  },
-  widgetActionPill: {
-    flex: 1,
+  widgetQuoteContainer: {
+    width: '100%',
     paddingVertical: 7,
+    paddingHorizontal: 12,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 8,
+    borderWidth: 0.5,
   },
-  widgetActionPillText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 12,
-    color: '#ffffff',
+  widgetQuoteText: {
+    fontFamily: theme.fonts.medium,
+    fontStyle: 'italic',
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 15,
   },
   applyWidgetBtn: {
     flexDirection: 'row',

@@ -229,8 +229,8 @@ export const PHILIPPINE_BANKS_AND_WALLETS: BankBrandItem[] = [
     category: 'Digital Bank',
     brandColor: '#008080',
     localAssetKey: 'maribank.png',
-    suggestedInterestRate: 2.5,
-    description: 'Shopee Sea Group digital bank',
+    suggestedInterestRate: 3.75,
+    description: 'Shopee Sea Group digital bank (3.75% p.a. daily interest)',
   },
   {
     id: 'seabank',

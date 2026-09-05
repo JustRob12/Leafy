@@ -22,8 +22,8 @@ export default function ActionSheet({ visible, onClose, title, children }: Actio
       Animated.spring(slideAnim, {
         toValue: 0,
         useNativeDriver: true,
-        tension: 65,
-        friction: 11
+        tension: 140,
+        friction: 12
       }).start();
     } else {
       setKeyboardHeight(0);
@@ -62,7 +62,7 @@ export default function ActionSheet({ visible, onClose, title, children }: Actio
     <Modal 
       visible={visible} 
       transparent 
-      animationType="fade" 
+      animationType="none" 
       statusBarTranslucent
       onRequestClose={handleClose}
     >
@@ -88,7 +88,7 @@ export default function ActionSheet({ visible, onClose, title, children }: Actio
           >
             <View style={styles.header}>
               <Text style={styles.title}>{title}</Text>
-              <TouchableOpacity onPress={handleClose} style={styles.cancelBtn}>
+              <TouchableOpacity onPress={handleClose} style={styles.cancelBtn} activeOpacity={0.7} delayPressIn={0}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
             </View>

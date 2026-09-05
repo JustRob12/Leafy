@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { theme } from '../theme';
-import { Plus, User, FileText, Trash2, AlertCircle, ChevronLeft, Calendar } from 'lucide-react-native';
+import { Plus, User, FileText, Trash2, AlertCircle, ChevronLeft, Calendar, Pencil } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import { useNavigation } from '@react-navigation/native';
@@ -80,7 +80,11 @@ export default function DebtsScreen() {
         ) : (
           debts.map((item) => (
             <View key={item.id} style={styles.debtCard}>
-              <View style={styles.cardTop}>
+              <TouchableOpacity 
+                style={styles.cardTop}
+                onPress={() => navigation.navigate('AddDebt', { debt: item })}
+                activeOpacity={0.7}
+              >
                 <View style={styles.personInfo}>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -94,7 +98,7 @@ export default function DebtsScreen() {
                     </View>
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
 
               <View style={styles.cardDivider} />
 
@@ -104,6 +108,13 @@ export default function DebtsScreen() {
               </View>
               
               <View style={styles.cardActions}>
+                <TouchableOpacity
+                  style={styles.editBtnBottom}
+                  onPress={() => navigation.navigate('AddDebt', { debt: item })}
+                >
+                  <Pencil size={18} color={colors.text} />
+                </TouchableOpacity>
+
                 <TouchableOpacity
                   style={styles.trashBtnBottom}
                   onPress={() => handleDelete(item.id, item.personName)}
@@ -119,12 +130,38 @@ export default function DebtsScreen() {
                 </TouchableOpacity>
               </View>
               
-              {item.dueDate === new Date().toISOString().split('T')[0] && (
-                <View style={styles.dueTodayBadge}>
-                  <AlertCircle size={10} color="#ffffff" />
-                  <Text style={styles.dueTodayText}>DUE TODAY</Text>
-                </View>
-              )}
+              {(() => {
+                if (!item.dueDate) return null;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const parts = item.dueDate.split('-');
+                let dueTime = 0;
+                if (parts.length === 3) {
+                  const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                  d.setHours(0, 0, 0, 0);
+                  dueTime = d.getTime();
+                } else {
+                  const d = new Date(item.dueDate);
+                  d.setHours(0, 0, 0, 0);
+                  dueTime = d.getTime();
+                }
+                if (dueTime === today.getTime()) {
+                  return (
+                    <View style={styles.dueTodayBadge}>
+                      <AlertCircle size={10} color="#ffffff" />
+                      <Text style={styles.dueTodayText}>DUE TODAY</Text>
+                    </View>
+                  );
+                } else if (dueTime < today.getTime()) {
+                  return (
+                    <View style={[styles.dueTodayBadge, { backgroundColor: '#ef4444' }]}>
+                      <AlertCircle size={10} color="#ffffff" />
+                      <Text style={styles.dueTodayText}>OVERDUE</Text>
+                    </View>
+                  );
+                }
+                return null;
+              })()}
             </View>
           ))
         )}
@@ -357,6 +394,14 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       fontFamily: theme.fonts.semiBold,
       fontSize: 12,
       color: statusRed,
+    },
+    editBtnBottom: {
+      padding: 12,
+      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc',
+      borderRadius: 12,
+      marginRight: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     trashBtnBottom: {
       padding: 12,

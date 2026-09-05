@@ -5,6 +5,8 @@ import { WidgetConfig, DEFAULT_WIDGET_CONFIG, WIDGET_THEMES } from '../services/
 export interface TotalBalanceWidgetProps {
   balance?: number;
   walletCount?: number;
+  expense?: number;
+  expenseCount?: number;
   currency?: string;
   config?: WidgetConfig;
 }
@@ -12,6 +14,8 @@ export interface TotalBalanceWidgetProps {
 export function TotalBalanceWidget({
   balance = 0,
   walletCount = 1,
+  expense = 0,
+  expenseCount = 0,
   currency = '₱',
   config = DEFAULT_WIDGET_CONFIG,
 }: TotalBalanceWidgetProps) {
@@ -27,8 +31,15 @@ export function TotalBalanceWidget({
         maximumFractionDigits: 2,
       })}`;
 
+  const formattedExpense = isHidden
+    ? `${curr} ••••••`
+    : `${curr} ${expense.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`;
+
   const walletText = walletCount === 1 ? '1 Active Wallet' : `${walletCount} Active Wallets`;
-  const cleanTitle = (currentConfig.customTitle || 'LEAPON').replace(/^[^\w\s]+/, '').trim() || 'LEAPON';
+  const cleanTitle = (currentConfig.customTitle || 'LEON').replace(/^[^\w\s]+/, '').trim() || 'LEON';
 
   return (
     <FlexWidget
@@ -37,8 +48,8 @@ export function TotalBalanceWidget({
         width: 'match_parent',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        padding: 16,
-        borderRadius: 24,
+        padding: 14,
+        borderRadius: 22,
         backgroundGradient: {
           from: theme.gradientFrom,
           to: theme.gradientTo,
@@ -57,20 +68,18 @@ export function TotalBalanceWidget({
           width: 'match_parent',
         }}
       >
-        {/* App Title & Label (Stacked: Leapon with TOTAL BALANCE below) */}
+        {/* App Title & Label */}
         <FlexWidget
           style={{
             flexDirection: 'column',
             justifyContent: 'center',
             flex: 1,
           }}
-          clickAction="OPEN_URI"
-          clickActionData={{ uri: 'leapon://home' }}
         >
           <TextWidget
             text={cleanTitle}
             style={{
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: 'bold',
               color: theme.accentColor,
               letterSpacing: 1,
@@ -79,7 +88,7 @@ export function TotalBalanceWidget({
           <TextWidget
             text="TOTAL BALANCE"
             style={{
-              fontSize: 9,
+              fontSize: 8.5,
               fontWeight: '600',
               color: theme.subTextColor,
               letterSpacing: 0.5,
@@ -88,13 +97,13 @@ export function TotalBalanceWidget({
           />
         </FlexWidget>
 
-        {/* Right Action: Eye / Hide Button (Replaces Synced) */}
+        {/* Right Action: Show / Hide Privacy Toggle Button */}
         <FlexWidget
           style={{
             backgroundColor: theme.pillBgColor,
-            borderRadius: 12,
-            paddingHorizontal: 10,
-            paddingVertical: 4,
+            borderRadius: 10,
+            paddingHorizontal: 9,
+            paddingVertical: 3.5,
             borderColor: theme.borderColor,
             borderWidth: 1,
             alignItems: 'center',
@@ -103,9 +112,9 @@ export function TotalBalanceWidget({
           clickAction="TOGGLE_PRIVACY"
         >
           <TextWidget
-            text={isHidden ? "👁 Show" : "👁 Hide"}
+            text={isHidden ? "Show" : "Hide"}
             style={{
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: 'bold',
               color: theme.accentColor,
             }}
@@ -113,50 +122,73 @@ export function TotalBalanceWidget({
         </FlexWidget>
       </FlexWidget>
 
-      {/* Center Main Section: Big Total Balance */}
+      {/* Center Main Section: Total Balance Display & Active Wallet Count */}
       <FlexWidget
         style={{
           flexDirection: 'column',
           justifyContent: 'center',
-          marginVertical: 6,
+          marginVertical: 2,
           width: 'match_parent',
         }}
-        clickAction="OPEN_URI"
-        clickActionData={{ uri: 'leapon://home' }}
       >
         <TextWidget
           text={formattedBalance}
           style={{
-            fontSize: 30,
+            fontSize: 26,
             fontWeight: 'bold',
             color: '#ffffff',
             adjustsFontSizeToFit: true,
           }}
           maxLines={1}
         />
-        {currentConfig.showWalletCount && (
+        {currentConfig.showWalletCount !== false && (
           <TextWidget
             text={walletText}
             style={{
-              fontSize: 12,
-              color: '#94a3b8',
-              marginTop: 4,
+              fontSize: 10.5,
+              fontWeight: '500',
+              color: theme.subTextColor,
+              marginTop: 2,
             }}
           />
         )}
       </FlexWidget>
 
-      {/* Subtle Bottom Accent Indicator */}
-      <FlexWidget
-        style={{
-          width: 'match_parent',
-          height: 3,
-          backgroundColor: theme.pillBgColor,
-          borderRadius: 2,
-        }}
-        clickAction="OPEN_URI"
-        clickActionData={{ uri: 'leapon://home' }}
-      />
+      {/* Bottom Section: Total Expense Display directly under Active Wallet Count */}
+      {currentConfig.showExpense !== false && (
+        <FlexWidget
+          style={{
+            width: 'match_parent',
+            backgroundColor: theme.pillBgColor,
+            borderRadius: 12,
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderColor: theme.borderColor,
+            borderWidth: 0.8,
+            marginTop: 3,
+          }}
+        >
+          <TextWidget
+            text="Total Expense"
+            style={{
+              fontSize: 10,
+              fontWeight: '600',
+              color: theme.subTextColor,
+            }}
+          />
+          <TextWidget
+            text={formattedExpense}
+            style={{
+              fontSize: 11.5,
+              fontWeight: 'bold',
+              color: '#ffffff',
+            }}
+          />
+        </FlexWidget>
+      )}
     </FlexWidget>
   );
 }

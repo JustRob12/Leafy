@@ -5,65 +5,7 @@ import { Leaf } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 
 export default function LoadingOverlay() {
-  const { loading, colors, isDarkMode } = useAppContext();
-  const styles = getStyles(colors, isDarkMode);
-  const spinAnim = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (loading) {
-      // Fade in
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-
-      // Start spinning
-      Animated.loop(
-        Animated.timing(spinAnim, {
-          toValue: 1,
-          duration: 1500,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        })
-      ).start();
-    } else {
-      // Fade out
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [loading]);
-
-  if (!loading) return null;
-
-  const spin = spinAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-
-  return (
-    <Modal
-      transparent
-      visible={loading}
-      animationType="none"
-      statusBarTranslucent
-    >
-      <View style={styles.overlay}>
-        <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-          <View style={styles.loaderBox}>
-            <Animated.View style={{ transform: [{ rotate: spin }] }}>
-              <Leaf size={40} color={colors.primary} />
-            </Animated.View>
-            <Text style={styles.loadingText}>Processing...</Text>
-          </View>
-        </Animated.View>
-      </View>
-    </Modal>
-  );
+  return null;
 }
 
 

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { theme } from '../theme';
-import { Plus, User, FileText, Trash2, Clock, ChevronLeft } from 'lucide-react-native';
+import { Plus, User, FileText, Trash2, Clock, ChevronLeft, Pencil } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import WalletDropdown from '../components/WalletDropdown';
@@ -82,19 +82,31 @@ export default function ReceivablesScreen() {
           receivables.map((item) => (
             <View key={item.id} style={styles.receivableCard}>
               <View style={styles.cardTop}>
-                <View style={styles.personInfo}>
+                <TouchableOpacity 
+                  style={styles.personInfo}
+                  onPress={() => navigation.navigate('AddReceivable', { receivable: item })}
+                  activeOpacity={0.7}
+                >
                   <View>
                     <Text style={styles.personName}>{item.personName}</Text>
                     <Text style={styles.dateText}>{formatDate(item.date)}</Text>
                   </View>
-                </View>
+                </TouchableOpacity>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <TouchableOpacity
-                    style={styles.trashBtnTop}
-                    onPress={() => handleDelete(item.id, item.personName)}
-                  >
-                    <Trash2 size={16} color="#ef4444" />
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                    <TouchableOpacity
+                      style={styles.editBtnTop}
+                      onPress={() => navigation.navigate('AddReceivable', { receivable: item })}
+                    >
+                      <Pencil size={16} color={colors.textMuted} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.trashBtnTop}
+                      onPress={() => handleDelete(item.id, item.personName)}
+                    >
+                      <Trash2 size={16} color="#ef4444" />
+                    </TouchableOpacity>
+                  </View>
                   <Text style={styles.amountText}>₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
                 </View>
               </View>
@@ -102,10 +114,14 @@ export default function ReceivablesScreen() {
               <View style={styles.cardDivider} />
 
               <View style={styles.cardBottom}>
-                <View style={styles.taskInfo}>
+                <TouchableOpacity 
+                  style={styles.taskInfo}
+                  onPress={() => navigation.navigate('AddReceivable', { receivable: item })}
+                  activeOpacity={0.7}
+                >
                   <FileText size={14} color={colors.textMuted} />
                   <Text style={styles.taskName}>{item.taskName}</Text>
-                </View>
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.paidBtn}
                   onPress={() => handleOpenPayModal(item.id, item.amount)}
@@ -352,8 +368,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: 12,
     color: colors.primary,
   },
+  editBtnTop: {
+    padding: 2,
+  },
   trashBtnTop: {
-    marginBottom: 4,
     padding: 2,
   },
   inputLabel: {

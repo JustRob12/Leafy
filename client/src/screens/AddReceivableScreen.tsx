@@ -4,16 +4,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { ChevronLeft, User, FileText } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 export default function AddReceivableScreen() {
-  const { addReceivable, colors, isDarkMode } = useAppContext();
+  const { addReceivable, editReceivable, colors, isDarkMode } = useAppContext();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const styles = getStyles(colors, isDarkMode);
 
-  const [personName, setPersonName] = useState('');
-  const [taskName, setTaskName] = useState('');
-  const [amount, setAmount] = useState('');
+  const editingReceivable = route.params?.receivable;
+  const isEditing = !!editingReceivable;
+
+  const [personName, setPersonName] = useState(editingReceivable?.personName || '');
+  const [taskName, setTaskName] = useState(editingReceivable?.taskName || '');
+  const [amount, setAmount] = useState(editingReceivable?.amount !== undefined ? editingReceivable.amount.toString() : '');
 
   const formatAmount = (text: string) => {
     const raw = text.replace(/,/g, '').replace(/[^0-9.]/g, '');
@@ -25,11 +29,19 @@ export default function AddReceivableScreen() {
   const handleSave = async () => {
     const numericAmount = parseFloat(amount.replace(/,/g, ''));
     if (personName.trim() && taskName.trim() && !isNaN(numericAmount) && numericAmount > 0) {
-      await addReceivable({
-        personName: personName.trim(),
-        taskName: taskName.trim(),
-        amount: numericAmount,
-      });
+      if (isEditing) {
+        await editReceivable(editingReceivable.id, {
+          personName: personName.trim(),
+          taskName: taskName.trim(),
+          amount: numericAmount,
+        });
+      } else {
+        await addReceivable({
+          personName: personName.trim(),
+          taskName: taskName.trim(),
+          amount: numericAmount,
+        });
+      }
       navigation.goBack();
     }
   };
@@ -43,7 +55,7 @@ export default function AddReceivableScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Record Pending Payment</Text>
+        <Text style={styles.headerTitle}>{isEditing ? 'Edit Pending Payment' : 'Record Pending Payment'}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -57,7 +69,7 @@ export default function AddReceivableScreen() {
             placeholderTextColor={colors.textMuted}
             value={personName}
             onChangeText={setPersonName}
-            autoFocus
+            autoFocus={!isEditing}
           />
         </View>
 
@@ -94,7 +106,7 @@ export default function AddReceivableScreen() {
           onPress={handleSave}
           disabled={!isFormValid}
         >
-          <Text style={styles.saveBtnText}>Record Payment</Text>
+          <Text style={styles.saveBtnText}>{isEditing ? 'Save Changes' : 'Record Payment'}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

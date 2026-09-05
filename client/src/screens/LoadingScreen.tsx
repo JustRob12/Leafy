@@ -2,9 +2,9 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Image } from 'react-native';
 import { theme } from '../theme';
 import { Leaf } from 'lucide-react-native';
-const LogoSource = require('../../assets/icon.png');
+const LogoSource = require('../../assets/splash-icon.png');
 
-import { AppProvider, useAppContext } from '../context/AppContext';
+import { useAppContext } from '../context/AppContext';
 
 interface LoadingScreenProps {
   onFinish: () => void;
@@ -12,7 +12,7 @@ interface LoadingScreenProps {
 
 export default function LoadingScreen({ onFinish }: LoadingScreenProps) {
   const { colors, isDarkMode } = useAppContext();
-  const styles = getStyles(colors, isDarkMode);
+  const styles = getStyles();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
@@ -20,26 +20,26 @@ export default function LoadingScreen({ onFinish }: LoadingScreenProps) {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 800,
+        duration: 250,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        friction: 4,
+        friction: 5,
         useNativeDriver: true,
       }),
     ]).start();
 
-    // Simulate loading time
+    // Fast loading display
     const timer = setTimeout(() => {
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 300,
+        duration: 150,
         useNativeDriver: true,
       }).start(() => {
         onFinish();
       });
-    }, 1200);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [fadeAnim, scaleAnim, onFinish]);
@@ -50,7 +50,7 @@ export default function LoadingScreen({ onFinish }: LoadingScreenProps) {
         <View style={styles.iconContainer}>
           <Image source={LogoSource} style={styles.logoImage} />
         </View>
-        <Text style={styles.title}>Leapon</Text>
+        <Text style={styles.title}>Leon</Text>
         <Text style={styles.subtitle}>Your Invisible Architect</Text>
       </Animated.View>
     </View>
@@ -58,10 +58,10 @@ export default function LoadingScreen({ onFinish }: LoadingScreenProps) {
 }
 
 
-const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
+const getStyles = () => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: isDarkMode ? colors.background : colors.primary,
+    backgroundColor: '#10b981',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -85,13 +85,13 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   title: {
     fontFamily: theme.fonts.bold,
     fontSize: 40,
-    color: isDarkMode ? colors.text : '#ffffff',
+    color: '#ffffff',
     letterSpacing: -1,
   },
   subtitle: {
     fontFamily: theme.fonts.medium,
     fontSize: 16,
-    color: isDarkMode ? colors.textMuted : 'rgba(255,255,255,0.8)',
+    color: 'rgba(255, 255, 255, 0.88)',
     marginTop: 8,
   },
 });

@@ -57,15 +57,17 @@ export default function TransferScreen() {
 
     const fromWallet = wallets.find(w => w.id === fromWalletId);
     if (fromWallet) {
+      const rate = usdToPhpRate || 58.5;
       if (currency === 'USD') {
-        const availableUsd = fromWallet.usdBalance || 0;
+        const availableUsd = (fromWallet.usdBalance || 0) + ((fromWallet.balance || 0) / rate);
         if (numericAmount > availableUsd) {
           showFeedback('error', `Insufficient USD balance in ${fromWallet.name}`);
           return;
         }
       } else {
-        if (numericAmount > fromWallet.balance) {
-          showFeedback('error', `Insufficient PHP balance in ${fromWallet.name}`);
+        const availablePhp = (fromWallet.balance || 0) + ((fromWallet.usdBalance || 0) * rate);
+        if (numericAmount > availablePhp) {
+          showFeedback('error', `Insufficient balance in ${fromWallet.name}`);
           return;
         }
       }
@@ -83,9 +85,13 @@ export default function TransferScreen() {
     const isSelected = type === 'from' ? fromWalletId === wallet.id : toWalletId === wallet.id;
     const isOtherSelected = type === 'from' ? toWalletId === wallet.id : fromWalletId === wallet.id;
 
+    const rate = usdToPhpRate || 58.5;
+    const totalPhpBal = (wallet.balance || 0) + ((wallet.usdBalance || 0) * rate);
+    const totalUsdBal = (wallet.usdBalance || 0) + ((wallet.balance || 0) / rate);
+
     const displayBal = currency === 'USD'
-      ? `$${(wallet.usdBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      : `₱${Math.floor(wallet.balance).toLocaleString()}`;
+      ? `$${totalUsdBal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : `₱${Math.floor(totalPhpBal).toLocaleString()}`;
 
     return (
       <TouchableOpacity 
@@ -120,9 +126,14 @@ export default function TransferScreen() {
         <Text style={[styles.miniWalletName, { color: '#ffffff' }]} numberOfLines={1}>
           {wallet.name}
         </Text>
-        <Text style={[styles.miniWalletBalance, { color: 'rgba(255, 255, 255, 0.85)' }]} numberOfLines={1}>
+        <Text style={[styles.miniWalletBalance, { color: 'rgba(255, 255, 255, 0.95)' }]} numberOfLines={1}>
           {displayBal}
         </Text>
+        {(wallet.usdBalance || 0) > 0 && currency === 'PHP' && (
+          <Text style={styles.miniWalletUsdSub} numberOfLines={1}>
+            ${(wallet.usdBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </Text>
+        )}
       </TouchableOpacity>
     );
   };
@@ -468,6 +479,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.medium,
     fontSize: 9,
     color: colors.textMuted,
+  },
+  miniWalletUsdSub: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 7.5,
+    color: 'rgba(255, 255, 255, 0.75)',
+    marginTop: 1,
   },
   miniWalletIconBox: {
     width: 24,

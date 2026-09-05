@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image as RNImage, Modal, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
-import { ChevronLeft, User, AlertTriangle, ShoppingBag, Plane, Wallet as WalletIcon, QrCode, Image as ImageIcon, X, ChevronRight, Search, Building2, Smartphone, Sparkles, Globe } from 'lucide-react-native';
+import { ChevronLeft, User, AlertTriangle, ShoppingBag, Plane, Wallet as WalletIcon, QrCode, Image as ImageIcon, X, ChevronRight, Search, Building2, Smartphone, Sparkles, Globe, Check, Coins, CreditCard } from 'lucide-react-native';
 import { useAppContext, WalletCategory } from '../context/AppContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
@@ -10,10 +10,32 @@ import AdvancedColorPicker from '../components/AdvancedColorPicker';
 import WalletBrandLogo from '../components/WalletBrandLogo';
 import { PHILIPPINE_BANKS_AND_WALLETS, BankBrandItem } from '../constants/philippineBanks';
 
-const { height } = Dimensions.get('window');
+const { height, width } = Dimensions.get('window');
+
+const POPULAR_TOP_BANKS: BankBrandItem[] = [
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'gcash.png')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'maya.png')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'bdo')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'bpi')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'unionbank')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'gotyme.png')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'maribank.png')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'seabank')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'shopeepay')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'cimb')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'landbank')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'metrobank')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'securitybank')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'rcbc')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'tonik')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'wise.png')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'paypal.png')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'coinsph')!,
+  PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'grabpay')!,
+].filter(Boolean);
 
 export default function AddWalletScreen() {
-  const { addWallet, editWallet, colors, isDarkMode, showConfirm, deleteWallet } = useAppContext();
+  const { addWallet, editWallet, colors, isDarkMode } = useAppContext();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const styles = getStyles(colors, isDarkMode);
@@ -32,34 +54,34 @@ export default function AddWalletScreen() {
   const [logoModalVisible, setLogoModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'All' | 'Banks' | 'Digital Bank' | 'E-Wallet' | 'International'>('All');
-
-  const walletPresets = [
-    { name: 'Emerald', color: '#10b981' },
-    { name: 'Forest', color: '#065f46' },
-    { name: 'Teal', color: '#0d9488' },
-    { name: 'Cobalt', color: '#3b82f6' },
-    { name: 'Sky', color: '#0ea5e9' },
-    { name: 'Indigo', color: '#6366f1' },
-    { name: 'Violet', color: '#8b5cf6' },
-    { name: 'Lavender', color: '#a855f7' },
-    { name: 'Fuchsia', color: '#d946ef' },
-    { name: 'Rose', color: '#f43f5e' },
-    { name: 'Crimson', color: '#ef4444' },
-    { name: 'Orange', color: '#f97316' },
-    { name: 'Amber', color: '#f59e0b' },
-    { name: 'Gold', color: '#d97706' },
-    { name: 'Slate', color: '#475569' },
-    { name: 'Midnight', color: '#1e1b4b' },
-    { name: 'Black', color: '#000000' },
-    { name: 'White', color: '#ffffff' },
-  ];
+  const [interestRate, setInterestRate] = useState(editingWallet?.interestRate?.toString() || '');
 
   const tags = [
     { label: 'Personal', icon: User },
+    { label: 'Savings', icon: Coins },
     { label: 'Emergency', icon: AlertTriangle },
+    { label: 'Bills', icon: CreditCard },
     { label: 'Shopping', icon: ShoppingBag },
     { label: 'Travel', icon: Plane },
+    { label: 'Others', icon: WalletIcon },
   ];
+
+  const handleSelectBank = (bank: BankBrandItem) => {
+    setSelectedPreset(bank.id);
+    setIconType('preset');
+    setWalletName(bank.name);
+    if (bank.brandColor) {
+      setWalletColor(bank.brandColor);
+    }
+    if (bank.category === 'Banks' || bank.category === 'Digital Bank') {
+      setCategory('Banks');
+    } else if (bank.category === 'E-Wallet' || bank.category === 'International') {
+      setCategory('E-Wallet');
+    }
+    if (bank.suggestedInterestRate && !interestRate) {
+      setInterestRate(bank.suggestedInterestRate.toString());
+    }
+  };
 
   const pickCustomIcon = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -88,50 +110,40 @@ export default function AddWalletScreen() {
     }
   };
 
-  const [interestRate, setInterestRate] = useState(editingWallet?.interestRate?.toString() || '');
+  const effectiveName = walletName.trim() || (selectedPreset ? (PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === selectedPreset)?.name || '') : '');
+  const isFormValid = !!effectiveName;
 
   const handleSave = async () => {
-    if (walletName.trim()) {
+    if (effectiveName) {
       const rateNum = parseFloat(interestRate) || 0;
       if (isEditing) {
         await editWallet(editingWallet.id, {
-          name: walletName.trim(),
+          name: effectiveName,
           purpose: purpose,
           qrCodeImage: qrCodeImage || undefined,
           iconType,
-          presetLogo: selectedPreset || undefined,
-          customIcon: customIcon || undefined,
+          presetLogo: (iconType === 'preset' ? selectedPreset : undefined) || undefined,
+          customIcon: (iconType === 'custom' ? customIcon : undefined) || undefined,
           color: walletColor,
           category: category,
           interestRate: rateNum,
         });
       } else {
         await addWallet({
-          name: walletName.trim(),
+          name: effectiveName,
           purpose: purpose,
           qrCodeImage: qrCodeImage || undefined,
           iconType,
-          presetLogo: selectedPreset || undefined,
-          customIcon: customIcon || undefined,
+          presetLogo: (iconType === 'preset' ? selectedPreset : undefined) || undefined,
+          customIcon: (iconType === 'custom' ? customIcon : undefined) || undefined,
           color: walletColor,
           category: category,
           interestRate: rateNum,
           lastInterestDate: new Date().toISOString()
         });
       }
-      navigation.goBack();
+      navigation.navigate('Main', { screen: 'Wallets' });
     }
-  };
-
-  const handleDelete = () => {
-    showConfirm(
-      "Delete Wallet",
-      `Are you sure you want to delete "${walletName}"?`,
-      () => {
-        deleteWallet(editingWallet.id);
-        navigation.goBack();
-      }
-    );
   };
 
   return (
@@ -146,14 +158,63 @@ export default function AddWalletScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.inputLabel}>Wallet Name</Text>
+        {/* Bank & E-Wallet Picker Carousel ABOVE Wallet Name */}
+        <View style={styles.bankPickerHeader}>
+          <Text style={styles.inputLabel}>Bank / E-Wallet Brand (Optional)</Text>
+          <TouchableOpacity onPress={() => setLogoModalVisible(true)} style={styles.seeAllBanksBtn}>
+            <Text style={styles.seeAllBanksText}>Browse All</Text>
+            <ChevronRight size={14} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.bankCarousel}
+        >
+          {POPULAR_TOP_BANKS.map((bank) => {
+            const isSelected = selectedPreset === bank.id && iconType === 'preset';
+            return (
+              <TouchableOpacity
+                key={bank.id}
+                style={[styles.bankCard, isSelected && styles.bankCardSelected]}
+                onPress={() => handleSelectBank(bank)}
+                activeOpacity={0.75}
+              >
+                <View style={styles.bankLogoWrapper}>
+                  <WalletBrandLogo logoKey={bank.id} size={36} />
+                  {isSelected && (
+                    <View style={styles.bankSelectedBadge}>
+                      <Check size={9} color="#ffffff" strokeWidth={3} />
+                    </View>
+                  )}
+                </View>
+                <Text
+                  style={[styles.bankCardName, isSelected && { color: colors.primary, fontFamily: theme.fonts.bold }]}
+                  numberOfLines={1}
+                >
+                  {bank.shortName || bank.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Wallet Name Input */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
+          <Text style={styles.inputLabel}>Wallet Name</Text>
+          {selectedPreset && iconType === 'preset' && (
+            <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: colors.primary }}>
+              Auto-filled from {PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === selectedPreset)?.shortName || 'Bank'}
+            </Text>
+          )}
+        </View>
         <TextInput
           style={styles.input}
-          placeholder="e.g., GCash, Maya, Savings..."
+          placeholder="e.g., GCash, Maya, Savings, Main Account..."
           placeholderTextColor={colors.textMuted}
           value={walletName}
           onChangeText={setWalletName}
-          autoFocus={!isEditing}
         />
 
         <Text style={styles.inputLabel}>Wallet Category</Text>
@@ -171,7 +232,7 @@ export default function AddWalletScreen() {
           ))}
         </View>
 
-
+        {/* Wallet Icon (Default or Custom Photo only) */}
         <Text style={styles.inputLabel}>Wallet Icon</Text>
         <View style={styles.iconTypeRow}>
           <TouchableOpacity
@@ -179,12 +240,6 @@ export default function AddWalletScreen() {
             onPress={() => setIconType('purpose')}
           >
             <Text style={[styles.iconTypeChipText, iconType === 'purpose' && styles.iconTypeChipTextActive]}>Default</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.iconTypeChip, iconType === 'preset' && styles.iconTypeChipActive]}
-            onPress={() => setLogoModalVisible(true)}
-          >
-            <Text style={[styles.iconTypeChipText, iconType === 'preset' && styles.iconTypeChipTextActive]}>Brand Logo</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.iconTypeChip, iconType === 'custom' && styles.iconTypeChipActive]}
@@ -195,24 +250,23 @@ export default function AddWalletScreen() {
         </View>
 
         {iconType === 'preset' && selectedPreset && (
-          <TouchableOpacity style={styles.selectedIconPreview} onPress={() => setLogoModalVisible(true)}>
+          <View style={styles.selectedIconPreview}>
             <WalletBrandLogo logoKey={selectedPreset} size={42} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
               <Text style={styles.previewLogoName}>
                 {PHILIPPINE_BANKS_AND_WALLETS.find(l => l.id === selectedPreset)?.name || selectedPreset}
               </Text>
               <Text style={{ fontFamily: theme.fonts.regular, fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
-                {PHILIPPINE_BANKS_AND_WALLETS.find(l => l.id === selectedPreset)?.category || 'Brand Logo'}
+                Official brand logo applied (Tap bank above to switch)
               </Text>
             </View>
-            <ChevronRight size={16} color={colors.textMuted} />
-          </TouchableOpacity>
+          </View>
         )}
 
         {iconType === 'custom' && customIcon && (
           <TouchableOpacity style={styles.selectedIconPreview} onPress={pickCustomIcon}>
             <RNImage source={{ uri: customIcon }} style={styles.previewLogo as any} />
-            <Text style={styles.previewLogoName}>Custom Icon</Text>
+            <Text style={styles.previewLogoName}>Custom Photo Icon</Text>
             <ChevronRight size={16} color={colors.textMuted} />
           </TouchableOpacity>
         )}
@@ -299,35 +353,27 @@ export default function AddWalletScreen() {
           </View>
         </View>
         <Text style={styles.inputSubtitle}>Interest will be calculated and credited daily based on your balance.</Text>
+        
         <AdvancedColorPicker
           color={walletColor}
           onColorChange={setWalletColor}
           colors={colors}
           isDarkMode={isDarkMode}
         />
-
-        {isEditing && (
-          <TouchableOpacity
-            style={styles.deleteLink}
-            onPress={handleDelete}
-          >
-            <Text style={styles.deleteLinkText}>Delete this wallet</Text>
-          </TouchableOpacity>
-        )}
       </ScrollView>
 
       {/* Fixed Footer */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.saveBtn, !walletName.trim() && styles.saveBtnDisabled]}
+          style={[styles.saveBtn, !isFormValid && styles.saveBtnDisabled]}
           onPress={handleSave}
-          disabled={!walletName.trim()}
+          disabled={!isFormValid}
         >
           <Text style={styles.saveBtnText}>{isEditing ? "Update Wallet" : "Create Wallet"}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Logo Picker Modal */}
+      {/* Full Bank & E-Wallet Catalog Modal */}
       <Modal
         visible={logoModalVisible}
         transparent
@@ -338,8 +384,8 @@ export default function AddWalletScreen() {
           <View style={styles.logoModalContent}>
             <View style={styles.logoModalHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.logoModalTitle}>Philippine Banks & Logos</Text>
-                <Text style={styles.logoModalSubtitle}>Select your bank or e-wallet to set brand logo</Text>
+                <Text style={styles.logoModalTitle}>Philippine Banks & E-Wallets</Text>
+                <Text style={styles.logoModalSubtitle}>Select your bank or e-wallet to set brand name & logo</Text>
               </View>
               <TouchableOpacity onPress={() => setLogoModalVisible(false)} style={styles.logoModalClose}>
                 <X size={24} color={colors.text} />
@@ -351,7 +397,7 @@ export default function AddWalletScreen() {
               <Search size={20} color={colors.textMuted} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Type to search"
+                placeholder="Search banks, e-wallets..."
                 placeholderTextColor={colors.textMuted}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -405,25 +451,7 @@ export default function AddWalletScreen() {
                       key={logo.id}
                       style={[styles.logoItem, isSelected && styles.logoItemActive]}
                       onPress={() => {
-                        setSelectedPreset(logo.id);
-                        setIconType('preset');
-
-                        // Auto-fill wallet name if empty or previous bank name
-                        if (!walletName.trim() || PHILIPPINE_BANKS_AND_WALLETS.some(b => b.name === walletName.trim())) {
-                          setWalletName(logo.name);
-                        }
-                        if (logo.category === 'Banks' || logo.category === 'Digital Bank') {
-                          setCategory('Banks');
-                        } else if (logo.category === 'E-Wallet' || logo.category === 'International') {
-                          setCategory('E-Wallet');
-                        }
-                        if (logo.brandColor) {
-                          setWalletColor(logo.brandColor);
-                        }
-                        if (logo.suggestedInterestRate && !interestRate) {
-                          setInterestRate(logo.suggestedInterestRate.toString());
-                        }
-
+                        handleSelectBank(logo);
                         setLogoModalVisible(false);
                         setSearchQuery('');
                       }}
@@ -480,12 +508,76 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     padding: 24,
     paddingBottom: 40,
   },
+  bankPickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  seeAllBanksBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  seeAllBanksText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 12,
+    color: colors.primary,
+  },
+  bankCarousel: {
+    gap: 10,
+    paddingVertical: 4,
+    marginBottom: 8,
+  },
+  bankCard: {
+    width: 78,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: 16,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  bankCardSelected: {
+    borderColor: colors.primary,
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.12)' : '#ecfdf5',
+    borderWidth: 1.5,
+  },
+  bankLogoWrapper: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    position: 'relative',
+  },
+  bankSelectedBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
+  },
+  bankCardName: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 10.5,
+    color: colors.text,
+    textAlign: 'center',
+  },
   inputLabel: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 14,
     color: colors.text,
-    marginBottom: 12,
-    marginTop: 8,
+    marginBottom: 10,
   },
   input: {
     backgroundColor: colors.card,
@@ -496,7 +588,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.regular,
     fontSize: 16,
     color: colors.text,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   interestInputContainer: {
     flexDirection: 'row',
@@ -552,43 +644,20 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     color: '#ffffff',
     fontFamily: theme.fonts.bold,
   },
-  colorRow: {
-    flexDirection: 'row',
-    marginBottom: 24,
-    gap: 12,
-  },
-  colorOption: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 3,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  colorOptionSelected: {
-    borderColor: isDarkMode ? '#ffffff' : colors.primary,
-  },
-  colorSelectedIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#ffffff',
-    borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.1)',
-  },
   iconTypeRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     marginBottom: 16,
   },
   iconTypeChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    flex: 1,
+    height: 44,
     borderRadius: 12,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   iconTypeChipActive: {
     backgroundColor: colors.primary,
@@ -637,9 +706,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    padding: 16,
+    padding: 14,
     borderRadius: 16,
-    marginBottom: 24,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -656,10 +725,11 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 10,
+    marginRight: 12,
   },
   previewLogoName: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 15,
+    fontSize: 14,
     color: colors.text,
   },
   imagePicker: {
@@ -733,16 +803,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: 16,
     color: '#ffffff',
   },
-  deleteLink: {
-    alignItems: 'center',
-    paddingVertical: 12,
-    marginTop: 8,
-  },
-  deleteLinkText: {
-    fontFamily: theme.fonts.semiBold,
-    fontSize: 14,
-    color: '#ef4444',
-  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
@@ -750,52 +810,56 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   logoModalContent: {
     backgroundColor: colors.card,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    height: height * 0.85,
-    padding: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    maxHeight: height * 0.85,
   },
   logoModalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
+    justifyContent: 'space-between',
     marginBottom: 16,
   },
   logoModalTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 20,
+    fontSize: 18,
     color: colors.text,
   },
   logoModalSubtitle: {
     fontFamily: theme.fonts.regular,
-    fontSize: 12,
+    fontSize: 13,
     color: colors.textMuted,
     marginTop: 2,
   },
   logoModalClose: {
-    padding: 6,
+    padding: 4,
+    marginLeft: 8,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : '#f1f5f9',
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
     borderRadius: 14,
-    paddingHorizontal: 14,
-    marginBottom: 12,
-    height: 48,
+    paddingHorizontal: 12,
+    height: 46,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: colors.border,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 10,
+    height: '100%',
     fontFamily: theme.fonts.regular,
-    fontSize: 15,
+    fontSize: 14,
     color: colors.text,
   },
   categoryTabsContainer: {
     gap: 8,
-    paddingRight: 16,
+    paddingBottom: 4,
   },
   modalFilterTab: {
     paddingHorizontal: 14,
@@ -803,7 +867,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderRadius: 20,
     backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'transparent',
   },
   modalFilterTabActive: {
     backgroundColor: colors.primary,
@@ -811,7 +875,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   modalFilterTabText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 13,
+    fontSize: 12,
     color: colors.textMuted,
   },
   modalFilterTabTextActive: {
@@ -822,33 +886,30 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    paddingBottom: 40,
-    paddingTop: 8,
+    justifyContent: 'space-between',
+    paddingBottom: 24,
   },
   logoItem: {
-    width: (Dimensions.get('window').width - 48 - 24) / 3, // 3 columns
-    alignItems: 'center',
-    marginBottom: 12,
-    padding: 8,
+    width: (width - 64) / 3,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc',
     borderRadius: 16,
-    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : '#ffffff',
+    padding: 10,
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+    borderColor: colors.border,
   },
   logoItemActive: {
     borderColor: colors.primary,
-    backgroundColor: colors.primary + '12',
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
+    borderWidth: 2,
   },
   logoIconBox: {
-    width: 54,
-    height: 54,
+    width: 52,
+    height: 52,
     borderRadius: 14,
-    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.04)' : '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
     overflow: 'hidden',
   },
   logoItemName: {
@@ -859,11 +920,11 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     lineHeight: 14,
   },
   interestBadge: {
-    marginTop: 4,
-    backgroundColor: colors.primary + '20',
+    backgroundColor: colors.primary + '18',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
+    marginTop: 4,
   },
   interestBadgeText: {
     fontFamily: theme.fonts.bold,

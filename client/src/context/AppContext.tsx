@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { palettes, TreeType } from '../theme';
 import { requestNotificationPermissions, syncAllNotifications, notifyGoalCompletion, updateBadgeCount } from '../services/NotificationService';
 import { saveImagePermanently, saveBase64Image } from '../services/FileService';
-import { syncWidgetBalance } from '../services/WidgetService';
+import { syncWidgetBalance, saveWidgetConfig, DEFAULT_WIDGET_CONFIG } from '../services/WidgetService';
 
 export type WalletCategory = 'E-Wallet' | 'Banks' | 'Personal';
 
@@ -123,6 +124,27 @@ export const DEFAULT_WITHDRAW_PRESETS: WithdrawPresetType[] = [
   { id: '12', name: 'Others', iconName: 'MoreHorizontal' },
 ];
 
+export type IncomePresetType = {
+  id: string;
+  name: string;
+  iconName: string;
+};
+
+export const DEFAULT_INCOME_PRESETS: IncomePresetType[] = [
+  { id: '1', name: 'Salary', iconName: 'Briefcase' },
+  { id: '2', name: 'Freelance', iconName: 'Laptop' },
+  { id: '3', name: 'Business', iconName: 'Store' },
+  { id: '4', name: 'Allowance', iconName: 'Coins' },
+  { id: '5', name: 'Bonus', iconName: 'Award' },
+  { id: '6', name: 'Investment', iconName: 'TrendingUp' },
+  { id: '7', name: 'Gift', iconName: 'Gift' },
+  { id: '8', name: 'Rental', iconName: 'Home' },
+  { id: '9', name: 'Refund', iconName: 'Receipt' },
+  { id: '10', name: 'Side Hustle', iconName: 'Sparkles' },
+  { id: '11', name: 'Selling', iconName: 'ShoppingBag' },
+  { id: '12', name: 'Others', iconName: 'MoreHorizontal' },
+];
+
 export type RecursionType = {
   id: string;
   companyName: string;
@@ -200,7 +222,7 @@ type AppContextType = {
   addWallet: (walletData: Omit<WalletType, 'id' | 'balance'>) => Promise<void>;
   editWallet: (id: string, walletData: Partial<Omit<WalletType, 'id' | 'balance'>>) => Promise<void>;
   transactions: TransactionType[];
-  addTransaction: (tx: Omit<TransactionType, 'id' | 'date'>) => Promise<void>;
+  addTransaction: (tx: Omit<TransactionType, 'id' | 'date'>, options?: { skipFeedback?: boolean }) => Promise<void>;
   goals: GoalType[];
   addGoal: (goal: Omit<GoalType, 'id'>) => Promise<void>;
   reorderWallets: (newWallets: WalletType[]) => Promise<void>;
@@ -210,16 +232,19 @@ type AppContextType = {
   deleteGoal: (id: string) => Promise<void>;
   receivables: ReceivableType[];
   addReceivable: (receivable: Omit<ReceivableType, 'id' | 'date'>) => Promise<void>;
+  editReceivable: (id: string, updates: Partial<ReceivableType>) => Promise<void>;
   deleteReceivable: (id: string) => Promise<void>;
   totalReceivables: number;
   debts: DebtType[];
   addDebt: (debt: Omit<DebtType, 'id' | 'date'>) => Promise<void>;
+  editDebt: (id: string, updates: Partial<DebtType>) => Promise<void>;
   deleteDebt: (id: string) => Promise<void>;
   totalDebts: number;
   totalBalance: number;
   clearData: () => Promise<void>;
   feedback: { visible: boolean; type: 'success' | 'delete' | 'error'; message: string };
   showFeedback: (type: 'success' | 'delete' | 'error', message: string) => void;
+  closeFeedback: () => void;
   confirmState: { visible: boolean; title: string; message: string; isDestructive?: boolean; onConfirm?: () => void };
   showConfirm: (title: string, message: string, onConfirm: () => void, isDestructive?: boolean) => void;
   closeConfirm: () => void;
@@ -263,6 +288,9 @@ type AppContextType = {
   withdrawPresets: WithdrawPresetType[];
   addWithdrawPreset: (name: string, iconName: string) => Promise<WithdrawPresetType>;
   deleteWithdrawPreset: (id: string) => Promise<void>;
+  incomePresets: IncomePresetType[];
+  addIncomePreset: (name: string, iconName: string) => Promise<IncomePresetType>;
+  deleteIncomePreset: (id: string) => Promise<void>;
   recursions: RecursionType[];
   addRecursion: (recursion: Omit<RecursionType, 'id' | 'date'>) => Promise<void>;
   editRecursion: (id: string, updates: Partial<Omit<RecursionType, 'id' | 'date'>>) => Promise<void>;
@@ -304,6 +332,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [groceryLists, setGroceryLists] = useState<GroceryListType[]>([]);
   const [travels, setTravels] = useState<TravelType[]>([]);
   const [withdrawPresets, setWithdrawPresets] = useState<WithdrawPresetType[]>(DEFAULT_WITHDRAW_PRESETS);
+  const [incomePresets, setIncomePresets] = useState<IncomePresetType[]>(DEFAULT_INCOME_PRESETS);
   const [recursions, setRecursions] = useState<RecursionType[]>([]);
   const [subscriptions, setSubscriptions] = useState<SubscriptionType[]>([]);
   const [installments, setInstallments] = useState<InstallmentType[]>([]);
@@ -322,6 +351,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     type: 'success',
     message: ''
   });
+  const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [confirmState, setConfirmState] = useState<{ visible: boolean; title: string; message: string; isDestructive?: boolean; onConfirm?: () => void }>({
     visible: false,
     title: '',
@@ -410,8 +440,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const storedDebts = await AsyncStorage.getItem('@debts');
       const storedImage = await AsyncStorage.getItem('@userImage');
 
+      const parsedTransactions: TransactionType[] = storedTransactions ? JSON.parse(storedTransactions) : [];
       if (storedName) setUserNameState(storedName);
-      if (storedTransactions) setTransactions(JSON.parse(storedTransactions));
       if (storedGoals) setGoals(JSON.parse(storedGoals));
       if (storedReceivables) setReceivables(JSON.parse(storedReceivables));
       if (storedDebts) setDebts(JSON.parse(storedDebts));
@@ -433,14 +463,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
         setWallets(updatedWallets);
         if (newTransactions.length > 0) {
-          const allTransactions = [...newTransactions, ...transactions];
+          const allTransactions = [...newTransactions, ...parsedTransactions];
           setTransactions(allTransactions);
           await AsyncStorage.setItem('@transactions', JSON.stringify(allTransactions));
+        } else {
+          setTransactions(parsedTransactions);
         }
 
         if (JSON.stringify(updatedWallets) !== JSON.stringify(parsedWallets)) {
            await AsyncStorage.setItem('@wallets', JSON.stringify(updatedWallets));
         }
+      } else {
+        setTransactions(parsedTransactions);
       }
       const storedPresets = await AsyncStorage.getItem('@withdrawPresets');
       if (storedPresets && JSON.parse(storedPresets).length > 0) {
@@ -448,6 +482,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else {
         setWithdrawPresets(DEFAULT_WITHDRAW_PRESETS);
         await AsyncStorage.setItem('@withdrawPresets', JSON.stringify(DEFAULT_WITHDRAW_PRESETS));
+      }
+      const storedIncomePresets = await AsyncStorage.getItem('@incomePresets');
+      if (storedIncomePresets && JSON.parse(storedIncomePresets).length > 0) {
+        setIncomePresets(JSON.parse(storedIncomePresets));
+      } else {
+        setIncomePresets(DEFAULT_INCOME_PRESETS);
+        await AsyncStorage.setItem('@incomePresets', JSON.stringify(DEFAULT_INCOME_PRESETS));
       }
       if (storedImage) setUserImageState(storedImage);
       const storedStatusBg = await AsyncStorage.getItem('@statusCardBg');
@@ -523,21 +564,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     if (isLoaded) {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const todayIndex = new Date().getDay();
-      const todayDateNumber = new Date().getDate();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-      const todayDebts = debts.filter(d => d.dueDate === todayStr).length;
+      const isDueTodayOrOverdue = (dateStr?: string) => {
+        if (!dateStr) return false;
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+          const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+          d.setHours(0, 0, 0, 0);
+          return d.getTime() <= today.getTime();
+        }
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return false;
+        d.setHours(0, 0, 0, 0);
+        return d.getTime() <= today.getTime();
+      };
+
+      const todayIndex = today.getDay();
+      const todayDateNumber = today.getDate();
+
+      const todayDebts = debts.filter(d => isDueTodayOrOverdue(d.dueDate)).length;
       const todayGroceries = groceryLists.filter(list => 
         list.scheduledDays && list.scheduledDays.includes(todayIndex)
       ).length;
       const todaySubs = subscriptions.filter(s => s.dayOfMonth === todayDateNumber).length;
-      const todayInstalls = installments.filter(i => i.dueDate === todayStr).length;
-      const todayRents = rents.filter(r => r.dueDate === todayStr).length;
+      const todayInstalls = installments.filter(i => i.paidMonths < i.monthsToPay && isDueTodayOrOverdue(i.dueDate)).length;
+      const todayRents = rents.filter(r => isDueTodayOrOverdue(r.dueDate)).length;
 
       updateBadgeCount(todayDebts + todayGroceries + todaySubs + todayInstalls + todayRents);
     }
   }, [isLoaded, debts, groceryLists, subscriptions, installments, rents]);
+
+  // Auto-process daily interest whenever app resumes from background or wakes up offline
+  useEffect(() => {
+    const handleAppStateChange = (nextState: string) => {
+      if (nextState === 'active' && isLoaded) {
+        setWallets(prevWallets => {
+          const { updatedWallets, newTransactions } = processDailyInterest(prevWallets);
+          if (newTransactions.length > 0) {
+            setTransactions(prevTxs => {
+              const merged = [...newTransactions, ...prevTxs];
+              AsyncStorage.setItem('@transactions', JSON.stringify(merged));
+              return merged;
+            });
+            AsyncStorage.setItem('@wallets', JSON.stringify(updatedWallets));
+            
+            const totalEarned = newTransactions.reduce((sum, t) => sum + t.amount, 0);
+            showFeedback('success', `+₱${totalEarned.toFixed(2)} Daily Interest Credited!`);
+            return updatedWallets;
+          }
+          return prevWallets;
+        });
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => {
+      subscription.remove();
+    };
+  }, [isLoaded]);
 
   const checkAndProcessRecursions = async () => {
     const today = new Date();
@@ -639,40 +725,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const processDailyInterest = (currentWallets: WalletType[]) => {
+  const processDailyInterest = (currentWallets: WalletType[]): { updatedWallets: WalletType[]; newTransactions: TransactionType[] } => {
     const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const newTransactions: TransactionType[] = [];
     
     const updatedWallets = currentWallets.map(wallet => {
-      if (!wallet.interestRate || wallet.interestRate <= 0) return wallet;
+      const rate = typeof wallet.interestRate === 'number' ? wallet.interestRate : parseFloat(String(wallet.interestRate || '0'));
+      if (!rate || rate <= 0 || !wallet.balance || wallet.balance <= 0) {
+        return wallet;
+      }
 
-      const lastDate = wallet.lastInterestDate ? new Date(wallet.lastInterestDate) : new Date();
+      // If lastInterestDate is not set, set it to yesterday midnight so interest starts today
+      let lastDate: Date;
+      if (wallet.lastInterestDate) {
+        const d = new Date(wallet.lastInterestDate);
+        lastDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      } else {
+        lastDate = new Date(todayMidnight.getTime() - 24 * 60 * 60 * 1000);
+      }
       
-      const diffTime = Math.abs(now.getTime() - lastDate.getTime());
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      const diffMs = todayMidnight.getTime() - lastDate.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-      if (diffDays > 0) {
-        const dailyRate = (wallet.interestRate / 100) / 365;
-        const interestEarned = wallet.balance * dailyRate * diffDays;
-        
-        if (interestEarned > 0.01) {
-          const txId = `int-${Date.now()}-${wallet.id}`;
-          newTransactions.push({
-            id: txId,
-            title: `Daily Interest - ${wallet.name}`,
-            amount: interestEarned,
-            date: now.toISOString(),
-            type: 'deposit',
-            walletId: wallet.id,
-            category: 'interest'
-          });
+      if (diffDays >= 1) {
+        let runningBalance = wallet.balance;
+        const dailyRate = (rate / 100) / 365;
 
-          return {
-            ...wallet,
-            balance: wallet.balance + interestEarned,
-            lastInterestDate: now.toISOString()
-          };
+        // Process each elapsed day individually for accurate compounding & offline catch-up
+        for (let dayOffset = 1; dayOffset <= diffDays; dayOffset++) {
+          const creditedDay = new Date(lastDate.getTime() + dayOffset * 24 * 60 * 60 * 1000);
+          creditedDay.setHours(6, 0, 0, 0); // 6:00 AM standard bank credit time
+
+          const dayInterest = runningBalance * dailyRate;
+          const roundedDayInterest = Number(dayInterest.toFixed(2));
+
+          if (roundedDayInterest >= 0.01) {
+            const txId = `int-${creditedDay.getTime()}-${wallet.id}-${dayOffset}`;
+            newTransactions.push({
+              id: txId,
+              title: `Daily Interest - ${wallet.name} (${rate}% p.a.)`,
+              amount: roundedDayInterest,
+              date: creditedDay.toISOString(),
+              type: 'deposit',
+              walletId: wallet.id,
+              category: 'interest',
+            });
+
+            runningBalance += roundedDayInterest;
+          }
         }
+
+        return {
+          ...wallet,
+          balance: Number(runningBalance.toFixed(2)),
+          lastInterestDate: todayMidnight.toISOString(),
+        };
       }
       return wallet;
     });
@@ -686,8 +794,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addWallet = async (walletData: Omit<WalletType, 'id' | 'balance'>) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     const permanentQr = await saveImagePermanently(walletData.qrCodeImage);
     const permanentIcon = await saveImagePermanently(walletData.customIcon);
 
@@ -697,17 +803,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       balance: 0,
       qrCodeImage: permanentQr || undefined,
       customIcon: permanentIcon || undefined,
+      lastInterestDate: (walletData.interestRate && walletData.interestRate > 0) ? (walletData.lastInterestDate || new Date().toISOString()) : undefined,
     };
     const updated = [...wallets, newWallet];
     setWallets(updated);
     await AsyncStorage.setItem('@wallets', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('success', 'Wallet Created');
   };
 
-  const addTransaction = async (txData: Omit<TransactionType, 'id' | 'date'>) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
+  const addTransaction = async (txData: Omit<TransactionType, 'id' | 'date'>, options?: { skipFeedback?: boolean }) => {
     const txCurrency = txData.currency || 'PHP';
     const newTx: TransactionType = {
       ...txData,
@@ -761,13 +865,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setWallets(updatedWallets);
     await AsyncStorage.setItem('@wallets', JSON.stringify(updatedWallets));
-    setLoading(false);
-    showFeedback('success', txData.type === 'deposit' ? 'Successfully Deposited' : 'Successfully Withdrawn');
+    if (!options?.skipFeedback) {
+      showFeedback('success', txData.type === 'deposit' ? 'Successfully Deposited' : 'Successfully Withdrawn');
+    }
   };
 
   const addGoal = async (goalData: Omit<GoalType, 'id'>) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     const permanentImage = await saveImagePermanently(goalData.imageUrl);
 
     const newGoal: GoalType = {
@@ -778,13 +881,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = [...goals, newGoal];
     setGoals(updated);
     await AsyncStorage.setItem('@goals', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('success', 'Goal Defined');
   };
 
   const addReceivable = async (receivableData: Omit<ReceivableType, 'id' | 'date'>) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     const newReceivable: ReceivableType = {
       ...receivableData,
       id: Date.now().toString(),
@@ -793,13 +893,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = [...receivables, newReceivable];
     setReceivables(updated);
     await AsyncStorage.setItem('@receivables', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('success', 'Added to Receivables');
   };
 
+  const editReceivable = async (id: string, updates: Partial<ReceivableType>) => {
+    const updated = receivables.map(r => (r.id === id ? { ...r, ...updates } : r));
+    setReceivables(updated);
+    await AsyncStorage.setItem('@receivables', JSON.stringify(updated));
+    showFeedback('success', 'Pending Payment Updated');
+  };
+
   const addDebt = async (debtData: Omit<DebtType, 'id' | 'date'>) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     const newDebt: DebtType = {
       ...debtData,
       id: Date.now().toString(),
@@ -808,14 +912,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = [...debts, newDebt];
     setDebts(updated);
     await AsyncStorage.setItem('@debts', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('success', 'Debt Recorded');
+  };
+
+  const editDebt = async (id: string, updates: Partial<DebtType>) => {
+    const updated = debts.map(d => (d.id === id ? { ...d, ...updates } : d));
+    setDebts(updated);
+    await AsyncStorage.setItem('@debts', JSON.stringify(updated));
+    showFeedback('success', 'Debt Updated');
   };
   
   const addRecursion = async (recursionData: Omit<RecursionType, 'id' | 'date'>) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     const currentDay = today.getDate();
@@ -849,17 +956,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = [...recursions, newRecursion];
     setRecursions(updated);
     await AsyncStorage.setItem('@recursions', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('success', 'Recursion Added');
   };
 
   const editRecursion = async (id: string, updates: Partial<Omit<RecursionType, 'id' | 'date'>>) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     const updated = recursions.map(r => r.id === id ? { ...r, ...updates } : r);
     setRecursions(updated);
     await AsyncStorage.setItem('@recursions', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('success', 'Recursion Updated');
   };
 
@@ -871,11 +974,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const processRecursion = async (id: string) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     const recursion = recursions.find(r => r.id === id);
     if (!recursion) {
-      setLoading(false);
       return;
     }
 
@@ -904,7 +1004,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setWallets(updatedWallets);
     await AsyncStorage.setItem('@wallets', JSON.stringify(updatedWallets));
     
-    setLoading(false);
     showFeedback('success', 'Processed Successfully');
   };
 
@@ -923,8 +1022,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addSubscription = async (subscriptionData: Omit<SubscriptionType, 'id' | 'date'>) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     const newSubscription: SubscriptionType = {
       ...subscriptionData,
       id: Date.now().toString(),
@@ -933,17 +1030,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = [...subscriptions, newSubscription];
     setSubscriptions(updated);
     await AsyncStorage.setItem('@subscriptions', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('success', 'Subscription Added');
   };
 
   const editSubscription = async (id: string, updates: Partial<Omit<SubscriptionType, 'id' | 'date'>>) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     const updated = subscriptions.map(s => s.id === id ? { ...s, ...updates } : s);
     setSubscriptions(updated);
     await AsyncStorage.setItem('@subscriptions', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('success', 'Subscription Updated');
   };
 
@@ -955,20 +1048,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const transferMoney = async (fromWalletId: string, toWalletId: string, amount: number, tax: number = 0, currency: 'PHP' | 'USD' = 'PHP') => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-
     const fromWallet = wallets.find(w => w.id === fromWalletId);
     const toWallet = wallets.find(w => w.id === toWalletId);
 
     if (!fromWallet || !toWallet) {
-      setLoading(false);
       showFeedback('error', 'Wallet not found');
       return;
     }
 
     if (amount <= tax && tax > 0) {
-      setLoading(false);
       showFeedback('error', 'Amount must be greater than the fee');
       return;
     }
@@ -1014,9 +1102,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (w.id === fromWalletId) {
         if (isUsd) {
           const currentUsd = w.usdBalance || 0;
-          return { ...w, usdBalance: Math.max(0, currentUsd - amount) };
+          if (currentUsd >= amount) {
+            return { ...w, usdBalance: currentUsd - amount };
+          } else {
+            const remainderUsd = amount - currentUsd;
+            const phpDeduct = remainderUsd * (usdToPhpRate || 58.5);
+            return {
+              ...w,
+              usdBalance: 0,
+              balance: Math.max(0, (w.balance || 0) - phpDeduct),
+            };
+          }
         } else {
-          return { ...w, balance: w.balance - amount };
+          // PHP transfer
+          const currentPhp = w.balance || 0;
+          if (currentPhp >= amount) {
+            return { ...w, balance: currentPhp - amount };
+          } else {
+            const remainderPhp = amount - Math.max(0, currentPhp);
+            const usdDeduct = remainderPhp / (usdToPhpRate || 58.5);
+            return {
+              ...w,
+              balance: 0,
+              usdBalance: Math.max(0, (w.usdBalance || 0) - usdDeduct),
+            };
+          }
         }
       }
       if (w.id === toWalletId) {
@@ -1024,7 +1134,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const currentUsd = w.usdBalance || 0;
           return { ...w, usdBalance: currentUsd + depositAmount };
         } else {
-          return { ...w, balance: w.balance + depositAmount };
+          return { ...w, balance: (w.balance || 0) + depositAmount };
         }
       }
       return w;
@@ -1033,13 +1143,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setWallets(updatedWallets);
     await AsyncStorage.setItem('@wallets', JSON.stringify(updatedWallets));
 
-    setLoading(false);
     showFeedback('success', 'Transfer Successful');
   };
 
   const editWallet = async (id: string, updates: Partial<WalletType>) => {
-    setLoading(true);
-    
     const finalUpdates = { ...updates };
     if (updates.qrCodeImage !== undefined) {
       finalUpdates.qrCodeImage = await saveImagePermanently(updates.qrCodeImage) || undefined;
@@ -1047,12 +1154,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updates.customIcon !== undefined) {
       finalUpdates.customIcon = await saveImagePermanently(updates.customIcon) || undefined;
     }
+    if (updates.interestRate !== undefined && updates.interestRate > 0) {
+      const existing = wallets.find(w => w.id === id);
+      if (!existing?.lastInterestDate) {
+        finalUpdates.lastInterestDate = new Date().toISOString();
+      }
+    }
 
-    await new Promise(resolve => setTimeout(resolve, 800));
     const updated = wallets.map(w => w.id === id ? { ...w, ...finalUpdates } : w);
     setWallets(updated);
     await AsyncStorage.setItem('@wallets', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('success', 'Wallet Updated');
   };
 
@@ -1062,18 +1173,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const editGoal = async (id: string, updates: Partial<GoalType>) => {
-    setLoading(true);
-    
     const finalUpdates = { ...updates };
     if (updates.imageUrl !== undefined) {
       finalUpdates.imageUrl = await saveImagePermanently(updates.imageUrl) || undefined;
     }
 
-    await new Promise(resolve => setTimeout(resolve, 800));
     const updated = goals.map(g => g.id === id ? { ...g, ...finalUpdates } : g);
     setGoals(updated);
     await AsyncStorage.setItem('@goals', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('success', 'Goal Updated');
   };
 
@@ -1150,8 +1257,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setGroceryLists([]);
     setTravels([]);
     setWithdrawPresets([]);
+    setIncomePresets([]);
     setRecursions([]);
     setSubscriptions([]);
+    setInstallments([]);
+    setRents([]);
     setAppPinState(null);
     setIsSecurityEnabled(false);
     setIsBiometricsEnabled(false);
@@ -1160,6 +1270,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsNotificationsEnabled(true);
     setTreeTypeState('emerald');
     setStatusCardBgState(null);
+    await saveWidgetConfig(DEFAULT_WIDGET_CONFIG);
+    await syncWidgetBalance(0, 0, DEFAULT_WIDGET_CONFIG);
+    await syncAllNotifications([], [], [], [], [], [], [], false);
     showFeedback('delete', 'All Data Cleared');
   };
 
@@ -1205,6 +1318,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           .then(res => res.filter((img): img is string => img !== null)) : [],
       }))) : [];
 
+      const importedInstallments = Array.isArray(data.installments) ? data.installments : [];
+      const importedRents = Array.isArray(data.rents) ? data.rents : [];
+
       const keysToSave: [string, string | null][] = [
         ['@username', data.username || null],
         ['@wallets', importedWallets ? JSON.stringify(importedWallets) : '[]'],
@@ -1215,8 +1331,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ['@groceryLists', data.groceryLists ? JSON.stringify(data.groceryLists) : '[]'],
         ['@travels', importedTravels ? JSON.stringify(importedTravels) : '[]'],
         ['@withdrawPresets', data.withdrawPresets ? JSON.stringify(data.withdrawPresets) : '[]'],
+        ['@incomePresets', data.incomePresets ? JSON.stringify(data.incomePresets) : '[]'],
         ['@recursions', data.recursions ? JSON.stringify(data.recursions) : '[]'],
         ['@subscriptions', data.subscriptions ? JSON.stringify(data.subscriptions) : '[]'],
+        ['@installments', JSON.stringify(importedInstallments)],
+        ['@rents', JSON.stringify(importedRents)],
         ['@appPin', data.appPin || null],
         ['@isSecurityEnabled', data.isSecurityEnabled !== undefined ? String(data.isSecurityEnabled) : null],
         ['@isBiometricsEnabled', data.isBiometricsEnabled !== undefined ? String(data.isBiometricsEnabled) : null],
@@ -1244,7 +1363,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setGroceryLists(data.groceryLists || []);
       setTravels(importedTravels);
       setWithdrawPresets(data.withdrawPresets || []);
+      setIncomePresets(data.incomePresets || []);
       setRecursions(data.recursions || []);
+      setInstallments(importedInstallments);
+      setRents(importedRents);
       setAppPinState(data.appPin || null);
 
       if (data.isSecurityEnabled !== undefined) {
@@ -1267,6 +1389,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.isNotificationsEnabled !== undefined) setIsNotificationsEnabled(!!data.isNotificationsEnabled);
       if (data.subscriptions) setSubscriptions(data.subscriptions);
 
+      if (data.widgetConfig) {
+        await saveWidgetConfig(data.widgetConfig);
+      }
+
+      const newTotalPhp = importedWallets.reduce((acc, w) => acc + (w.balance || 0) + ((w.usdBalance || 0) * (usdToPhpRate || 58.5)), 0);
+      await syncWidgetBalance(newTotalPhp, importedWallets.length, data.widgetConfig);
+
+      await syncAllNotifications(
+        data.debts || [],
+        data.groceryLists || [],
+        importedInstallments,
+        data.subscriptions || [],
+        importedRents,
+        data.recursions || [],
+        importedGoals,
+        data.isNotificationsEnabled !== undefined ? !!data.isNotificationsEnabled : true
+      );
+
       showFeedback('success', 'Data Imported Successfully');
     } catch (e) {
       console.error('Failed to import data', e);
@@ -1275,11 +1415,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const showFeedback = (type: 'success' | 'delete' | 'error', message: string) => {
+  const closeFeedback = () => {
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = null;
+    }
+    setFeedback(prev => ({ ...prev, visible: false }));
+  };
+
+  const showFeedback = (type: 'success' | 'delete' | 'error', message: string, duration = 800) => {
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+    }
     setFeedback({ visible: true, type, message });
-    setTimeout(() => {
+    feedbackTimeoutRef.current = setTimeout(() => {
       setFeedback(prev => ({ ...prev, visible: false }));
-    }, 1500); 
+      feedbackTimeoutRef.current = null;
+    }, duration); 
   };
 
   const showConfirm = (title: string, message: string, onConfirm: () => void, isDestructive = true) => {
@@ -1362,7 +1514,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addTravel = async (travelData: Omit<TravelType, 'id'>) => {
-    setLoading(true);
     const permanentImages = travelData.images 
       ? await Promise.all(travelData.images.map(img => saveImagePermanently(img)))
       : [];
@@ -1375,24 +1526,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = [newTravel, ...travels];
     setTravels(updated);
     await AsyncStorage.setItem('@travels', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('success', 'Travel Recorded');
   };
 
   const editTravel = async (id: string, updates: Partial<TravelType>) => {
-    setLoading(true);
-    
     let finalImages = updates.images;
     if (updates.images) {
       finalImages = await Promise.all(updates.images.map(img => saveImagePermanently(img)))
         .then(res => res.filter((img): img is string => img !== null));
     }
 
-    await new Promise(resolve => setTimeout(resolve, 800));
     const updated = travels.map(t => t.id === id ? { ...t, ...updates, images: finalImages || t.images } : t);
     setTravels(updated);
     await AsyncStorage.setItem('@travels', JSON.stringify(updated));
-    setLoading(false);
     showFeedback('success', 'Trip Updated');
   };
 
@@ -1432,12 +1578,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const payReceivable = async (id: string, amount: number, walletId: string) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-
     const receivable = receivables.find(r => r.id === id);
     if (!receivable) {
-      setLoading(false);
       return;
     }
 
@@ -1475,17 +1617,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setWallets(updatedWallets);
     await AsyncStorage.setItem('@wallets', JSON.stringify(updatedWallets));
 
-    setLoading(false);
     showFeedback('success', isFullPayment ? 'Payment Received' : 'Partial Payment Recorded');
   };
 
   const payDebt = async (id: string, amount: number) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-
     const debt = debts.find(d => d.id === id);
     if (!debt) {
-      setLoading(false);
       return;
     }
 
@@ -1514,20 +1651,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTransactions(updatedTx);
     await AsyncStorage.setItem('@transactions', JSON.stringify(updatedTx));
 
-    setLoading(false);
     showFeedback('success', isFullPayment ? 'Debt Settled' : 'Partial Payment Recorded');
   };
 
   const totalReceivables = receivables.reduce((acc, r) => acc + r.amount, 0);
   const totalDebts = debts.reduce((acc, d) => acc + d.amount, 0);
   const totalBalance = wallets.reduce((acc, wallet) => acc + getWalletTotalBalanceInPhp(wallet, usdToPhpRate), 0);
+  
+  const expenseTransactions = transactions.filter(t => t.type === 'withdrawal');
+  const totalExpense = expenseTransactions.reduce((acc, t) => acc + (t.currency === 'USD' ? t.amount * usdToPhpRate : t.amount), 0);
+  const expenseCount = expenseTransactions.length;
 
-  // Sync Total Balance widget for phone home screen
+  // Sync Total Balance & Total Expense widgets for phone home screen
   useEffect(() => {
     if (isLoaded) {
-      syncWidgetBalance(totalBalance, wallets.length);
+      syncWidgetBalance(totalBalance, wallets.length, undefined, totalExpense, expenseCount);
     }
-  }, [isLoaded, totalBalance, wallets.length]);
+  }, [isLoaded, totalBalance, wallets.length, totalExpense, expenseCount]);
 
   const calculateStreak = () => {
     if (transactions.length === 0) return 0;
@@ -1589,6 +1729,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = withdrawPresets.filter(p => p.id !== id);
     setWithdrawPresets(updated);
     await AsyncStorage.setItem('@withdrawPresets', JSON.stringify(updated));
+    showFeedback('delete', 'Preset Removed');
+  };
+
+  const addIncomePreset = async (name: string, iconName: string) => {
+    const newPreset: IncomePresetType = {
+      id: Date.now().toString(),
+      name,
+      iconName,
+    };
+    const updated = [...incomePresets, newPreset];
+    setIncomePresets(updated);
+    await AsyncStorage.setItem('@incomePresets', JSON.stringify(updated));
+    showFeedback('success', 'Preset Added');
+    return newPreset;
+  };
+
+  const deleteIncomePreset = async (id: string) => {
+    const updated = incomePresets.filter(p => p.id !== id);
+    setIncomePresets(updated);
+    await AsyncStorage.setItem('@incomePresets', JSON.stringify(updated));
     showFeedback('delete', 'Preset Removed');
   };
 
@@ -1785,16 +1945,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteGoal,
         receivables,
         addReceivable,
+        editReceivable,
         deleteReceivable,
         totalReceivables,
         debts,
         addDebt,
+        editDebt,
         deleteDebt,
         totalDebts,
         totalBalance,
         clearData,
         feedback,
         showFeedback,
+        closeFeedback,
         confirmState,
         showConfirm,
         closeConfirm,
@@ -1838,6 +2001,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         withdrawPresets,
         addWithdrawPreset,
         deleteWithdrawPreset,
+        incomePresets,
+        addIncomePreset,
+        deleteIncomePreset,
         recursions,
         addRecursion,
         editRecursion,

@@ -24,7 +24,7 @@ export const requestNotificationPermissions = async () => {
     
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
-        name: 'Leapon Alerts & Reminders',
+        name: 'Leon Alerts & Reminders',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#10b981',
@@ -56,7 +56,7 @@ export const sendTestNotification = async (): Promise<boolean> => {
     await requestNotificationPermissions();
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: "Leapon Alerts",
+        title: "Leon Alerts",
         body: "Notifications are working! You'll receive alerts for Paydays, Goals, Subscriptions, Installments & Rent.",
         data: { path: 'Main', screen: 'Home' },
         sound: true,

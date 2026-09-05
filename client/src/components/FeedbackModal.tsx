@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Modal, Animated } from 'react-native';
-import { CheckCircle, Trash2, AlertCircle } from 'lucide-react-native';
+import { View, Text, StyleSheet, Modal, Animated, TouchableWithoutFeedback } from 'react-native';
+import { Check, Trash2, AlertCircle } from 'lucide-react-native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 
 export default function FeedbackModal() {
-  const { feedback, colors, isDarkMode } = useAppContext();
+  const { feedback, closeFeedback, colors, isDarkMode } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const scaleValue = useRef(new Animated.Value(0)).current;
   const opacityValue = useRef(new Animated.Value(0)).current;
@@ -19,12 +19,12 @@ export default function FeedbackModal() {
         Animated.spring(scaleValue, {
           toValue: 1,
           useNativeDriver: true,
-          tension: 50,
-          friction: 6,
+          tension: 140,
+          friction: 8,
         }),
         Animated.timing(opacityValue, {
           toValue: 1,
-          duration: 200,
+          duration: 100,
           useNativeDriver: true,
         })
       ]).start();
@@ -33,23 +33,37 @@ export default function FeedbackModal() {
 
   return (
     <Modal transparent animationType="fade" visible={feedback.visible}>
-      <View style={styles.overlay}>
-        <Animated.View style={[styles.content, { transform: [{ scale: scaleValue }], opacity: opacityValue }]}>
-          <View style={[
-            styles.iconWrapper, 
-            feedback.type === 'success' ? styles.successBg : (feedback.type === 'error' ? styles.errorBg : styles.deleteBg)
-          ]}>
-            {feedback.type === 'success' && <CheckCircle size={48} color={colors.primary} />}
-            {feedback.type === 'error' && <AlertCircle size={48} color={colors.danger} />}
-            {feedback.type === 'delete' && <Trash2 size={48} color={colors.danger} />}
-          </View>
-          <Text style={styles.message}>{feedback.message}</Text>
-        </Animated.View>
-      </View>
+      <TouchableWithoutFeedback onPress={closeFeedback}>
+        <View style={styles.overlay}>
+          <TouchableWithoutFeedback>
+            <Animated.View style={[{ transform: [{ scale: scaleValue }], opacity: opacityValue }]}>
+              {feedback.type === 'success' ? (
+                <View style={styles.checkCard}>
+                  <View style={styles.checkCircle}>
+                    <Check size={38} color="#ffffff" strokeWidth={3.5} />
+                  </View>
+                </View>
+              ) : feedback.type === 'delete' ? (
+                <View style={styles.checkCard}>
+                  <View style={[styles.checkCircle, { backgroundColor: colors.danger, shadowColor: colors.danger }]}>
+                    <Trash2 size={34} color="#ffffff" />
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.content}>
+                  <View style={[styles.iconWrapper, styles.errorBg]}>
+                    <AlertCircle size={44} color={colors.danger} />
+                  </View>
+                  {feedback.message ? <Text style={styles.message}>{feedback.message}</Text> : null}
+                </View>
+              )}
+            </Animated.View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }
-
 
 const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   overlay: {
@@ -58,12 +72,40 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  checkCard: {
+    width: 100,
+    height: 100,
+    backgroundColor: colors.card,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: isDarkMode ? 0.4 : 0.15,
+    shadowRadius: 16,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+  },
+  checkCircle: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
+  },
   content: {
     backgroundColor: colors.card,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.xxl,
     alignItems: 'center',
-    width: '65%',
+    width: 240,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: isDarkMode ? 0.3 : 0.2,
@@ -73,25 +115,19 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderColor: colors.border,
   },
   iconWrapper: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: theme.spacing.lg,
-  },
-  successBg: {
-    backgroundColor: colors.primary + '15',
-  },
-  deleteBg: {
-    backgroundColor: colors.danger + '15',
+    marginBottom: theme.spacing.md,
   },
   errorBg: {
-    backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2',
+    backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : '#fef2f2',
   },
   message: {
     fontFamily: theme.fonts.bold,
-    fontSize: 18,
+    fontSize: 16,
     color: colors.text,
     textAlign: 'center',
   }

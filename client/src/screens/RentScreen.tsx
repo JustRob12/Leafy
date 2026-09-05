@@ -20,7 +20,8 @@ import {
   Zap,
   CreditCard,
   Building,
-  CheckCircle2
+  CheckCircle2,
+  Pencil
 } from 'lucide-react-native';
 import { useAppContext, RentType } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
@@ -147,7 +148,11 @@ export default function RentScreen() {
                     style={styles.cardUrgentGradient}
                   >
                     <View style={styles.cardHeaderRow}>
-                      <View style={styles.cardTitleBox}>
+                      <TouchableOpacity 
+                        style={styles.cardTitleBox}
+                        onPress={() => navigation.navigate('AddRent', { rent: item })}
+                        activeOpacity={0.7}
+                      >
                         <Text style={styles.urgentBadgeText}>
                           🚨 RENT DUE IN {daysRemaining <= 0 ? 'TODAY' : `${daysRemaining} DAYS`}
                         </Text>
@@ -156,10 +161,19 @@ export default function RentScreen() {
                           <MapPin size={12} color="#ffffff" />
                           <Text style={styles.locationTextWhite} numberOfLines={1}>{item.location}</Text>
                         </View>
-                      </View>
-                      <TouchableOpacity onPress={() => handleDelete(item)} style={styles.deleteBtnUrgent}>
-                        <Trash2 size={18} color="rgba(255, 255, 255, 0.9)" />
                       </TouchableOpacity>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <TouchableOpacity 
+                          onPress={() => navigation.navigate('AddRent', { rent: item })} 
+                          style={styles.deleteBtnUrgent}
+                          activeOpacity={0.7}
+                        >
+                          <Pencil size={18} color="rgba(255, 255, 255, 0.9)" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDelete(item)} style={styles.deleteBtnUrgent}>
+                          <Trash2 size={18} color="rgba(255, 255, 255, 0.9)" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
 
                     <View style={styles.cardBodyRow}>
@@ -221,7 +235,11 @@ export default function RentScreen() {
                   ]}
                 >
                   <View style={styles.cardHeaderRow}>
-                    <View style={styles.cardTitleBox}>
+                    <TouchableOpacity 
+                      style={styles.cardTitleBox}
+                      onPress={() => navigation.navigate('AddRent', { rent: item })}
+                      activeOpacity={0.7}
+                    >
                       <View style={styles.titleIconRow}>
                         <View style={[styles.iconBox, { backgroundColor: colors.primary + '20' }]}>
                           <Home size={18} color={colors.primary} />
@@ -234,11 +252,20 @@ export default function RentScreen() {
                           </View>
                         </View>
                       </View>
-                    </View>
-
-                    <TouchableOpacity onPress={() => handleDelete(item)} style={styles.deleteBtn}>
-                      <Trash2 size={18} color={colors.textMuted} />
                     </TouchableOpacity>
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <TouchableOpacity 
+                        onPress={() => navigation.navigate('AddRent', { rent: item })} 
+                        style={styles.deleteBtn}
+                        activeOpacity={0.7}
+                      >
+                        <Pencil size={18} color={colors.textMuted} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDelete(item)} style={styles.deleteBtn}>
+                        <Trash2 size={18} color={colors.textMuted} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
                   <View style={styles.cardBodyRow}>

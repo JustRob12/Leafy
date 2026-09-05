@@ -10,12 +10,13 @@ import { cacheDirectory, writeAsStringAsync, readAsStringAsync } from 'expo-file
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { readImageAsBase64 } from '../services/FileService';
+import { getWidgetConfig } from '../services/WidgetService';
 
 export default function DataTransferScreen() {
   const {
     username, wallets, transactions, goals, userImage,
     receivables, debts, groceryLists, travels, appPin, isSecurityEnabled, isBiometricsEnabled, isDarkMode,
-    recursions, subscriptions, statusCardBg, treeType, isNotificationsEnabled, withdrawPresets,
+    recursions, subscriptions, installments, rents, statusCardBg, treeType, isNotificationsEnabled, withdrawPresets, incomePresets,
     importData, clearData, showConfirm, colors
   } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
@@ -44,6 +45,8 @@ export default function DataTransferScreen() {
           .then(res => res.filter((img): img is string => img !== null)) : [],
       })));
 
+      const currentWidgetConfig = await getWidgetConfig();
+
       const backupData = {
         username,
         wallets: processedWallets,
@@ -60,23 +63,27 @@ export default function DataTransferScreen() {
         userImage: processedUserImage,
         recursions,
         subscriptions,
+        installments: installments || [],
+        rents: rents || [],
+        widgetConfig: currentWidgetConfig,
         statusCardBg: processedStatusCardBg,
         treeType,
         isNotificationsEnabled,
         withdrawPresets,
+        incomePresets,
         exportDate: new Date().toISOString(),
-        version: '1.2.0' // Bumped version for image support
+        version: '1.3.0'
       };
 
       const jsonString = JSON.stringify(backupData);
-      const fileUri = cacheDirectory + 'leapon_backup.json';
+      const fileUri = cacheDirectory + 'leon_backup.json';
 
       await writeAsStringAsync(fileUri, jsonString, { encoding: 'utf8' });
 
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri, {
           mimeType: 'application/json',
-          dialogTitle: 'Export Leapon Data',
+          dialogTitle: 'Export Leon Data',
           UTI: 'public.json'
         });
       } else {
@@ -157,7 +164,7 @@ export default function DataTransferScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Backup Data</Text>
           <Text style={styles.sectionDesc}>
-            Save your wallets, goals, and transactions to a file. You can share this file to your new phone via Email, Drive, or Messaging.
+            Save your wallets, goals, transactions, installments, rent properties, subscriptions, and widget settings to a file. You can share this file to your new phone via Email, Drive, or Messaging.
           </Text>
           <TouchableOpacity style={styles.actionCard} onPress={handleExport}>
             <View style={[styles.iconWrapper, { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5' }]}>
@@ -165,7 +172,7 @@ export default function DataTransferScreen() {
             </View>
             <View style={styles.cardContent}>
               <Text style={styles.cardTitle}>Export Data File</Text>
-              <Text style={styles.cardSubtitle}>Generate leapon_backup.json</Text>
+              <Text style={styles.cardSubtitle}>Generate leon_backup.json</Text>
             </View>
           </TouchableOpacity>
         </View>

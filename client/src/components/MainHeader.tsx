@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Mod
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme';
-import { useAppContext } from '../context/AppContext';
+import { useAppContext, getWalletTotalBalanceInPhp } from '../context/AppContext';
 import { navigationRef } from '../navigation/navigationUtils';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, User, Settings, LogOut, Info, ChevronRight, Flame, Sprout, TreeDeciduous, Egg, X, Image as ImageIcon, HelpCircle, Bell, Target, AlertCircle, ShoppingCart, Coins, Calendar, CreditCard, Home, Receipt, Sparkles } from 'lucide-react-native';
@@ -19,7 +19,7 @@ export interface MainHeaderProps {
 }
 
 export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderProps) {
-  const { username, userImage, streakCount, transactionDates, showConfirm, clearData, colors, isDarkMode, toggleTheme, startTutorial, goals, wallets, debts, groceryLists, subscriptions, installments, rents, recursions, totalBalance, transactions } = useAppContext();
+  const { username, userImage, streakCount, transactionDates, showConfirm, clearData, colors, isDarkMode, toggleTheme, startTutorial, goals, wallets, debts, groceryLists, subscriptions, installments, rents, recursions, totalBalance, transactions, usdToPhpRate } = useAppContext();
 
   const navigation = useNavigation<any>();
   const [internalActiveRoute, setInternalActiveRoute] = useState('Home');
@@ -131,8 +131,14 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
     // 5. Goals Reached 100% Target
     if (goals && wallets) {
       goals.forEach(g => {
-        const wallet = wallets.find(w => w.id === g.walletId);
-        if (wallet && g.targetAmount > 0 && wallet.balance >= g.targetAmount) {
+        const isLinkedToAll = g.walletId === 'ALL' || g.walletId === 'all';
+        const currentBal = isLinkedToAll
+          ? wallets.reduce((sum, w) => sum + getWalletTotalBalanceInPhp(w, usdToPhpRate), 0)
+          : (() => {
+              const wallet = wallets.find(w => w.id === g.walletId);
+              return wallet ? getWalletTotalBalanceInPhp(wallet, usdToPhpRate) : 0;
+            })();
+        if (g.targetAmount > 0 && currentBal >= g.targetAmount) {
           list.push({
             id: `goal-${g.id}-complete`,
             title: 'Goal Target Reached',
@@ -217,8 +223,14 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
 
     // 4. Goal Encouragement
     const nearGoal = goals.find(g => {
-      const wallet = wallets.find(w => w.id === g.walletId);
-      const progress = wallet ? (wallet.balance / g.targetAmount) : 0;
+      const isLinkedToAll = g.walletId === 'ALL' || g.walletId === 'all';
+      const currentBal = isLinkedToAll
+        ? wallets.reduce((sum, w) => sum + getWalletTotalBalanceInPhp(w, usdToPhpRate), 0)
+        : (() => {
+            const wallet = wallets.find(w => w.id === g.walletId);
+            return wallet ? getWalletTotalBalanceInPhp(wallet, usdToPhpRate) : 0;
+          })();
+      const progress = g.targetAmount > 0 ? (currentBal / g.targetAmount) : 0;
       return progress > 0.8 && progress < 1;
     });
     if (nearGoal) return `You're so close! Just a little more and "${nearGoal.title}" will be fully blooming.`;

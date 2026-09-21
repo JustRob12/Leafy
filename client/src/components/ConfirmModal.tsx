@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, TouchableWithoutFeedback, KeyboardAvoidingView, Platform } from 'react-native';
-import { AlertTriangle, X } from 'lucide-react-native';
+import { AlertTriangle, X, CreditCard, CheckCircle2, Trash2 } from 'lucide-react-native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 
@@ -9,6 +9,29 @@ export default function ConfirmModal() {
   const styles = getStyles(colors, isDarkMode);
 
   if (!confirmState.visible) return null;
+
+  const isDestructive = confirmState.isDestructive ?? false;
+  const isPay = confirmState.icon === 'pay' || confirmState.confirmText?.toLowerCase() === 'pay';
+  const confirmButtonText = confirmState.confirmText || (isDestructive ? 'Delete' : 'Confirm');
+
+  const renderIcon = () => {
+    if (confirmState.icon === 'pay' || isPay) {
+      return <CreditCard size={24} color={colors.primary} />;
+    }
+    if (confirmState.icon === 'trash') {
+      return <Trash2 size={24} color={colors.danger} />;
+    }
+    if (confirmState.icon === 'check') {
+      return <CheckCircle2 size={24} color={colors.primary} />;
+    }
+    if (isDestructive) {
+      return <AlertTriangle size={24} color={colors.danger} />;
+    }
+    return <AlertTriangle size={24} color={colors.primary} />;
+  };
+
+  const iconBgColor = (isDestructive && !isPay) ? (colors.danger + '15') : (colors.primary + '15');
+  const confirmBtnBgColor = isDestructive ? colors.danger : colors.primary;
 
   return (
     <Modal transparent animationType="fade" visible={confirmState.visible}>
@@ -21,10 +44,10 @@ export default function ConfirmModal() {
             <TouchableWithoutFeedback>
               <View style={styles.content}>
                 <View style={styles.header}>
-                  <View style={[styles.iconWrapper, confirmState.isDestructive ? { backgroundColor: colors.danger + '15' } : { backgroundColor: colors.primary + '15' }]}>
-                    <AlertTriangle size={24} color={confirmState.isDestructive ? colors.danger : colors.primary} />
+                  <View style={[styles.iconWrapper, { backgroundColor: iconBgColor }]}>
+                    {renderIcon()}
                   </View>
-                  <TouchableOpacity onPress={closeConfirm} style={styles.closeBtn}>
+                  <TouchableOpacity onPress={closeConfirm} style={styles.closeBtn} activeOpacity={0.7}>
                     <X size={20} color={colors.textMuted} />
                   </TouchableOpacity>
                 </View>
@@ -33,17 +56,18 @@ export default function ConfirmModal() {
                 <Text style={styles.message}>{confirmState.message}</Text>
                 
                 <View style={styles.actions}>
-                  <TouchableOpacity style={styles.cancelBtn} onPress={closeConfirm}>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={closeConfirm} activeOpacity={0.7}>
                     <Text style={styles.cancelText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    style={[styles.confirmBtn, confirmState.isDestructive ? { backgroundColor: colors.danger } : { backgroundColor: colors.primary }]} 
+                    style={[styles.confirmBtn, { backgroundColor: confirmBtnBgColor }]} 
+                    activeOpacity={0.8}
                     onPress={() => {
                       if (confirmState.onConfirm) confirmState.onConfirm();
                       closeConfirm();
                     }}
                   >
-                    <Text style={styles.confirmText}>{confirmState.isDestructive ? 'Delete' : 'Confirm'}</Text>
+                    <Text style={styles.confirmText}>{confirmButtonText}</Text>
                   </TouchableOpacity>
                 </View>
               </View>

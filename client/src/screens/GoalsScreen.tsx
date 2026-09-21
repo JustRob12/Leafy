@@ -90,8 +90,11 @@ export default function GoalsScreen() {
           </View>
         ) : (
           filteredGoals.map((goal) => {
+            const isLinkedToAll = goal.walletId === 'ALL' || goal.walletId === 'all';
             const linkedWallet = wallets.find(w => w.id === goal.walletId);
-            const currentAmount = linkedWallet ? getWalletTotalBalanceInPhp(linkedWallet, usdToPhpRate) : 0;
+            const currentAmount = isLinkedToAll
+              ? wallets.reduce((sum, w) => sum + getWalletTotalBalanceInPhp(w, usdToPhpRate), 0)
+              : (linkedWallet ? getWalletTotalBalanceInPhp(linkedWallet, usdToPhpRate) : 0);
             const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
 
             return (
@@ -116,12 +119,14 @@ export default function GoalsScreen() {
                   
                   <View style={styles.shopeeMetaRow}>
                     <Wallet size={12} color={colors.textMuted} />
-                    <Text style={styles.shopeeWalletName} numberOfLines={1}>{linkedWallet?.name}</Text>
+                    <Text style={styles.shopeeWalletName} numberOfLines={1}>
+                      {isLinkedToAll ? 'All Wallets' : (linkedWallet?.name || 'Unknown Wallet')}
+                    </Text>
                   </View>
 
                   <View style={styles.shopeeStatsRow}>
-                    <Text style={styles.shopeeStatValue}>₱{currentAmount.toLocaleString()}</Text>
-                    <Text style={styles.shopeeStatTotal}> / ₱{goal.targetAmount.toLocaleString()}</Text>
+                    <Text style={styles.shopeeStatValue}>₱{Math.floor(currentAmount).toLocaleString('en-PH')}</Text>
+                    <Text style={styles.shopeeStatTotal}> / ₱{goal.targetAmount.toLocaleString('en-PH')}</Text>
                   </View>
                 </View>
               </TouchableOpacity>

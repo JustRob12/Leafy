@@ -8,7 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
-const BUTTON_WIDTH = (width - 80) / 4; // Slightly narrower
+const BUTTON_WIDTH = Math.min((width - 80) / 4, 75); // Slightly narrower
 
 export default function CalculatorScreen() {
   const navigation = useNavigation<any>();
@@ -253,6 +253,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     width: '100%',
   },
   keypad: {
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
     padding: 16,
     backgroundColor: colors.card,
     borderTopLeftRadius: 32,

@@ -7,7 +7,7 @@ import { AudioPlayer, createAudioPlayer } from 'expo-audio';
 
 
 import { theme } from '../theme';
-import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, Plane, RefreshCw, Leaf, Eye, EyeOff, CreditCard, Coins, Sparkles, ArrowRightLeft, TrendingUp, Layers, MapPin, Building, Home } from 'lucide-react-native';
+import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, ShoppingBag, Plane, RefreshCw, Leaf, Eye, EyeOff, CreditCard, Coins, Sparkles, ArrowRightLeft, TrendingUp, Layers, MapPin, Building, Home, PieChart } from 'lucide-react-native';
 import { useAppContext, getTransactionAmountInPhp, getWalletTotalBalanceInPhp } from '../context/AppContext';
 import { useNavigation, useScrollToTop } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
@@ -81,7 +81,36 @@ export default function HomeScreen() {
   const styles = getStyles(colors, isDarkMode);
 
   const SCREEN_WIDTH = Dimensions.get('window').width;
+  const CARD_SIDE_INSET = 24;
+  const CARD_WIDTH = SCREEN_WIDTH - (CARD_SIDE_INSET * 2);
+  const CARD_GAP = 12;
+  const CARD_SNAP_INTERVAL = CARD_WIDTH + CARD_GAP;
   const WALLET_ITEM_WIDTH = 100; // Tighter ticker
+
+  // Header Cards Carousel State
+  const carouselRef = useRef<ScrollView>(null);
+  const [activeCardIndex, setActiveCardIndex] = useState(1); // 1 = Total Balance (Main)
+
+  // Start on Total Balance (slide 1)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      carouselRef.current?.scrollTo({ x: CARD_SNAP_INTERVAL, animated: false });
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [CARD_SNAP_INTERVAL]);
+
+  const handleCarouselScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = e.nativeEvent.contentOffset.x;
+    const index = Math.max(0, Math.min(2, Math.round(offsetX / CARD_SNAP_INTERVAL)));
+    if (index !== activeCardIndex) {
+      setActiveCardIndex(index);
+    }
+  };
+
+  const scrollToCard = (index: number) => {
+    carouselRef.current?.scrollTo({ x: index * CARD_SNAP_INTERVAL, animated: true });
+    setActiveCardIndex(index);
+  };
 
   // Goal Fade Carousel Logic
   const [activeGoalIndex, setActiveGoalIndex] = useState(0);
@@ -443,70 +472,478 @@ export default function HomeScreen() {
   // Total badge for "More" container button = sum of all badges inside More modal
   const totalMoreBadge = pendingDebts + pendingGroceries + pendingSubscriptions + dueInstallmentsCount + dueRentsCount;
 
+  // EXPENSE DISTRIBUTION (FOR PIE GRAPH CARD)
+  const expenseDistributionData = useMemo(() => {
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+
+    const expenseGroups: { [key: string]: { name: string; icon: string; amount: number } } = {};
+    
+    (transactions || [])
+      .filter(t => {
+        if (t.type !== 'withdrawal' || t.category === 'transfer') return false;
+        const d = new Date(t.date);
+        return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+      })
+      .forEach(tx => {
+        const name = tx.title || 'Expense';
+        const icon = tx.icon || 'Receipt';
+        const amt = getTransactionAmountInPhp(tx, usdToPhpRate);
+        if (!expenseGroups[name]) {
+          expenseGroups[name] = { name, icon, amount: 0 };
+        }
+        expenseGroups[name].amount += amt;
+      });
+
+    const total = Object.values(expenseGroups).reduce((acc, curr) => acc + curr.amount, 0);
+    const sorted = Object.values(expenseGroups).sort((a, b) => b.amount - a.amount);
+    
+    const sliceColors = [
+      '#38bdf8', // Sky Blue
+      '#fbbf24', // Amber
+      '#f87171', // Coral Red
+      '#a78bfa', // Lavender
+      '#34d399', // Mint
+      '#fb923c', // Orange
+      '#f472b6', // Pink
+      '#818cf8', // Indigo
+    ];
+
+    const items = sorted.map((item, idx) => ({
+      ...item,
+      color: sliceColors[idx % sliceColors.length],
+      percentage: total > 0 ? (item.amount / total) * 100 : 0,
+    }));
+
+    return { items, total };
+  }, [transactions, usdToPhpRate]);
+
+  // ANALYTICS DATA (FOR LINE GRAPH CARD)
+  const analyticsData = useMemo(() => {
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+
+    const monthSavings = (transactions || [])
+      .filter(t => t.type === 'deposit' && new Date(t.date).getMonth() === thisMonth && new Date(t.date).getFullYear() === thisYear)
+      .reduce((acc, curr) => acc + getTransactionAmountInPhp(curr, usdToPhpRate), 0);
+
+    const monthSpent = (transactions || [])
+      .filter(t => t.type === 'withdrawal' && new Date(t.date).getMonth() === thisMonth && new Date(t.date).getFullYear() === thisYear)
+      .reduce((acc, curr) => acc + getTransactionAmountInPhp(curr, usdToPhpRate), 0);
+
+    const getMonday = (d: Date) => {
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const mon = new Date(d.setDate(diff));
+      mon.setHours(0, 0, 0, 0);
+      return mon;
+    };
+
+    const weekStart = getMonday(new Date());
+    const currentWeekDays = [...Array(7)].map((_, i) => {
+      const d = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      return d;
+    });
+
+    const savingsPoints = currentWeekDays.map(day => {
+      return (transactions || [])
+        .filter(t => {
+          const tDate = new Date(t.date);
+          tDate.setHours(0, 0, 0, 0);
+          return tDate.getTime() === day.getTime() && t.type === 'deposit';
+        })
+        .reduce((acc, curr) => acc + getTransactionAmountInPhp(curr, usdToPhpRate), 0);
+    });
+
+    const withdrawPoints = currentWeekDays.map(day => {
+      return (transactions || [])
+        .filter(t => {
+          const tDate = new Date(t.date);
+          tDate.setHours(0, 0, 0, 0);
+          return tDate.getTime() === day.getTime() && t.type === 'withdrawal';
+        })
+        .reduce((acc, curr) => acc + getTransactionAmountInPhp(curr, usdToPhpRate), 0);
+    });
+
+    const maxVal = Math.max(...savingsPoints, ...withdrawPoints, 1000);
+    const chartHeight = 65;
+    const chartWidth = Math.max(100, CARD_WIDTH - 44);
+
+    const getSmoothPath = (pts: { x: number, y: number }[]) => {
+      if (pts.length === 0) return '';
+      let d = `M ${pts[0].x} ${pts[0].y}`;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i];
+        const p1 = pts[i + 1];
+        const cp1x = p0.x + (p1.x - p0.x) / 2;
+        const cp1y = p0.y;
+        const cp2x = p0.x + (p1.x - p0.x) / 2;
+        const cp2y = p1.y;
+        d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
+      }
+      return d;
+    };
+
+    const savingsPts = savingsPoints.map((val, i) => {
+      const x = (i / 6) * chartWidth;
+      const y = chartHeight - (val / maxVal) * (chartHeight - 12) - 6;
+      return { x, y };
+    });
+
+    const withdrawPts = withdrawPoints.map((val, i) => {
+      const x = (i / 6) * chartWidth;
+      const y = chartHeight - (val / maxVal) * (chartHeight - 12) - 6;
+      return { x, y };
+    });
+
+    const savingsPath = getSmoothPath(savingsPts);
+    const withdrawPath = getSmoothPath(withdrawPts);
+    const savingsArea = `${savingsPath} L ${chartWidth} ${chartHeight} L 0 ${chartHeight} Z`;
+    const withdrawArea = `${withdrawPath} L ${chartWidth} ${chartHeight} L 0 ${chartHeight} Z`;
+
+    return {
+      monthSavings,
+      monthSpent,
+      chartHeight,
+      chartWidth,
+      savingsPath,
+      withdrawPath,
+      savingsArea,
+      withdrawArea,
+      savingsPts,
+      withdrawPts,
+      currentWeekDays,
+    };
+  }, [transactions, usdToPhpRate, CARD_WIDTH]);
+
   return (
     <View style={styles.container}>
       <ScrollView
         ref={scrollViewRef}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         keyboardShouldPersistTaps="handled"
       >
 
-        {/* PREMIUM BALANCE CARD (Glass Green Palette) */}
-        <View ref={balanceRef} collapsable={false} style={styles.premiumCard}>
+        {/* SWIPEABLE HEADER CONTAINER */}
+        <View ref={balanceRef} collapsable={false} style={styles.carouselWrapper}>
+          <ScrollView
+            ref={carouselRef}
+            horizontal
+            pagingEnabled={false}
+            disableIntervalMomentum={true}
+            showsHorizontalScrollIndicator={false}
+            nestedScrollEnabled
+            decelerationRate="fast"
+            snapToInterval={CARD_SNAP_INTERVAL}
+            snapToAlignment="start"
+            contentOffset={{ x: CARD_SNAP_INTERVAL, y: 0 }}
+            onScroll={handleCarouselScroll}
+            scrollEventThrottle={16}
+            style={styles.carouselScrollView}
+            contentContainerStyle={[styles.carouselScrollContent, { paddingHorizontal: CARD_SIDE_INSET }]}
+          >
+            {/* SLIDE 0: EXPENSE DISTRIBUTION PIE GRAPH (White Background, No Leaves) */}
+            <View style={[styles.carouselCardWhite, { width: CARD_WIDTH, marginRight: CARD_GAP }]}>
+              <View style={styles.premiumCardTop}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <PieChart size={18} color={colors.primary} />
+                  <Text style={styles.cardTitleDark}>Expense Distribution</Text>
+                </View>
+                <View style={styles.cardHeaderBadgeWhite}>
+                  <Text style={styles.cardHeaderBadgeTextDark}>This Month</Text>
+                </View>
+              </View>
 
-          <View style={styles.decorLeaf1}>{getThemeDecorIcon(50, '45deg')}</View>
-          <View style={styles.decorLeaf2}>{getThemeDecorIcon(80, '-20deg')}</View>
-          <View style={styles.decorLeaf3}>{getThemeDecorIcon(40, '15deg')}</View>
-          <View style={styles.decorLeaf4}>{getThemeDecorIcon(60, '70deg')}</View>
-          <View style={styles.decorLeaf5}>{getThemeDecorIcon(30, '-45deg')}</View>
+              {expenseDistributionData.items.length === 0 ? (
+                <View style={styles.pieEmptyContainer}>
+                  <View style={[styles.pieEmptyRing, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }]}>
+                    <ShoppingBag size={24} color={colors.textMuted} />
+                  </View>
+                  <Text style={[styles.pieEmptyText, { color: colors.textMuted }]}>No expenses recorded this month</Text>
+                  <TouchableOpacity
+                    style={[styles.pieAddExpenseBtn, { backgroundColor: colors.primary }]}
+                    onPress={() => navigation.navigate('Withdraw')}
+                    activeOpacity={0.7}
+                  >
+                    <Plus size={14} color="#ffffff" />
+                    <Text style={[styles.pieAddExpenseBtnText, { color: '#ffffff' }]}>Record Expense</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.pieContentRow}>
+                  {/* DONUT PIE CHART */}
+                  <View style={styles.donutContainer}>
+                    <Svg width={96} height={96} viewBox="0 0 100 100">
+                      {/* Base background circle */}
+                      <Circle
+                        cx="50"
+                        cy="50"
+                        r="36"
+                        stroke={isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#f1f5f9'}
+                        strokeWidth="14"
+                        fill="none"
+                      />
+                      {/* Slices */}
+                      {(() => {
+                        const C = 2 * Math.PI * 36;
+                        let cumulativePct = 0;
+                        return expenseDistributionData.items.map((item, idx) => {
+                          const strokeDasharray = `${(item.percentage / 100) * C} ${C}`;
+                          const strokeDashoffset = -cumulativePct * C;
+                          cumulativePct += item.percentage / 100;
+                          return (
+                            <Circle
+                              key={`slice-${idx}`}
+                              cx="50"
+                              cy="50"
+                              r="36"
+                              stroke={item.color}
+                              strokeWidth="14"
+                              strokeDasharray={strokeDasharray}
+                              strokeDashoffset={strokeDashoffset}
+                              fill="none"
+                              strokeLinecap="butt"
+                              transform="rotate(-90 50 50)"
+                            />
+                          );
+                        });
+                      })()}
+                    </Svg>
+                    {/* Donut Center Label */}
+                    <View style={styles.donutCenter}>
+                      <Text style={styles.donutCenterLabelDark}>Spent</Text>
+                      <Text style={styles.donutCenterValueDark} numberOfLines={1}>
+                        {isBalanceHidden
+                          ? '₱***'
+                          : `₱${expenseDistributionData.total >= 1000000 
+                              ? (expenseDistributionData.total / 1000000).toFixed(1) + 'M' 
+                              : expenseDistributionData.total >= 1000 
+                                ? (expenseDistributionData.total / 1000).toFixed(1) + 'k' 
+                                : Math.round(expenseDistributionData.total)}`}
+                      </Text>
+                    </View>
+                  </View>
 
-          <View style={styles.premiumCardTop}>
-            <Text style={styles.premiumLabel}>Total Balance</Text>
-            <TouchableOpacity
-              style={styles.eyeButton}
-              onPress={() => setIsBalanceHidden(!isBalanceHidden)}
-              activeOpacity={0.7}
-            >
-              {isBalanceHidden ? <EyeOff size={18} color={isDarkMode ? "#ffffff" : "#ffffff"} opacity={0.8} /> : <Eye size={18} color={isDarkMode ? "#ffffff" : "#ffffff"} opacity={0.8} />}
-            </TouchableOpacity>
-          </View>
-
-          {isBalanceHidden ? (
-            <Text style={styles.premiumAmount}>₱ ******</Text>
-          ) : (
-            <>
-              <AnimatedCounter
-                value={totalBalance}
-                style={styles.premiumAmount}
-                shouldAnimate={totalBalance < 1000000}
-              />
-              {wallets.reduce((sum, w) => sum + (w.usdBalance || 0), 0) > 0 && (
-                <Text style={{ fontFamily: theme.fonts.medium, fontSize: 12, color: 'rgba(255, 255, 255, 0.85)', marginTop: 4 }}>
-                  Includes ${wallets.reduce((sum, w) => sum + (w.usdBalance || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD (1 USD = ₱{usdToPhpRate.toFixed(2)})
-                </Text>
+                  {/* EXPENSE LEGEND LIST (Scrollable when > 4 items, pie graph stays fixed) */}
+                  <View style={styles.pieLegendContainer}>
+                    <ScrollView
+                      style={styles.pieLegendScrollView}
+                      contentContainerStyle={[
+                        styles.pieLegendScrollContent,
+                        { justifyContent: expenseDistributionData.items.length > 4 ? 'flex-start' : 'center' },
+                      ]}
+                      showsVerticalScrollIndicator={expenseDistributionData.items.length > 4}
+                      nestedScrollEnabled={true}
+                      scrollEnabled={expenseDistributionData.items.length > 4}
+                      bounces={true}
+                    >
+                      {expenseDistributionData.items.map((item, idx) => {
+                        const IconComponent = ICON_MAP[item.icon] || LucideIcons.Receipt;
+                        return (
+                          <View key={`legend-${idx}`} style={styles.pieLegendItem}>
+                            <View style={[styles.pieLegendDot, { backgroundColor: item.color }]} />
+                            <View style={[styles.pieLegendIconWrapper, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#f8fafc', padding: 3, borderRadius: 6 }]}>
+                              <IconComponent size={12} color={colors.text} />
+                            </View>
+                            <Text style={styles.pieLegendNameDark} numberOfLines={1}>
+                              {item.name}
+                            </Text>
+                            <Text style={styles.pieLegendAmountDark}>
+                              {isBalanceHidden ? '***' : `₱${Math.round(item.amount).toLocaleString()}`} ({Math.round(item.percentage)}%)
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                </View>
               )}
-            </>
-          )}
-
-
-          <View style={styles.dividerLight} />
-
-          <View style={styles.cardFooter}>
-            <View>
-              <Text style={styles.cardFooterLabel}>Monthly Spent</Text>
-              <Text style={styles.cardFooterValue}>
-                {isBalanceHidden ? "₱ ******" : `₱${monthlySpent.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-              </Text>
             </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.cardFooterLabel}>To be Received</Text>
-              <Text style={styles.cardFooterValue}>
-                {isBalanceHidden ? "₱ ******" : `₱${totalReceivables.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-              </Text>
+
+            {/* SLIDE 1: TOTAL MONEY (MAIN - Gradient Green with Leaves) */}
+            <View style={[styles.carouselCardShadowWrapper, { width: CARD_WIDTH, marginRight: CARD_GAP }]}>
+              <ExpoLinearGradient
+                colors={['#059669', '#10b981', '#047857']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.carouselCardGreen}
+              >
+                <View style={styles.decorLeaf1}>{getThemeDecorIcon(50, '45deg')}</View>
+                <View style={styles.decorLeaf2}>{getThemeDecorIcon(80, '-20deg')}</View>
+                <View style={styles.decorLeaf3}>{getThemeDecorIcon(40, '15deg')}</View>
+                <View style={styles.decorLeaf4}>{getThemeDecorIcon(60, '70deg')}</View>
+                <View style={styles.decorLeaf5}>{getThemeDecorIcon(30, '-45deg')}</View>
+
+                <View style={styles.premiumCardTop}>
+                  <Text style={styles.premiumLabel}>Total Balance</Text>
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    onPress={() => setIsBalanceHidden(!isBalanceHidden)}
+                    activeOpacity={0.7}
+                  >
+                    {isBalanceHidden ? <EyeOff size={18} color="#ffffff" opacity={0.85} /> : <Eye size={18} color="#ffffff" opacity={0.85} />}
+                  </TouchableOpacity>
+                </View>
+
+                <View style={{ justifyContent: 'center', flex: 1, paddingVertical: 4 }}>
+                  {isBalanceHidden ? (
+                    <Text style={styles.premiumAmount}>₱ ******</Text>
+                  ) : (
+                    <>
+                      <AnimatedCounter
+                        value={totalBalance}
+                        style={styles.premiumAmount}
+                        shouldAnimate={totalBalance < 1000000}
+                      />
+                      {wallets.reduce((sum, w) => sum + (w.usdBalance || 0), 0) > 0 && (
+                        <Text style={{ fontFamily: theme.fonts.medium, fontSize: 12, color: 'rgba(255, 255, 255, 0.85)', marginTop: 2 }}>
+                          Includes ${wallets.reduce((sum, w) => sum + (w.usdBalance || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD (1 USD = ₱{usdToPhpRate.toFixed(2)})
+                        </Text>
+                      )}
+                    </>
+                  )}
+                </View>
+
+                <View style={styles.dividerLight} />
+
+                <View style={styles.cardFooter}>
+                  <View>
+                    <Text style={styles.cardFooterLabel}>Monthly Spent</Text>
+                    <Text style={styles.cardFooterValue}>
+                      {isBalanceHidden ? "₱ ******" : `₱${monthlySpent.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.cardFooterLabel}>To be Received</Text>
+                    <Text style={styles.cardFooterValue}>
+                      {isBalanceHidden ? "₱ ******" : `₱${totalReceivables.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    </Text>
+                  </View>
+                </View>
+              </ExpoLinearGradient>
             </View>
+
+            {/* SLIDE 2: ANALYTICS LINE GRAPH (White Background, No Leaves) */}
+            <View style={[styles.carouselCardWhite, { width: CARD_WIDTH }]}>
+              <View style={styles.premiumCardTop}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <TrendingUp size={18} color={colors.primary} />
+                  <Text style={styles.cardTitleDark}>Weekly Analytics</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.primary }} />
+                    <Text style={{ fontFamily: theme.fonts.medium, fontSize: 10, color: colors.textMuted }}>Saved</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.danger }} />
+                    <Text style={{ fontFamily: theme.fonts.medium, fontSize: 10, color: colors.textMuted }}>Spent</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Svg Line Chart */}
+              <View style={styles.analyticsChartWrapper}>
+                <Svg height={analyticsData.chartHeight} width={analyticsData.chartWidth}>
+                  <Defs>
+                    <LinearGradient id="cardGradSavings" x1="0" y1="0" x2="0" y2="1">
+                      <Stop offset="0" stopColor={colors.primary} stopOpacity="0.2" />
+                      <Stop offset="1" stopColor={colors.primary} stopOpacity="0.0" />
+                    </LinearGradient>
+                    <LinearGradient id="cardGradWithdraw" x1="0" y1="0" x2="0" y2="1">
+                      <Stop offset="0" stopColor={colors.danger} stopOpacity="0.2" />
+                      <Stop offset="1" stopColor={colors.danger} stopOpacity="0.0" />
+                    </LinearGradient>
+                  </Defs>
+
+                  {/* Area Fills */}
+                  <Path d={analyticsData.savingsArea} fill="url(#cardGradSavings)" />
+                  <Path d={analyticsData.withdrawArea} fill="url(#cardGradWithdraw)" />
+
+                  {/* Smooth Lines */}
+                  <Path
+                    d={analyticsData.savingsPath}
+                    fill="none"
+                    stroke={colors.primary}
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <Path
+                    d={analyticsData.withdrawPath}
+                    fill="none"
+                    stroke={colors.danger}
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+
+                  {analyticsData.savingsPts.map((p, i) => (
+                    <Circle
+                      key={`sav-${i}`}
+                      cx={p.x}
+                      cy={p.y}
+                      r="3"
+                      fill={colors.primary}
+                      stroke={colors.card}
+                      strokeWidth="1.5"
+                    />
+                  ))}
+                  {analyticsData.withdrawPts.map((p, i) => (
+                    <Circle
+                      key={`wit-${i}`}
+                      cx={p.x}
+                      cy={p.y}
+                      r="3"
+                      fill={colors.danger}
+                      stroke={colors.card}
+                      strokeWidth="1.5"
+                    />
+                  ))}
+                </Svg>
+                <View style={[styles.cardChartLabelsRow, { width: analyticsData.chartWidth }]}>
+                  {['M', 'T', 'W', 'Th', 'F', 'S', 'Su'].map((label, i) => (
+                    <Text key={i} style={styles.chartLabelTextDark}>{label}</Text>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.dividerDark} />
+
+              <View style={styles.analyticsFooterRow}>
+                <Text style={styles.analyticsFooterTextDark}>
+                  Saved: <Text style={{ fontFamily: theme.fonts.bold, color: colors.primary }}>{isBalanceHidden ? "₱***" : `₱${Math.round(analyticsData.monthSavings).toLocaleString()}`}</Text>
+                </Text>
+                <Text style={styles.analyticsFooterTextDark}>
+                  Spent: <Text style={{ fontFamily: theme.fonts.bold, color: colors.danger }}>{isBalanceHidden ? "₱***" : `₱${Math.round(analyticsData.monthSpent).toLocaleString()}`}</Text>
+                </Text>
+              </View>
+            </View>
+          </ScrollView>
+
+          {/* CAROUSEL PAGINATION DOTS */}
+          <View style={styles.carouselPaginationDotsRow}>
+            {[0, 1, 2].map((idx) => (
+              <TouchableOpacity
+                key={`dot-${idx}`}
+                onPress={() => scrollToCard(idx)}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                style={[
+                  styles.paginationDot,
+                  activeCardIndex === idx
+                    ? [styles.paginationDotActive, { backgroundColor: colors.primary }]
+                    : [styles.paginationDotInactive, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.25)' : '#cbd5e1' }]
+                ]}
+              />
+            ))}
           </View>
         </View>
 
@@ -612,8 +1049,11 @@ export default function HomeScreen() {
                 const goal = goals[activeGoalIndex];
                 if (!goal) return null;
 
+                const isLinkedToAll = goal.walletId === 'ALL' || goal.walletId === 'all';
                 const linkedWallet = wallets.find(w => w.id === goal.walletId);
-                const currentAmount = linkedWallet ? getWalletTotalBalanceInPhp(linkedWallet, usdToPhpRate) : 0;
+                const currentAmount = isLinkedToAll
+                  ? wallets.reduce((sum, w) => sum + getWalletTotalBalanceInPhp(w, usdToPhpRate), 0)
+                  : (linkedWallet ? getWalletTotalBalanceInPhp(linkedWallet, usdToPhpRate) : 0);
                 const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
 
                 return (
@@ -1015,208 +1455,6 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* INSIGHTS SECTION */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Insights</Text>
-        </View>
-        <View style={styles.insightsCard}>
-          <View style={styles.insightsRow}>
-            <View style={styles.insightInfo}>
-              <Text style={styles.insightLabel}>Monthly Activity</Text>
-              {(() => {
-                const now = new Date();
-                const thisMonth = now.getMonth();
-                const thisYear = now.getFullYear();
-
-                const monthSavings = transactions
-                  .filter(t => t.type === 'deposit' && new Date(t.date).getMonth() === thisMonth && new Date(t.date).getFullYear() === thisYear)
-                  .reduce((acc, curr) => acc + curr.amount, 0);
-
-                const monthSpent = transactions
-                  .filter(t => t.type === 'withdrawal' && new Date(t.date).getMonth() === thisMonth && new Date(t.date).getFullYear() === thisYear)
-                  .reduce((acc, curr) => acc + curr.amount, 0);
-
-                const total = monthSavings + monthSpent;
-                const savingsPerc = total > 0 ? (monthSavings / total) * 100 : 50;
-                const spentPerc = total > 0 ? (monthSpent / total) * 100 : 50;
-
-                const getWeekOfMonth = (date: Date) => {
-                  const day = date.getDate();
-                  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-                  return Math.ceil((day + firstDay) / 7);
-                };
-
-                const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-                const currentWeekTitle = `Week ${getWeekOfMonth(new Date())} of ${monthNames[new Date().getMonth()]}`;
-
-                // Current Week Activity (Monday to Sunday)
-                const getMonday = (d: Date) => {
-                  const day = d.getDay();
-                  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-                  const mon = new Date(d.setDate(diff));
-                  mon.setHours(0, 0, 0, 0);
-                  return mon;
-                };
-
-                const weekStart = getMonday(new Date());
-                const currentWeekDays = [...Array(7)].map((_, i) => {
-                  const d = new Date(weekStart);
-                  d.setDate(weekStart.getDate() + i);
-                  return d;
-                });
-
-                const savingsPoints = currentWeekDays.map(day => {
-                  return transactions
-                    .filter(t => {
-                      const tDate = new Date(t.date);
-                      tDate.setHours(0, 0, 0, 0);
-                      return tDate.getTime() === day.getTime() && t.type === 'deposit';
-                    })
-                    .reduce((acc, curr) => acc + curr.amount, 0);
-                });
-
-                const withdrawPoints = currentWeekDays.map(day => {
-                  return transactions
-                    .filter(t => {
-                      const tDate = new Date(t.date);
-                      tDate.setHours(0, 0, 0, 0);
-                      return tDate.getTime() === day.getTime() && t.type === 'withdrawal';
-                    })
-                    .reduce((acc, curr) => acc + curr.amount, 0);
-                });
-
-                const maxVal = Math.max(...savingsPoints, ...withdrawPoints, 1000);
-                const chartHeight = 80;
-                const chartWidth = Dimensions.get('window').width - 80;
-
-                const getSmoothPath = (pts: { x: number, y: number }[]) => {
-                  if (pts.length === 0) return '';
-                  let d = `M ${pts[0].x} ${pts[0].y}`;
-                  for (let i = 0; i < pts.length - 1; i++) {
-                    const p0 = pts[i];
-                    const p1 = pts[i + 1];
-                    const cp1x = p0.x + (p1.x - p0.x) / 2;
-                    const cp1y = p0.y;
-                    const cp2x = p0.x + (p1.x - p0.x) / 2;
-                    const cp2y = p1.y;
-                    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
-                  }
-                  return d;
-                };
-
-                const savingsPts = savingsPoints.map((val, i) => {
-                  const x = (i / 6) * chartWidth;
-                  const y = chartHeight - (val / maxVal) * (chartHeight - 10) - 5;
-                  return { x, y };
-                });
-
-                const withdrawPts = withdrawPoints.map((val, i) => {
-                  const x = (i / 6) * chartWidth;
-                  const y = chartHeight - (val / maxVal) * (chartHeight - 10) - 5;
-                  return { x, y };
-                });
-
-                const savingsPath = getSmoothPath(savingsPts);
-                const withdrawPath = getSmoothPath(withdrawPts);
-                const savingsArea = `${savingsPath} L ${chartWidth} ${chartHeight} L 0 ${chartHeight} Z`;
-                const withdrawArea = `${withdrawPath} L ${chartWidth} ${chartHeight} L 0 ${chartHeight} Z`;
-
-                return (
-                  <>
-                    <Text style={styles.insightDescription}>
-                      You've saved <Text style={{ color: colors.primary }}>{isBalanceHidden ? "₱ ******" : `₱${monthSavings.toLocaleString()}`}</Text> and spent <Text style={{ color: colors.danger }}>{isBalanceHidden ? "₱ ******" : `₱${monthSpent.toLocaleString()}`}</Text> this month.
-                    </Text>
-
-                    <View style={styles.miniChartContainer}>
-                      <View style={styles.miniChartHeader}>
-                        <View style={styles.chartLegend}>
-                          <Text style={styles.legendText}>{currentWeekTitle}</Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.lineChartWrapper}>
-                        <Svg height={chartHeight} width={chartWidth}>
-                          <Defs>
-                            <LinearGradient id="gradSavings" x1="0" y1="0" x2="0" y2="1">
-                              <Stop offset="0" stopColor={colors.primary} stopOpacity="0.2" />
-                              <Stop offset="1" stopColor={colors.primary} stopOpacity="0" />
-                            </LinearGradient>
-                            <LinearGradient id="gradWithdraw" x1="0" y1="0" x2="0" y2="1">
-                              <Stop offset="0" stopColor="#ef4444" stopOpacity="0.2" />
-                              <Stop offset="1" stopColor="#ef4444" stopOpacity="0" />
-                            </LinearGradient>
-                          </Defs>
-
-                          {/* Zero Line */}
-                          <Path
-                            d={`M 0 ${chartHeight} L ${chartWidth} ${chartHeight}`}
-                            stroke={isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}
-                            strokeWidth="1"
-                          />
-
-                          {/* Area Fills */}
-                          <Path d={savingsArea} fill="url(#gradSavings)" />
-                          <Path d={withdrawArea} fill="url(#gradWithdraw)" />
-
-                          {/* Smooth Lines */}
-                          <Path
-                            d={savingsPath}
-                            fill="none"
-                            stroke={colors.primary}
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <Path
-                            d={withdrawPath}
-                            fill="none"
-                            stroke={colors.danger}
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-
-                          {savingsPts.map((p, i) => (
-                            <Circle
-                              key={`sav-${i}`}
-                              cx={p.x}
-                              cy={p.y}
-                              r="3.5"
-                              fill={colors.primary}
-                              stroke={colors.card}
-                              strokeWidth="2"
-                            />
-                          ))}
-                          {withdrawPts.map((p, i) => (
-                            <Circle
-                              key={`wit-${i}`}
-                              cx={p.x}
-                              cy={p.y}
-                              r="3.5"
-                              fill="#ef4444"
-                              stroke={colors.card}
-                              strokeWidth="2"
-                            />
-                          ))}
-                        </Svg>
-                        <View style={styles.chartLabelsRow}>
-                          {['M', 'T', 'W', 'Th', 'F', 'S', 'Su'].map((label, i) => (
-                            <Text key={i} style={styles.chartLabelText}>{label}</Text>
-                          ))}
-                        </View>
-                      </View>
-
-                      <View style={styles.chartValues}>
-                        <Text style={styles.chartValueText}>{currentWeekDays[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</Text>
-                        <Text style={styles.chartValueText}>{currentWeekDays[6].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</Text>
-                      </View>
-                    </View>
-                  </>
-                );
-              })()}
-            </View>
-          </View>
-        </View>
 
 
 
@@ -1483,6 +1721,261 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     paddingTop: theme.spacing.lg,
     paddingBottom: 140,
   },
+  carouselWrapper: {
+    marginHorizontal: -theme.spacing.lg,
+    paddingTop: 8,
+    paddingBottom: 2,
+    marginBottom: 2,
+  },
+  carouselScrollView: {
+    overflow: 'visible',
+  },
+  carouselScrollContent: {
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  carouselCard: {
+    backgroundColor: colors.primary,
+    borderRadius: theme.borderRadius.xl,
+    padding: 18,
+    position: 'relative',
+    overflow: 'hidden',
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    borderWidth: 1,
+    height: rf(230),
+    justifyContent: 'space-between',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  carouselCardShadowWrapper: {
+    height: rf(230),
+    borderRadius: 24,
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: isDarkMode ? 0.45 : 0.3,
+    shadowRadius: 14,
+    elevation: 6,
+    backgroundColor: '#059669',
+  },
+  carouselCardGreen: {
+    flex: 1,
+    borderRadius: 24,
+    padding: 18,
+    position: 'relative',
+    overflow: 'hidden',
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    borderWidth: 1,
+    justifyContent: 'space-between',
+  },
+  carouselCardWhite: {
+    backgroundColor: colors.card,
+    borderRadius: 24,
+    padding: 18,
+    position: 'relative',
+    overflow: 'visible',
+    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
+    borderWidth: 1,
+    height: rf(230),
+    justifyContent: 'space-between',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: isDarkMode ? 0.35 : 0.09,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  cardTitleDark: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(14),
+    color: colors.text,
+  },
+  cardHeaderBadgeWhite: {
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#f1f5f9',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  cardHeaderBadgeTextDark: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: rf(11),
+    color: colors.textMuted,
+  },
+  carouselPaginationDotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  paginationDot: {
+    height: 5,
+    borderRadius: 2.5,
+  },
+  paginationDotActive: {
+    width: 16,
+  },
+  paginationDotInactive: {
+    width: 5,
+  },
+  cardHeaderBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  cardHeaderBadgeText: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: rf(11),
+    color: '#ecfdf5',
+  },
+  pieContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
+    marginVertical: 4,
+  },
+  donutContainer: {
+    width: rf(96),
+    height: rf(96),
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  donutCenter: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  donutCenterLabelDark: {
+    fontFamily: theme.fonts.medium,
+    fontSize: rf(9.5),
+    color: colors.textMuted,
+    letterSpacing: 0.3,
+  },
+  donutCenterValueDark: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(13),
+    color: colors.text,
+    letterSpacing: -0.3,
+  },
+  pieLegendContainer: {
+    flex: 1,
+    alignSelf: 'stretch',
+    maxHeight: rf(146),
+    paddingLeft: 12,
+    justifyContent: 'center',
+  },
+  pieLegendScrollView: {
+    flex: 1,
+  },
+  pieLegendScrollContent: {
+    paddingVertical: 2,
+    gap: 6,
+    flexGrow: 1,
+  },
+  pieLegendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pieLegendDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    marginRight: 6,
+  },
+  pieLegendIconWrapper: {
+    marginRight: 5,
+  },
+  pieLegendNameDark: {
+    flex: 1,
+    fontFamily: theme.fonts.semiBold,
+    fontSize: rf(11.5),
+    color: colors.text,
+  },
+  pieLegendAmountDark: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(11),
+    color: colors.textMuted,
+    marginLeft: 4,
+  },
+  pieLegendMoreDark: {
+    fontFamily: theme.fonts.medium,
+    fontSize: rf(10.5),
+    color: colors.textMuted,
+    marginTop: 2,
+    paddingLeft: 14,
+  },
+  pieEmptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  pieEmptyRing: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  pieEmptyText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: rf(12.5),
+    marginBottom: 10,
+  },
+  pieAddExpenseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 14,
+    gap: 4,
+  },
+  pieAddExpenseBtnText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(12),
+  },
+  analyticsChartWrapper: {
+    height: 72,
+    justifyContent: 'center',
+    marginVertical: 4,
+  },
+  cardChartLabelsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  chartLabelTextDark: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: rf(9.5),
+    color: colors.textMuted,
+    textAlign: 'center',
+    flex: 1,
+  },
+  dividerDark: {
+    height: 1,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+    marginVertical: 4,
+  },
+  analyticsFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  analyticsFooterTextDark: {
+    fontFamily: theme.fonts.medium,
+    fontSize: rf(12),
+    color: colors.textMuted,
+  },
   premiumCard: {
     backgroundColor: colors.primary,
     borderRadius: theme.borderRadius.xl,
@@ -1571,6 +2064,35 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.medium,
     fontSize: rf(14),
     color: '#ffffff',
+    marginTop: 2,
+  },
+  premiumAmountDark: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(32),
+    color: colors.text,
+    letterSpacing: -0.5,
+    zIndex: 1,
+    minHeight: 38,
+  },
+  eyeButtonDark: {
+    padding: 6,
+    borderRadius: 12,
+  },
+  usdSubtextDark: {
+    fontFamily: theme.fonts.medium,
+    fontSize: rf(11.5),
+    color: colors.textMuted,
+    marginTop: 3,
+  },
+  cardFooterLabelDark: {
+    fontFamily: theme.fonts.regular,
+    fontSize: rf(11.5),
+    color: colors.textMuted,
+  },
+  cardFooterValueDark: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: rf(13.5),
+    color: colors.text,
     marginTop: 2,
   },
   actionRow: {

@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { theme } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check, Fingerprint, ChevronLeft, Plus, Palette, Moon, Sun, Smartphone, Sparkles, RefreshCw, ExternalLink, Eye, EyeOff, Layers, Type, Sliders, CheckCircle2, Coins, Calendar, CreditCard, Home, Target, Receipt } from 'lucide-react-native';
+import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check, Fingerprint, ChevronLeft, Plus, Palette, Moon, Sun, Smartphone, Sparkles, RefreshCw, ExternalLink, Eye, EyeOff, Layers, Type, Sliders, CheckCircle2, Coins, Calendar, CreditCard, Home, Target, Receipt, Delete } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppContext } from '../context/AppContext';
 import { requestPinTotalBalanceWidget, syncWidgetBalance, getWidgetConfig, saveWidgetConfig, WIDGET_THEMES, WidgetConfig, DEFAULT_WIDGET_CONFIG } from '../services/WidgetService';
@@ -405,50 +405,63 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.pinKeypad}>
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'DEL'].map((k, i) => (
-              <TouchableOpacity
-                key={i}
-                style={[styles.pinKey, k === '' && styles.pinKeyEmpty]}
-                disabled={k === ''}
-                onPress={() => {
-                  setPinError(null);
-                  if (k === 'DEL') {
-                    setNewPin(prev => prev.slice(0, -1));
-                  } else if (newPin.length < 6) {
-                    const p = newPin + k;
-                    setNewPin(p);
-                    if (p.length === 6) {
-                      if (pinStep === 'create') {
-                        setTimeout(() => {
-                          setFirstPin(p);
-                          setNewPin('');
-                          setPinStep('confirm');
-                        }, 200);
-                      } else {
-                        if (p === firstPin) {
-                          setTimeout(async () => {
-                            await setAppPin(p);
-                            if (!isSecurityEnabled) await toggleSecurity(true);
-                            setPinSetupVisible(false);
-                            resetPinState();
-                            showFeedback('success', 'PIN Security Enabled');
-                          }, 300);
-                        } else {
-                          Vibration.vibrate([0, 50, 50, 50]);
-                          setPinError("PINs do not match. Please try again.");
-                          setTimeout(() => {
-                            setNewPin('');
-                            setFirstPin('');
-                            setPinStep('create');
-                          }, 600);
+            {[
+              ['1', '2', '3'],
+              ['4', '5', '6'],
+              ['7', '8', '9'],
+              ['', '0', 'DEL'],
+            ].map((row, rowIndex) => (
+              <View key={rowIndex} style={styles.pinKeypadRow}>
+                {row.map((k, colIndex) => (
+                  <TouchableOpacity
+                    key={colIndex}
+                    style={[styles.pinKey, k === '' && styles.pinKeyEmpty]}
+                    disabled={k === ''}
+                    onPress={() => {
+                      setPinError(null);
+                      if (k === 'DEL') {
+                        setNewPin(prev => prev.slice(0, -1));
+                      } else if (newPin.length < 6) {
+                        const p = newPin + k;
+                        setNewPin(p);
+                        if (p.length === 6) {
+                          if (pinStep === 'create') {
+                            setTimeout(() => {
+                              setFirstPin(p);
+                              setNewPin('');
+                              setPinStep('confirm');
+                            }, 200);
+                          } else {
+                            if (p === firstPin) {
+                              setTimeout(async () => {
+                                await setAppPin(p);
+                                if (!isSecurityEnabled) await toggleSecurity(true);
+                                setPinSetupVisible(false);
+                                resetPinState();
+                                showFeedback('success', 'PIN Security Enabled');
+                              }, 300);
+                            } else {
+                              Vibration.vibrate([0, 50, 50, 50]);
+                              setPinError("PINs do not match. Please try again.");
+                              setTimeout(() => {
+                                setNewPin('');
+                                setFirstPin('');
+                                setPinStep('create');
+                              }, 600);
+                            }
+                          }
                         }
                       }
-                    }
-                  }
-                }}
-              >
-                <Text style={styles.pinKeyText}>{k === 'DEL' ? '←' : k}</Text>
-              </TouchableOpacity>
+                    }}
+                  >
+                    {k === 'DEL' ? (
+                      <Delete size={22} color={colors.text} />
+                    ) : (
+                      <Text style={styles.pinKeyText}>{k}</Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
             ))}
           </View>
 
@@ -1352,17 +1365,22 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderColor: colors.primary,
   },
   pinKeypad: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 320,
     gap: 12,
     marginBottom: 20,
   },
+  pinKeypadRow: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'center',
+  },
   pinKey: {
-    width: '30%',
-    aspectRatio: 1.5,
+    flex: 1,
+    height: 52,
     backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },

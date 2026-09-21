@@ -245,8 +245,8 @@ type AppContextType = {
   feedback: { visible: boolean; type: 'success' | 'delete' | 'error'; message: string };
   showFeedback: (type: 'success' | 'delete' | 'error', message: string) => void;
   closeFeedback: () => void;
-  confirmState: { visible: boolean; title: string; message: string; isDestructive?: boolean; onConfirm?: () => void };
-  showConfirm: (title: string, message: string, onConfirm: () => void, isDestructive?: boolean) => void;
+  confirmState: { visible: boolean; title: string; message: string; isDestructive?: boolean; confirmText?: string; icon?: 'alert' | 'pay' | 'delete' | 'trash' | 'check'; onConfirm?: () => void };
+  showConfirm: (title: string, message: string, onConfirm: () => void, isDestructive?: boolean, confirmText?: string, icon?: 'alert' | 'pay' | 'delete' | 'trash' | 'check') => void;
   closeConfirm: () => void;
   loading: boolean;
   userImage: string | null;
@@ -352,11 +352,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     message: ''
   });
   const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [confirmState, setConfirmState] = useState<{ visible: boolean; title: string; message: string; isDestructive?: boolean; onConfirm?: () => void }>({
+  const [confirmState, setConfirmState] = useState<{ visible: boolean; title: string; message: string; isDestructive?: boolean; confirmText?: string; icon?: 'alert' | 'pay' | 'delete' | 'trash' | 'check'; onConfirm?: () => void }>({
     visible: false,
     title: '',
     message: '',
-    isDestructive: true
+    isDestructive: false,
+    confirmText: 'Confirm',
+    icon: 'alert',
   });
   const [isTutorialActive, setIsTutorialActive] = useState(false);
   const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(true);
@@ -858,6 +860,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return w;
     });
+
+    if (txData.type === 'deposit' && !completedGoalTitle) {
+      const oldAllPhpTotal = wallets.reduce((sum, wal) => sum + getWalletTotalBalanceInPhp(wal, usdToPhpRate), 0);
+      const newAllPhpTotal = updatedWallets.reduce((sum, wal) => sum + getWalletTotalBalanceInPhp(wal, usdToPhpRate), 0);
+      const allGoals = goals.filter(g => g.walletId === 'ALL' || g.walletId === 'all');
+      for (const goal of allGoals) {
+        if (oldAllPhpTotal < goal.targetAmount && newAllPhpTotal >= goal.targetAmount) {
+          completedGoalTitle = goal.title;
+          break;
+        }
+      }
+    }
 
     if (completedGoalTitle && isNotificationsEnabled) {
       notifyGoalCompletion(completedGoalTitle);
@@ -1434,8 +1448,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, duration); 
   };
 
-  const showConfirm = (title: string, message: string, onConfirm: () => void, isDestructive = true) => {
-    setConfirmState({ visible: true, title, message, onConfirm, isDestructive });
+  const showConfirm = (
+    title: string, 
+    message: string, 
+    onConfirm: () => void, 
+    isDestructive?: boolean,
+    confirmText?: string,
+    icon?: 'alert' | 'pay' | 'delete' | 'trash' | 'check'
+  ) => {
+    const isPayAction = title.toLowerCase().includes('pay') || confirmText?.toLowerCase() === 'pay';
+    const finalDestructive = isDestructive !== undefined 
+      ? isDestructive 
+      : (isPayAction ? false : true);
+    const finalConfirmText = confirmText || (isPayAction ? 'Pay' : (finalDestructive ? 'Delete' : 'Confirm'));
+    const finalIcon = icon || (isPayAction ? 'pay' : (finalDestructive ? 'delete' : 'check'));
+
+    setConfirmState({ 
+      visible: true, 
+      title, 
+      message, 
+      onConfirm, 
+      isDestructive: finalDestructive,
+      confirmText: finalConfirmText,
+      icon: finalIcon,
+    });
   };
 
   const closeConfirm = () => {

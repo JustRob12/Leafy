@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { theme } from '../theme';
-import { X, CreditCard, Check } from 'lucide-react-native';
+import { X, CreditCard, Check, WalletCards } from 'lucide-react-native';
 import WalletBrandLogo from './WalletBrandLogo';
 import { useAppContext, getWalletTotalBalanceInPhp } from '../context/AppContext';
 
@@ -25,6 +25,8 @@ interface WalletPickerModalProps {
   wallets: any[];
   selectedWalletId: string | null;
   onSelectWallet: (id: string) => void;
+  allowAll?: boolean;
+  allLabel?: string;
 }
 
 export default function WalletPickerModal({
@@ -33,9 +35,27 @@ export default function WalletPickerModal({
   wallets,
   selectedWalletId,
   onSelectWallet,
+  allowAll = false,
+  allLabel = 'All Wallets',
 }: WalletPickerModalProps) {
   const { colors, isDarkMode, usdToPhpRate } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
+
+  const displayWallets = useMemo(() => {
+    if (!allowAll) return wallets;
+    return [
+      {
+        id: 'ALL',
+        name: allLabel,
+        isAll: true,
+      },
+      ...wallets,
+    ];
+  }, [wallets, allowAll, allLabel]);
+
+  const totalAllBalance = useMemo(() => {
+    return (wallets || []).reduce((sum, w) => sum + getWalletTotalBalanceInPhp(w, usdToPhpRate), 0);
+  }, [wallets, usdToPhpRate]);
 
   if (!visible) return null;
 
@@ -59,13 +79,17 @@ export default function WalletPickerModal({
           {/* Compact Scrollable List */}
           <View style={styles.listWrapper}>
             <FlatList
-              data={wallets}
+              data={displayWallets}
               keyExtractor={item => item.id}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.listContent}
               renderItem={({ item }) => {
-                const isSelected = item.id === selectedWalletId;
-                const totalBalance = getWalletTotalBalanceInPhp(item, usdToPhpRate);
+                const isSelected = item.isAll
+                  ? selectedWalletId === 'ALL' || selectedWalletId === 'all'
+                  : item.id === selectedWalletId;
+                const totalBalance = item.isAll
+                  ? totalAllBalance
+                  : getWalletTotalBalanceInPhp(item, usdToPhpRate);
                 const accentColor = item.color || colors.primary;
 
                 return (
@@ -87,7 +111,9 @@ export default function WalletPickerModal({
                         { backgroundColor: accentColor + '16' },
                       ]}
                     >
-                      {item.presetLogo ? (
+                      {item.isAll ? (
+                        <WalletCards size={17} color={accentColor} />
+                      ) : item.presetLogo ? (
                         <WalletBrandLogo logoKey={item.presetLogo} size={22} />
                       ) : (
                         <CreditCard size={15} color={accentColor} />

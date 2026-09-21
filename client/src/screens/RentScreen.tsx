@@ -73,7 +73,10 @@ export default function RentScreen() {
     showConfirm(
       "Pay Rent",
       `Pay monthly rent of ${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()} for "${item.propertyName}"?`,
-      () => payRentMonth(item.id)
+      () => payRentMonth(item.id),
+      false,
+      "Pay",
+      "pay"
     );
   };
 

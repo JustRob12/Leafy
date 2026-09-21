@@ -19,7 +19,12 @@ export default function OnboardingScreen() {
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   // Keypad numbers
-  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'delete'];
+  const keypadRows = [
+    ['1', '2', '3'],
+    ['4', '5', '6'],
+    ['7', '8', '9'],
+    ['', '0', 'delete'],
+  ];
 
   const triggerTransition = (nextStep: 1 | 2 | 3) => {
     Animated.timing(fadeAnim, {
@@ -187,23 +192,27 @@ export default function OnboardingScreen() {
                 </View>
 
                 <View style={styles.keypad}>
-                  {keys.map((key, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={[
-                        styles.key,
-                        key === '' && styles.keyEmpty,
-                      ]}
-                      onPress={() => handleKeypadPress(key)}
-                      activeOpacity={0.7}
-                      disabled={key === ''}
-                    >
-                      {key === '0' || (key !== '' && key !== 'delete') ? (
-                        <Text style={styles.keyText}>{key}</Text>
-                      ) : key === 'delete' ? (
-                        <Delete size={24} color={colors.text} />
-                      ) : null}
-                    </TouchableOpacity>
+                  {keypadRows.map((row, rowIndex) => (
+                    <View key={rowIndex} style={styles.keypadRow}>
+                      {row.map((key, colIndex) => (
+                        <TouchableOpacity
+                          key={colIndex}
+                          style={[
+                            styles.key,
+                            key === '' && styles.keyEmpty,
+                          ]}
+                          onPress={() => handleKeypadPress(key)}
+                          activeOpacity={0.7}
+                          disabled={key === ''}
+                        >
+                          {key === '0' || (key !== '' && key !== 'delete') ? (
+                            <Text style={styles.keyText}>{key}</Text>
+                          ) : key === 'delete' ? (
+                            <Delete size={24} color={colors.text} />
+                          ) : null}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
                   ))}
                 </View>
               </View>
@@ -340,8 +349,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   pinContainer: {
     flexDirection: 'row',
-    gap: 20,
-    marginBottom: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 44,
   },
   pinDot: {
     width: 14,
@@ -356,12 +367,15 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderColor: colors.primary,
   },
   keypad: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+    alignSelf: 'center',
     width: '100%',
+    maxWidth: 280,
     gap: 16,
-    paddingHorizontal: 20,
+  },
+  keypadRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   key: {
     width: 72,

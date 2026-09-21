@@ -90,7 +90,10 @@ export default function InstallmentScreen() {
     showConfirm(
       "Pay Monthly Installment",
       `Pay month ${item.paidMonths + 1} of ${item.monthsToPay} (${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()}) for "${item.productName}"?`,
-      () => payInstallmentMonth(item.id)
+      () => payInstallmentMonth(item.id),
+      false,
+      "Pay",
+      "pay"
     );
   };
 

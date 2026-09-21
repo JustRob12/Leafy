@@ -2,20 +2,38 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { theme } from '../theme';
 import { ChevronDown } from 'lucide-react-native';
-import { useAppContext } from '../context/AppContext';
+import { useAppContext, getWalletTotalBalanceInPhp } from '../context/AppContext';
 import WalletPickerModal from './WalletPickerModal';
 
 interface WalletDropdownProps {
   selectedWalletId: string | null;
   onSelectWallet: (id: string) => void;
+  allowAll?: boolean;
+  allLabel?: string;
 }
 
-export default function WalletDropdown({ selectedWalletId, onSelectWallet }: WalletDropdownProps) {
-  const { wallets, colors, isDarkMode } = useAppContext();
+export default function WalletDropdown({
+  selectedWalletId,
+  onSelectWallet,
+  allowAll = false,
+  allLabel = 'All Wallets',
+}: WalletDropdownProps) {
+  const { wallets, colors, isDarkMode, usdToPhpRate } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
   const [modalVisible, setModalVisible] = useState(false);
 
+  const isAllSelected = selectedWalletId === 'ALL' || selectedWalletId === 'all';
   const selectedWallet = wallets.find(w => w.id === selectedWalletId);
+  const totalAllBalance = (wallets || []).reduce(
+    (sum, w) => sum + getWalletTotalBalanceInPhp(w, usdToPhpRate),
+    0
+  );
+
+  const displayText = isAllSelected
+    ? `${allLabel} (₱${Math.floor(totalAllBalance).toLocaleString('en-PH')})`
+    : selectedWallet
+    ? `${selectedWallet.name} (₱${Math.floor(getWalletTotalBalanceInPhp(selectedWallet, usdToPhpRate)).toLocaleString('en-PH')})`
+    : 'Select Wallet...';
 
   return (
     <View style={styles.container}>
@@ -24,8 +42,8 @@ export default function WalletDropdown({ selectedWalletId, onSelectWallet }: Wal
         onPress={() => setModalVisible(true)}
         activeOpacity={1}
       >
-        <Text style={[styles.dropdownBtnText, !selectedWallet && { color: colors.textMuted }]}>
-          {selectedWallet ? `${selectedWallet.name} (₱${selectedWallet.balance.toFixed(0)})` : 'Select Wallet...'}
+        <Text style={[styles.dropdownBtnText, !isAllSelected && !selectedWallet && { color: colors.textMuted }]}>
+          {displayText}
         </Text>
         <ChevronDown size={20} color={colors.textMuted} />
       </TouchableOpacity>
@@ -36,6 +54,8 @@ export default function WalletDropdown({ selectedWalletId, onSelectWallet }: Wal
         wallets={wallets}
         selectedWalletId={selectedWalletId}
         onSelectWallet={onSelectWallet}
+        allowAll={allowAll}
+        allLabel={allLabel}
       />
     </View>
   );

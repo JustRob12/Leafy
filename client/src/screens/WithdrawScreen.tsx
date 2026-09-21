@@ -37,10 +37,12 @@ import {
   Map,
   X,
   TrendingDown,
+  ClipboardPaste,
 } from 'lucide-react-native';
 import CalculatorKeypad from '../components/CalculatorKeypad';
 import BottomWalletBar from '../components/BottomWalletBar';
 import WalletPickerModal from '../components/WalletPickerModal';
+import { getNumberFromClipboard } from '../utils/clipboardUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = SCREEN_WIDTH / 375;
@@ -189,6 +191,17 @@ export default function WithdrawScreen() {
     }
   };
 
+  const handlePaste = async () => {
+    const pasted = await getNumberFromClipboard();
+    if (pasted) {
+      setAmount(pasted);
+      setExpression('');
+      setIsResult(false);
+    } else {
+      showFeedback('error', 'No valid number in clipboard');
+    }
+  };
+
   const handleExpense = async () => {
     const numericAmount = parseFloat(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
@@ -311,7 +324,11 @@ export default function WithdrawScreen() {
                 </Text>
               ) : null}
 
-              <View style={styles.amountDisplayRow}>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={handlePaste}
+                style={styles.amountDisplayRow}
+              >
                 <Text style={[styles.currencyPrefix, { color: colors.primary }]}>₱</Text>
                 <Text
                   style={[
@@ -324,10 +341,21 @@ export default function WithdrawScreen() {
                 >
                   {formatDisplayAmount(amount)}
                 </Text>
-              </View>
+              </TouchableOpacity>
 
-              {/* Selected Preset Badge */}
+              {/* Action Hint Row: Paste Button & Selected Preset Badge */}
               <View style={styles.statusHintRow}>
+                <TouchableOpacity
+                  style={[styles.pasteBadge, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
+                  onPress={handlePaste}
+                  activeOpacity={0.7}
+                >
+                  <ClipboardPaste size={12} color={colors.primary} style={{ marginRight: 4 }} />
+                  <Text style={[styles.pasteBadgeText, { color: colors.primary }]}>
+                    Paste
+                  </Text>
+                </TouchableOpacity>
+
                 {selectedPreset ? (
                   <View style={[styles.selectedPresetBadge, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '30' }]}>
                     {(() => {
@@ -640,9 +668,23 @@ const getStyles = (colors: any, isDarkMode: boolean) =>
     },
     statusHintRow: {
       marginTop: 8,
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: 8,
       minHeight: 24,
+    },
+    pasteBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    pasteBadgeText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(12),
     },
     selectedPresetBadge: {
       flexDirection: 'row',

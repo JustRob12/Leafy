@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Vibration, StatusBar, Image } from 'react-native';
 import { theme } from '../theme';
-import { Shield, Fingerprint, Lock, ShieldAlert, CheckCircle2, Leaf, Key } from 'lucide-react-native';
+import { Shield, Fingerprint, Lock, ShieldAlert, CheckCircle2, Leaf, Key, Delete } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -28,7 +28,12 @@ export default function SecurityScreen() {
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'delete'];
+  const keypadRows = [
+    ['1', '2', '3'],
+    ['4', '5', '6'],
+    ['7', '8', '9'],
+    ['', '0', 'delete'],
+  ];
 
   const handleBiometrics = async () => {
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
@@ -175,23 +180,27 @@ export default function SecurityScreen() {
               </Animated.View>
 
               <View style={styles.keypad}>
-                {keys.map((key, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.key,
-                      key === '' && styles.keyEmpty,
-                    ]}
-                    onPress={() => handlePress(key)}
-                    activeOpacity={0.5}
-                    disabled={key === ''}
-                  >
-                    {key === '0' || (key !== '' && key !== 'delete') ? (
-                      <Text style={styles.keyText}>{key}</Text>
-                    ) : key === 'delete' ? (
-                      <Key size={24} color="#FFFFFF" />
-                    ) : null}
-                  </TouchableOpacity>
+                {keypadRows.map((row, rowIndex) => (
+                  <View key={rowIndex} style={styles.keypadRow}>
+                    {row.map((key, colIndex) => (
+                      <TouchableOpacity
+                        key={colIndex}
+                        style={[
+                          styles.key,
+                          key === '' && styles.keyEmpty,
+                        ]}
+                        onPress={() => handlePress(key)}
+                        activeOpacity={0.5}
+                        disabled={key === ''}
+                      >
+                        {key === '0' || (key !== '' && key !== 'delete') ? (
+                          <Text style={styles.keyText}>{key}</Text>
+                        ) : key === 'delete' ? (
+                          <Delete size={24} color="#FFFFFF" />
+                        ) : null}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 ))}
               </View>
 
@@ -353,13 +362,15 @@ const getStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.error,
   },
   keypad: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    width: '100%',
-    maxWidth: 260, // Restrict width to force 3-column layout
     alignSelf: 'center',
+    width: '100%',
+    maxWidth: 280,
     gap: 16,
+  },
+  keypadRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   key: {
     width: 64,

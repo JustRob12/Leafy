@@ -5,7 +5,7 @@ import { useAppContext } from '../context/AppContext';
 import { Delete, XCircle } from 'lucide-react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const scale = SCREEN_WIDTH / 375;
+const scale = Math.min(SCREEN_WIDTH / 375, 1.25);
 const rf = (size: number) => Math.round(size * scale);
 
 interface CalculatorKeypadProps {
@@ -176,6 +176,9 @@ export default function CalculatorKeypad({
 const getStyles = (colors: any, isDarkMode: boolean) =>
   StyleSheet.create({
     container: {
+      width: '100%',
+      maxWidth: 440,
+      alignSelf: 'center',
       gap: 10,
       marginVertical: 10,
     },

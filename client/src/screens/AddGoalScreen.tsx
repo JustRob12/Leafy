@@ -151,6 +151,7 @@ export default function AddGoalScreen() {
         <WalletDropdown
           selectedWalletId={selectedWalletId}
           onSelectWallet={setSelectedWalletId}
+          allowAll={true}
         />
 
         <Text style={styles.inputLabel}>Goal Description</Text>

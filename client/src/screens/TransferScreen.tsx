@@ -7,7 +7,7 @@ import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
 import { 
-  ChevronLeft, ArrowRightLeft, CreditCard, Check 
+  ChevronLeft, ArrowRightLeft, CreditCard, Check, Delete 
 } from 'lucide-react-native';
 import WalletBrandLogo from '../components/WalletBrandLogo';
 
@@ -19,6 +19,13 @@ export default function TransferScreen() {
   const { colors, isDarkMode, wallets, transferMoney, showFeedback, usdToPhpRate } = useAppContext();
   const navigation = useNavigation<any>();
   const styles = getStyles(colors, isDarkMode);
+
+  const keypadRows = [
+    ['1', '2', '3'],
+    ['4', '5', '6'],
+    ['7', '8', '9'],
+    ['.', '0', 'DEL'],
+  ];
 
   const [fromWalletId, setFromWalletId] = useState<string | null>(null);
   const [toWalletId, setToWalletId] = useState<string | null>(null);
@@ -252,26 +259,35 @@ export default function TransferScreen() {
 
             <View style={styles.keypadContainer}>
               <View style={styles.keypad}>
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, '.', 0, 'DEL'].map((key) => (
-                  <TouchableOpacity 
-                    key={key} 
-                    style={styles.keypadButton}
-                    onPress={() => {
-                      const setVal = activeInput === 'amount' ? setAmount : setTax;
-                      const val = activeInput === 'amount' ? amount : tax;
+                {keypadRows.map((row, rIdx) => (
+                  <View key={rIdx} style={styles.keypadRow}>
+                    {row.map((key) => (
+                      <TouchableOpacity 
+                        key={key} 
+                        style={styles.keypadButton}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          const setVal = activeInput === 'amount' ? setAmount : setTax;
+                          const val = activeInput === 'amount' ? amount : tax;
 
-                      if (key === 'DEL') {
-                        setVal(prev => prev.slice(0, -1));
-                      } else if (key === '.') {
-                        if (!val.includes('.')) setVal(prev => prev + '.');
-                      } else {
-                        if (val.includes('.') && val.split('.')[1].length >= 2) return;
-                        setVal(prev => prev + key);
-                      }
-                    }}
-                  >
-                    <Text style={styles.keypadButtonText}>{key}</Text>
-                  </TouchableOpacity>
+                          if (key === 'DEL') {
+                            setVal(prev => prev.slice(0, -1));
+                          } else if (key === '.') {
+                            if (!val.includes('.')) setVal(prev => prev + '.');
+                          } else {
+                            if (val.includes('.') && val.split('.')[1].length >= 2) return;
+                            setVal(prev => prev + key);
+                          }
+                        }}
+                      >
+                        {key === 'DEL' ? (
+                          <Delete size={20} color={colors.text} />
+                        ) : (
+                          <Text style={styles.keypadButtonText}>{key}</Text>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 ))}
               </View>
             </View>
@@ -537,24 +553,30 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   keypadContainer: {
     marginTop: 10,
     marginBottom: 20,
+    alignItems: 'center',
   },
   keypad: {
+    width: '100%',
+    maxWidth: 360,
+    gap: 10,
+  },
+  keypadRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
     gap: 10,
   },
   keypadButton: {
-    width: (width - 40 - 20) / 3,
-    height: 44,
+    flex: 1,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
   },
   keypadButtonText: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: 18,
+    fontSize: 20,
     color: colors.text,
   },
   transferBtn: {

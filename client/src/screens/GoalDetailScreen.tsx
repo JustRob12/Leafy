@@ -35,8 +35,11 @@ export default function GoalDetailScreen() {
     );
   }
 
+  const isLinkedToAll = goal.walletId === 'ALL' || goal.walletId === 'all';
   const linkedWallet = wallets.find(w => w.id === goal.walletId);
-  const currentAmount = linkedWallet ? getWalletTotalBalanceInPhp(linkedWallet, usdToPhpRate) : 0;
+  const currentAmount = isLinkedToAll
+    ? wallets.reduce((sum, w) => sum + getWalletTotalBalanceInPhp(w, usdToPhpRate), 0)
+    : (linkedWallet ? getWalletTotalBalanceInPhp(linkedWallet, usdToPhpRate) : 0);
   const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
   const remaining = Math.max(0, goal.targetAmount - currentAmount);
 
@@ -146,7 +149,9 @@ export default function GoalDetailScreen() {
 
           <View style={styles.walletBadge}>
             <Wallet size={16} color={colors.textMuted} />
-            <Text style={styles.walletText}>Linked to {linkedWallet?.name || 'Unknown Wallet'}</Text>
+            <Text style={styles.walletText}>
+              Linked to {isLinkedToAll ? 'All Wallets' : (linkedWallet?.name || 'Unknown Wallet')}
+            </Text>
           </View>
 
           <View style={{ height: 120 }} />

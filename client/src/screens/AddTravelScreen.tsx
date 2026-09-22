@@ -9,9 +9,6 @@ import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, Image as ImageIcon, X } from 'lucide-react-native';
 
-const { width } = Dimensions.get('window');
-const GRID_SIZE = (width - 64) / 3;
-
 export default function AddTravelScreen({ route }: any) {
   const { addTravel, editTravel, colors, isDarkMode, showFeedback } = useAppContext();
   const tripToEdit = route.params?.trip;
@@ -251,6 +248,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     backgroundColor: colors.card,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   backBtn: {
     padding: 4,
@@ -262,6 +262,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   scrollContent: {
     padding: theme.spacing.lg,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   formCard: {
     backgroundColor: colors.card,

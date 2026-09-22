@@ -9,8 +9,6 @@ import ActionSheet from '../components/ActionSheet';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import WalletDropdown from '../components/WalletDropdown';
 
-const { width } = Dimensions.get('window');
-
 export default function AddGoalScreen() {
   const { addGoal, editGoal, deleteGoal, wallets, showFeedback, showConfirm, colors, isDarkMode } = useAppContext();
   const navigation = useNavigation<any>();
@@ -222,6 +220,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   backBtn: {
     padding: 8,
@@ -235,9 +236,14 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   scrollContent: {
     padding: 24,
     paddingBottom: 40,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   imagePickerBtn: {
     width: '100%',
+    maxWidth: 380,
+    alignSelf: 'center',
     height: 180,
     borderRadius: 24,
     marginBottom: 24,

@@ -17,6 +17,7 @@ import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 import * as LucideIcons from 'lucide-react-native';
 import WalletBrandLogo from '../components/WalletBrandLogo';
 import { resolveSubscriptionLogo } from '../services/SubscriptionCatalogService';
+import { rf, useResponsive } from '../utils/responsive';
 
 const SUBS_ICONS: { [key: string]: any } = {
   'capcut.png': require('../../public/subs/capcut.png'),
@@ -80,9 +81,9 @@ export default function HomeScreen() {
 
   const styles = getStyles(colors, isDarkMode);
 
-  const SCREEN_WIDTH = Dimensions.get('window').width;
-  const CARD_SIDE_INSET = 24;
-  const CARD_WIDTH = SCREEN_WIDTH - (CARD_SIDE_INSET * 2);
+  const { width, isLandscape, isTablet } = useResponsive();
+  const CARD_WIDTH = Math.min(width - 48, isLandscape || isTablet ? 500 : width - 48);
+  const CARD_SIDE_INSET = Math.max(24, (width - CARD_WIDTH) / 2);
   const CARD_GAP = 12;
   const CARD_SNAP_INTERVAL = CARD_WIDTH + CARD_GAP;
   const WALLET_ITEM_WIDTH = 100; // Tighter ticker
@@ -623,7 +624,7 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <ScrollView
         ref={scrollViewRef}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { maxWidth: 960, width: '100%', alignSelf: 'center' }]}
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled={true}
         onScroll={handleScroll}
@@ -1706,11 +1707,6 @@ export default function HomeScreen() {
   );
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const scale = SCREEN_WIDTH / 375;
-
-const rf = (size: number) => Math.round(size * scale);
-
 const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
@@ -2437,6 +2433,8 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     position: 'absolute',
     left: 20,
     right: 20,
+    maxWidth: 520,
+    alignSelf: 'center',
     backgroundColor: colors.card,
     borderRadius: 20,
     padding: 20,

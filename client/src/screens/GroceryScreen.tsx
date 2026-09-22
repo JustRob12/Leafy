@@ -298,6 +298,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 14,
+    maxWidth: 720,
+    width: '100%',
+    alignSelf: 'center',
   },
   backBtn: {
     padding: 8,
@@ -311,6 +314,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   scrollContent: {
     padding: 20,
     paddingBottom: 110,
+    maxWidth: 720,
+    width: '100%',
+    alignSelf: 'center',
   },
   emptyState: {
     alignItems: 'center',

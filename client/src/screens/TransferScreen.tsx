@@ -11,9 +11,7 @@ import {
 } from 'lucide-react-native';
 import WalletBrandLogo from '../components/WalletBrandLogo';
 
-const { width } = Dimensions.get('window');
-const scale = width / 375;
-const rf = (size: number) => Math.round(size * scale);
+import { rf } from '../utils/responsive';
 
 export default function TransferScreen() {
   const { colors, isDarkMode, wallets, transferMoney, showFeedback, usdToPhpRate } = useAppContext();
@@ -320,6 +318,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     marginBottom: 16,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   backBtn: {
     width: 44,
@@ -336,6 +337,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   mainContent: {
     paddingHorizontal: 20,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   currencyToggleContainer: {
     flexDirection: 'row',
@@ -469,7 +473,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     paddingVertical: 4,
   },
   miniWalletItem: {
-    width: (width - 80) / 3.5,
+    width: 90,
     aspectRatio: 1,
     borderRadius: 20,
     backgroundColor: colors.card,

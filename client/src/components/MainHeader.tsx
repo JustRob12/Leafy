@@ -7,11 +7,7 @@ import { useAppContext, getWalletTotalBalanceInPhp } from '../context/AppContext
 import { navigationRef } from '../navigation/navigationUtils';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, User, Settings, LogOut, Info, ChevronRight, Flame, Sprout, TreeDeciduous, Egg, X, Image as ImageIcon, HelpCircle, Bell, Target, AlertCircle, ShoppingCart, Coins, Calendar, CreditCard, Home, Receipt, Sparkles } from 'lucide-react-native';
-import { Dimensions } from 'react-native';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const scale = SCREEN_WIDTH / 375;
-const rf = (size: number) => Math.round(size * scale);
+import { rf } from '../utils/responsive';
 
 
 export interface MainHeaderProps {
@@ -617,6 +613,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 10,
     gap: 0,
+    maxWidth: 1080,
+    width: '100%',
+    alignSelf: 'center',
   },
   topRow: {
     flexDirection: 'row',

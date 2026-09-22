@@ -179,6 +179,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.card,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   backBtn: {
     padding: 8,
@@ -192,23 +195,25 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   scrollContent: {
     padding: 24,
     paddingBottom: 40,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   inputLabel: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 14,
     color: colors.text,
     marginBottom: 8,
-    marginTop: 12,
+    marginTop: 16,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 16,
     paddingHorizontal: 16,
-    marginBottom: 12,
+    backgroundColor: colors.card,
   },
   inputIcon: {
     marginRight: 12,
@@ -226,6 +231,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.card,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   saveBtn: {
     backgroundColor: colors.primary,

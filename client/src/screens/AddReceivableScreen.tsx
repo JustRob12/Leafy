@@ -127,6 +127,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.card,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   backBtn: {
     padding: 8,
@@ -140,6 +143,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   scrollContent: {
     padding: 24,
     paddingBottom: 40,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   inputLabel: {
     fontFamily: theme.fonts.semiBold,
@@ -174,6 +180,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.card,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   saveBtn: {
     backgroundColor: colors.primary,

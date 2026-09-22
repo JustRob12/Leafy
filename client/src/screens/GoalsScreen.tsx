@@ -6,9 +6,15 @@ import { useAppContext, getWalletTotalBalanceInPhp } from '../context/AppContext
 import ActionSheet from '../components/ActionSheet';
 import { useNavigation, useRoute, useScrollToTop } from '@react-navigation/native';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
+import { rf, useResponsive } from '../utils/responsive';
 
 export default function GoalsScreen() {
   const { goals, addGoal, editGoal, deleteGoal, wallets, showFeedback, showConfirm, colors, isDarkMode, usdToPhpRate } = useAppContext();
+  const { width, isLandscape, isTablet } = useResponsive();
+  const isGrid = isLandscape || isTablet;
+  const contentWidth = Math.min(width - 48, 1040);
+  const cardWidth = Math.floor((contentWidth - 12) / 2);
+
   const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -33,7 +39,7 @@ export default function GoalsScreen() {
     <View style={styles.container}>
       <ScrollView 
         ref={scrollViewRef}
-        contentContainerStyle={styles.scrollContent} 
+        contentContainerStyle={[styles.scrollContent, { maxWidth: 1040, width: '100%', alignSelf: 'center' }]} 
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
@@ -89,54 +95,62 @@ export default function GoalsScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          filteredGoals.map((goal) => {
-            const isLinkedToAll = goal.walletId === 'ALL' || goal.walletId === 'all';
-            const linkedWallet = wallets.find(w => w.id === goal.walletId);
-            const currentAmount = isLinkedToAll
-              ? wallets.reduce((sum, w) => sum + getWalletTotalBalanceInPhp(w, usdToPhpRate), 0)
-              : (linkedWallet ? getWalletTotalBalanceInPhp(linkedWallet, usdToPhpRate) : 0);
-            const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
+          <View style={isGrid ? { flexDirection: 'row', flexWrap: 'wrap', gap: 12 } : undefined}>
+            {filteredGoals.map((goal) => {
+              const isLinkedToAll = goal.walletId === 'ALL' || goal.walletId === 'all';
+              const linkedWallet = wallets.find(w => w.id === goal.walletId);
+              const currentAmount = isLinkedToAll
+                ? wallets.reduce((sum, w) => sum + getWalletTotalBalanceInPhp(w, usdToPhpRate), 0)
+                : (linkedWallet ? getWalletTotalBalanceInPhp(linkedWallet, usdToPhpRate) : 0);
+              const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
 
-            return (
-              <TouchableOpacity 
-                key={goal.id} 
-                style={styles.shopeeCard}
-                onPress={() => navigation.navigate('GoalDetail', { goal })}
-              >
-                <View style={styles.shopeeImageWrapper}>
-                  {goal.imageUrl ? (
-                    <Image source={{ uri: goal.imageUrl }} style={styles.shopeeImage as any} />
-                  ) : (
-                    <Target size={24} color={colors.primary} />
-                  )}
-                </View>
-                
-                <View style={styles.shopeeContent}>
-                  <View style={styles.shopeeTitleRow}>
-                    <Text style={styles.shopeeTitle} numberOfLines={1}>{goal.title}</Text>
-                    <Text style={styles.shopeeProgressText}>{Math.round(Math.min(progress, 100))}%</Text>
+              return (
+                <TouchableOpacity 
+                  key={goal.id} 
+                  style={[styles.shopeeCard, isGrid && { width: cardWidth, marginBottom: 0 }]}
+                  onPress={() => navigation.navigate('GoalDetail', { goal })}
+                >
+                  <View style={styles.shopeeImageWrapper}>
+                    {goal.imageUrl ? (
+                      <Image source={{ uri: goal.imageUrl }} style={styles.shopeeImage as any} />
+                    ) : (
+                      <Target size={24} color={colors.primary} />
+                    )}
                   </View>
                   
-                  <View style={styles.shopeeMetaRow}>
-                    <Wallet size={12} color={colors.textMuted} />
-                    <Text style={styles.shopeeWalletName} numberOfLines={1}>
-                      {isLinkedToAll ? 'All Wallets' : (linkedWallet?.name || 'Unknown Wallet')}
-                    </Text>
-                  </View>
+                  <View style={styles.shopeeContent}>
+                    <View style={styles.shopeeTitleRow}>
+                      <Text style={styles.shopeeTitle} numberOfLines={1}>{goal.title}</Text>
+                      <Text style={styles.shopeeProgressText}>{Math.round(Math.min(progress, 100))}%</Text>
+                    </View>
+                    
+                    <View style={styles.shopeeMetaRow}>
+                      <Wallet size={12} color={colors.textMuted} />
+                      <Text style={styles.shopeeWalletName} numberOfLines={1}>
+                        {isLinkedToAll ? 'All Wallets' : (linkedWallet?.name || 'Unknown Wallet')}
+                      </Text>
+                    </View>
 
-                  <View style={styles.shopeeStatsRow}>
-                    <Text style={styles.shopeeStatValue}>₱{Math.floor(currentAmount).toLocaleString('en-PH')}</Text>
-                    <Text style={styles.shopeeStatTotal}> / ₱{goal.targetAmount.toLocaleString('en-PH')}</Text>
+                    <View style={styles.shopeeStatsRow}>
+                      <Text style={styles.shopeeStatValue}>₱{Math.floor(currentAmount).toLocaleString('en-PH')}</Text>
+                      <Text style={styles.shopeeStatTotal}> / ₱{goal.targetAmount.toLocaleString('en-PH')}</Text>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         )}
       </ScrollView>
       
       <TouchableOpacity 
-        style={styles.fab} 
+        style={[
+          styles.fab,
+          {
+            bottom: isLandscape ? 80 : 120,
+            right: Math.max(24, (width - 1040) / 2 + 24),
+          },
+        ]} 
         onPress={() => navigation.navigate('AddGoal')}
         activeOpacity={0.8}
       >
@@ -148,11 +162,6 @@ export default function GoalsScreen() {
     </View>
   );
 }
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const scale = SCREEN_WIDTH / 375;
-
-const rf = (size: number) => Math.round(size * scale);
 
 const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {

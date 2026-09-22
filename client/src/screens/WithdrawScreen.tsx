@@ -44,9 +44,7 @@ import BottomWalletBar from '../components/BottomWalletBar';
 import WalletPickerModal from '../components/WalletPickerModal';
 import { getNumberFromClipboard } from '../utils/clipboardUtils';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const scale = SCREEN_WIDTH / 375;
-const rf = (size: number) => Math.round(size * scale);
+import { rf, useResponsive } from '../utils/responsive';
 
 const ICON_MAP: { [key: string]: any } = {
   Utensils,
@@ -85,7 +83,8 @@ export default function WithdrawScreen() {
     usdToPhpRate,
   } = useAppContext();
   const navigation = useNavigation<any>();
-  const styles = useMemo(() => getStyles(colors, isDarkMode), [colors, isDarkMode]);
+  const { isLandscape } = useResponsive();
+  const styles = useMemo(() => getStyles(colors, isDarkMode, isLandscape), [colors, isDarkMode, isLandscape]);
 
   const [selectedPreset, setSelectedPreset] = useState<any>(null);
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
@@ -314,6 +313,188 @@ export default function WithdrawScreen() {
               <Text style={styles.addWalletBtnText}>Add Wallet</Text>
             </TouchableOpacity>
           </View>
+        ) : isLandscape ? (
+          <View style={styles.contentFlex}>
+            {/* Left Column in Landscape: Display + Hints + Recents + Presets */}
+            <View style={styles.leftColLandscape}>
+              <View style={styles.displaySection}>
+                {expression ? (
+                  <Text style={[styles.expressionPreview, { color: colors.textMuted }]}>
+                    {expression} {isResult ? '' : amount}
+                  </Text>
+                ) : null}
+
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  onPress={handlePaste}
+                  style={styles.amountDisplayRow}
+                >
+                  <Text style={[styles.currencyPrefix, { color: colors.primary }]}>₱</Text>
+                  <Text
+                    style={[
+                      styles.amountText,
+                      { color: colors.text },
+                      !amount && { color: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)' },
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {formatDisplayAmount(amount)}
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={styles.statusHintRow}>
+                  <TouchableOpacity
+                    style={[styles.pasteBadge, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
+                    onPress={handlePaste}
+                    activeOpacity={0.7}
+                  >
+                    <ClipboardPaste size={12} color={colors.primary} style={{ marginRight: 4 }} />
+                    <Text style={[styles.pasteBadgeText, { color: colors.primary }]}>
+                      Paste
+                    </Text>
+                  </TouchableOpacity>
+
+                  {selectedPreset ? (
+                    <View style={[styles.selectedPresetBadge, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '30' }]}>
+                      {(() => {
+                        const Icon = ICON_MAP[selectedPreset.iconName] || MoreHorizontal;
+                        return <Icon size={12} color={colors.primary} style={{ marginRight: 4 }} />;
+                      })()}
+                      <Text style={[styles.selectedPresetBadgeText, { color: colors.primary }]}>
+                        {selectedPreset.name}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+
+              {/* Recent Expenses & Presets in Left Column */}
+              {recentExpenses.length > 0 && (
+                <View style={styles.recentSection}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.recentScrollContent}
+                  >
+                    {recentExpenses.map((tx) => {
+                      const Icon = tx.icon && ICON_MAP[tx.icon] ? ICON_MAP[tx.icon] : TrendingDown;
+                      const displayAmt = `-₱${tx.amount.toLocaleString('en-US', {
+                        minimumFractionDigits: tx.amount % 1 === 0 ? 0 : 2,
+                        maximumFractionDigits: 2,
+                      })}`;
+                      return (
+                        <TouchableOpacity
+                          key={tx.id}
+                          style={styles.recentChip}
+                          onPress={() => {
+                            setAmount(String(tx.amount));
+                            const matchPreset = effectivePresets.find(p => p.name.toLowerCase() === tx.title.toLowerCase());
+                            if (matchPreset) setSelectedPreset(matchPreset);
+                            setIsResult(false);
+                          }}
+                          activeOpacity={0.75}
+                        >
+                          <Icon size={11} color="#ef4444" style={{ marginRight: 4 }} />
+                          <Text style={styles.recentChipTitle} numberOfLines={1}>
+                            {tx.title}
+                          </Text>
+                          <Text style={[styles.recentChipAmount, { color: '#ef4444' }]}>
+                            {displayAmt}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+
+              <View style={styles.presetsContainer}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.presetsScrollContent}
+                >
+                  <TouchableOpacity
+                    style={[
+                      styles.smallPresetChip,
+                      styles.addPresetChip,
+                      {
+                        backgroundColor: isDarkMode ? 'rgba(16,185,129,0.15)' : '#eaf8f0',
+                        borderColor: isDarkMode ? 'rgba(16,185,129,0.3)' : 'rgba(16,185,129,0.25)',
+                      },
+                    ]}
+                    onPress={() => setShowAddPreset(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Plus size={13} color={colors.primary} strokeWidth={2.5} />
+                    <Text style={[styles.smallPresetText, { color: colors.primary, fontFamily: theme.fonts.bold }]}>
+                      Add
+                    </Text>
+                  </TouchableOpacity>
+
+                  {effectivePresets.map(preset => {
+                    const isSelected = selectedPreset?.name === preset.name;
+                    const Icon = ICON_MAP[preset.iconName] || MoreHorizontal;
+                    return (
+                      <TouchableOpacity
+                        key={preset.id}
+                        style={[
+                          styles.smallPresetChip,
+                          {
+                            backgroundColor: isSelected
+                              ? colors.primary
+                              : isDarkMode
+                                ? 'rgba(255,255,255,0.06)'
+                                : '#f1f5f9',
+                            borderColor: isSelected
+                              ? colors.primary
+                              : isDarkMode
+                                ? 'rgba(255,255,255,0.08)'
+                                : '#e2e8f0',
+                          },
+                        ]}
+                        onPress={() => {
+                          setSelectedPreset(isSelected ? null : preset);
+                        }}
+                        activeOpacity={0.75}
+                      >
+                        <Icon size={13} color={isSelected ? '#ffffff' : colors.text} />
+                        <Text
+                          style={[
+                            styles.smallPresetText,
+                            { color: isSelected ? '#ffffff' : colors.text },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {preset.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </View>
+
+            {/* Right Column in Landscape: Keypad + Bottom Wallet Bar */}
+            <View style={styles.rightColLandscape}>
+              <CalculatorKeypad
+                onDigit={handleDigit}
+                onDot={handleDot}
+                onOperator={handleOperator}
+                onClear={handleClear}
+                onBackspace={handleBackspace}
+                onEquals={handleEquals}
+              />
+              <BottomWalletBar
+                selectedWallet={selectedWallet}
+                onOpenWalletPicker={() => setShowWalletPicker(true)}
+                onSave={handleExpense}
+                saveLabel="Expense"
+                disabled={!amount || numericAmount <= 0 || !selectedWalletId}
+              />
+            </View>
+          </View>
         ) : (
           <View style={styles.contentFlex}>
             {/* Top Display: Amount & Active Formula */}
@@ -438,32 +619,32 @@ export default function WithdrawScreen() {
 
                   {/* Preset Items */}
                   {effectivePresets.map(preset => {
+                    const isSelected = selectedPreset?.name === preset.name;
                     const Icon = ICON_MAP[preset.iconName] || MoreHorizontal;
-                    const isSelected = selectedPreset?.id === preset.id;
                     return (
                       <TouchableOpacity
                         key={preset.id}
                         style={[
                           styles.smallPresetChip,
                           {
-                            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#f1f5f9',
-                            borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
-                          },
-                          isSelected && {
-                            backgroundColor: colors.primary,
-                            borderColor: colors.primary,
+                            backgroundColor: isSelected
+                              ? colors.primary
+                              : isDarkMode
+                                ? 'rgba(255,255,255,0.06)'
+                                : '#f1f5f9',
+                            borderColor: isSelected
+                              ? colors.primary
+                              : isDarkMode
+                                ? 'rgba(255,255,255,0.08)'
+                                : '#e2e8f0',
                           },
                         ]}
-                        onPress={() =>
-                          setSelectedPreset((prev: any) => (prev?.id === preset.id ? null : preset))
-                        }
+                        onPress={() => {
+                          setSelectedPreset(isSelected ? null : preset);
+                        }}
                         activeOpacity={0.75}
                       >
-                        <Icon
-                          size={13}
-                          color={isSelected ? '#ffffff' : colors.primary}
-                          strokeWidth={2}
-                        />
+                        <Icon size={13} color={isSelected ? '#ffffff' : colors.text} />
                         <Text
                           style={[
                             styles.smallPresetText,
@@ -598,19 +779,22 @@ export default function WithdrawScreen() {
   );
 }
 
-const getStyles = (colors: any, isDarkMode: boolean) =>
+const getStyles = (colors: any, isDarkMode: boolean, isLandscape?: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
-      paddingTop: Platform.OS === 'ios' ? 56 : 36,
+      paddingTop: Platform.OS === 'ios' ? (isLandscape ? 16 : 56) : (isLandscape ? 12 : 36),
     },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 20,
-      marginBottom: 6,
+      marginBottom: isLandscape ? 2 : 6,
+      maxWidth: isLandscape ? 900 : 540,
+      width: '100%',
+      alignSelf: 'center',
     },
     backBtn: {
       width: 44,
@@ -633,11 +817,27 @@ const getStyles = (colors: any, isDarkMode: boolean) =>
     mainContent: {
       flex: 1,
       paddingHorizontal: 20,
-      paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+      paddingBottom: isLandscape ? 8 : (Platform.OS === 'ios' ? 24 : 16),
+      maxWidth: isLandscape ? 900 : 540,
+      width: '100%',
+      alignSelf: 'center',
     },
     contentFlex: {
       flex: 1,
       justifyContent: 'space-between',
+      flexDirection: isLandscape ? 'row' : 'column',
+      gap: isLandscape ? 20 : 0,
+    },
+    leftColLandscape: {
+      flex: 1.1,
+      justifyContent: 'space-around',
+      paddingVertical: 2,
+    },
+    rightColLandscape: {
+      flex: 1,
+      maxWidth: 440,
+      justifyContent: 'flex-end',
+      paddingBottom: 2,
     },
     displaySection: {
       flex: 1,
@@ -844,7 +1044,7 @@ const getStyles = (colors: any, isDarkMode: boolean) =>
       borderRadius: 20,
       borderWidth: 1,
       borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.07)',
-      maxWidth: SCREEN_WIDTH * 0.65,
+      maxWidth: '65%',
     },
     walletBadgeDot: {
       width: 7,

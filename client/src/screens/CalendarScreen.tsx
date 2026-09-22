@@ -8,8 +8,10 @@ import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import { useNavigation } from '@react-navigation/native';
 
-const { width } = Dimensions.get('window');
-const COLUMN_WIDTH = (width - 48) / 7;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_MAX_WIDTH = 540;
+const effectiveWidth = Math.min(SCREEN_WIDTH - 48, CARD_MAX_WIDTH);
+const COLUMN_WIDTH = Math.floor(effectiveWidth / 7);
 
 export default function CalendarScreen() {
   const navigation = useNavigation<any>();
@@ -218,6 +220,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   scrollContent: {
     padding: theme.spacing.lg,
     paddingBottom: 100,
+    maxWidth: 580,
+    width: '100%',
+    alignSelf: 'center',
   },
   calendarHeaderCard: {
     backgroundColor: colors.card,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Animated, TouchableOpacity, Text, Platform } from 'react-native';
+import { View, Animated, TouchableOpacity, Text, Platform, useWindowDimensions } from 'react-native';
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Home, Wallet, Target, Clock } from 'lucide-react-native';
 import { theme } from '../theme';
@@ -119,6 +119,11 @@ const CustomTabBar = ({ state, descriptors, navigation, colors, isDarkMode }: Cu
 export default function BottomTabNavigator() {
   const { colors, isDarkMode } = useAppContext();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+
+  const maxBarWidth = 520;
+  const isWide = width > 600;
+  const horizontalMargin = isWide ? Math.max(20, (width - maxBarWidth) / 2) : 20;
 
   const bottomMargin = insets.bottom > 0 
     ? insets.bottom + 12 
@@ -132,8 +137,8 @@ export default function BottomTabNavigator() {
           style={{ 
             position: 'absolute', 
             bottom: bottomMargin, 
-            left: 20, 
-            right: 20, 
+            left: horizontalMargin, 
+            right: horizontalMargin, 
             transform: [{ translateY: globalTabBarTranslateY }],
             zIndex: 100,
             backgroundColor: colors.card,

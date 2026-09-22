@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Animated, Image, Vibration } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Animated, Image, Vibration, ScrollView } from 'react-native';
 import { theme } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Leaf, ArrowRight, Lock, Fingerprint, Delete, ShieldCheck, Key } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
+import { useResponsive } from '../utils/responsive';
 import * as LocalAuthentication from 'expo-local-authentication';
 const LogoSource = require('../../assets/icon.png');
 
 export default function OnboardingScreen() {
   const { setUsername, setAppPin, toggleSecurity, toggleBiometrics, colors, isDarkMode } = useAppContext();
-  const styles = getStyles(colors, isDarkMode);
+  const { isLandscape, isTablet } = useResponsive();
+  const styles = getStyles(colors, isDarkMode, isLandscape, isTablet);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [name, setName] = useState('');
@@ -127,7 +129,11 @@ export default function OnboardingScreen() {
           <Animated.View style={[styles.innerContainer, { opacity: fadeAnim }]}>
 
             {step === 1 && (
-              <>
+              <ScrollView
+                contentContainerStyle={styles.step1ScrollContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
                 <View style={styles.topSection}>
                   <View style={styles.iconContainer}>
                     <Image source={LogoSource} style={styles.logoImage} />
@@ -162,87 +168,105 @@ export default function OnboardingScreen() {
                     <ArrowRight size={20} color="#ffffff" />
                   </TouchableOpacity>
                 </View>
-              </>
+              </ScrollView>
             )}
 
             {step === 2 && (
-              <View style={styles.setupSection}>
-                <View style={[styles.iconContainerVariant, pinError ? { backgroundColor: '#ef444420' } : null]}>
-                  <Lock size={32} color={pinError ? '#ef4444' : colors.primary} />
-                </View>
-                <Text style={styles.titleCenter}>
-                  {pinStep === 'create' ? 'Create Security PIN' : 'Confirm Your PIN'}
-                </Text>
-                <Text style={[styles.subtitleCenter, pinError ? { color: '#ef4444', fontFamily: theme.fonts.bold } : null]}>
-                  {pinError || (pinStep === 'create' 
-                    ? 'Create a 6-digit PIN to protect your financial data.' 
-                    : 'Re-enter your 6-digit PIN to verify.')}
-                </Text>
+              <ScrollView
+                contentContainerStyle={styles.step2ScrollContent}
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+              >
+                <View style={isLandscape ? styles.landscapeRow : styles.portraitCol}>
+                  {/* Left Column in Landscape / Top in Portrait */}
+                  <View style={isLandscape ? styles.landscapeLeftCol : styles.portraitTopCol}>
+                    <View style={[styles.iconContainerVariant, pinError ? { backgroundColor: '#ef444420' } : null]}>
+                      <Lock size={isLandscape ? 26 : 32} color={pinError ? '#ef4444' : colors.primary} />
+                    </View>
+                    <Text style={styles.titleCenter}>
+                      {pinStep === 'create' ? 'Create Security PIN' : 'Confirm Your PIN'}
+                    </Text>
+                    <Text style={[styles.subtitleCenter, pinError ? { color: '#ef4444', fontFamily: theme.fonts.bold } : null]}>
+                      {pinError || (pinStep === 'create' 
+                        ? 'Create a 6-digit PIN to protect your financial data.' 
+                        : 'Re-enter your 6-digit PIN to verify.')}
+                    </Text>
 
-                <View style={styles.pinContainer}>
-                  {[1, 2, 3, 4, 5, 6].map((_, i) => (
-                    <View
-                      key={i}
-                      style={[
-                        styles.pinDot,
-                        pin.length > i && styles.pinDotFilled,
-                      ]}
-                    />
-                  ))}
-                </View>
-
-                <View style={styles.keypad}>
-                  {keypadRows.map((row, rowIndex) => (
-                    <View key={rowIndex} style={styles.keypadRow}>
-                      {row.map((key, colIndex) => (
-                        <TouchableOpacity
-                          key={colIndex}
+                    <View style={styles.pinContainer}>
+                      {[1, 2, 3, 4, 5, 6].map((_, i) => (
+                        <View
+                          key={i}
                           style={[
-                            styles.key,
-                            key === '' && styles.keyEmpty,
+                            styles.pinDot,
+                            pin.length > i && styles.pinDotFilled,
+                            pinError ? styles.pinDotError : null
                           ]}
-                          onPress={() => handleKeypadPress(key)}
-                          activeOpacity={0.7}
-                          disabled={key === ''}
-                        >
-                          {key === '0' || (key !== '' && key !== 'delete') ? (
-                            <Text style={styles.keyText}>{key}</Text>
-                          ) : key === 'delete' ? (
-                            <Delete size={24} color={colors.text} />
-                          ) : null}
-                        </TouchableOpacity>
+                        />
                       ))}
                     </View>
-                  ))}
+                  </View>
+
+                  {/* Right Column in Landscape / Bottom in Portrait */}
+                  <View style={isLandscape ? styles.landscapeRightCol : styles.portraitBottomCol}>
+                    <View style={styles.keypad}>
+                      {keypadRows.map((row, rowIndex) => (
+                        <View key={rowIndex} style={styles.keypadRow}>
+                          {row.map((key, colIndex) => (
+                            <TouchableOpacity
+                              key={colIndex}
+                              style={[
+                                styles.key,
+                                key === '' && styles.keyEmpty,
+                              ]}
+                              onPress={() => handleKeypadPress(key)}
+                              activeOpacity={0.7}
+                              disabled={key === ''}
+                            >
+                              {key === '0' || (key !== '' && key !== 'delete') ? (
+                                <Text style={styles.keyText}>{key}</Text>
+                              ) : key === 'delete' ? (
+                                <Delete size={isLandscape ? 20 : 24} color={colors.text} />
+                              ) : null}
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      ))}
+                    </View>
+                  </View>
                 </View>
-              </View>
+              </ScrollView>
             )}
 
             {step === 3 && (
-              <View style={styles.setupSection}>
-                <View style={[styles.iconContainerVariant, { backgroundColor: '#10b9811a' }]}>
-                  <Fingerprint size={38} color={colors.primary} />
-                </View>
-                <Text style={styles.titleCenter}>Enable Biometrics</Text>
-                <Text style={styles.subtitleCenter}>Unlock Leon faster with your fingerprint or face ID.</Text>
+              <ScrollView
+                contentContainerStyle={styles.step3ScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.setupSection}>
+                  <View style={[styles.iconContainerVariant, { backgroundColor: '#10b9811a' }]}>
+                    <Fingerprint size={isLandscape ? 32 : 38} color={colors.primary} />
+                  </View>
+                  <Text style={styles.titleCenter}>Enable Biometrics</Text>
+                  <Text style={styles.subtitleCenter}>Unlock Leon faster with your fingerprint or face ID.</Text>
 
-                <View style={styles.step3Actions}>
-                  <TouchableOpacity
-                    style={[styles.button, { width: '100%', marginBottom: 16 }]}
-                    onPress={() => finalizeOnboarding(true)}
-                  >
-                    <ShieldCheck size={20} color="#ffffff" />
-                    <Text style={styles.buttonText}>Enable Biometrics</Text>
-                  </TouchableOpacity>
+                  <View style={styles.step3Actions}>
+                    <TouchableOpacity
+                      style={[styles.button, { width: '100%', marginBottom: 16 }]}
+                      onPress={() => finalizeOnboarding(true)}
+                    >
+                      <ShieldCheck size={20} color="#ffffff" />
+                      <Text style={styles.buttonText}>Enable Biometrics</Text>
+                    </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={styles.skipButton}
-                    onPress={() => finalizeOnboarding(false)}
-                  >
-                    <Text style={styles.skipButtonText}>I'll just use my PIN</Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.skipButton}
+                      onPress={() => finalizeOnboarding(false)}
+                    >
+                      <Text style={styles.skipButtonText}>I'll just use my PIN</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
+              </ScrollView>
             )}
 
           </Animated.View>
@@ -252,7 +276,7 @@ export default function OnboardingScreen() {
   );
 }
 
-const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
+const getStyles = (colors: any, isDarkMode: boolean, isLandscape: boolean, isTablet: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -262,25 +286,77 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   innerContainer: {
     flex: 1,
-    padding: theme.spacing.lg,
+    width: '100%',
+  },
+  step1ScrollContent: {
+    flexGrow: 1,
     justifyContent: 'space-between',
+    padding: isLandscape ? 20 : theme.spacing.lg,
+    maxWidth: 520,
+    width: '100%',
+    alignSelf: 'center',
   },
-  topSection: {
-    marginTop: theme.spacing.xxl,
-  },
-  setupSection: {
-    flex: 1,
+  step2ScrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+    padding: isLandscape ? 16 : theme.spacing.lg,
+    maxWidth: isLandscape ? 780 : 440,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  step3ScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: theme.spacing.lg,
+    maxWidth: 460,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  landscapeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 24,
+  },
+  portraitCol: {
+    width: '100%',
     alignItems: 'center',
   },
+  landscapeLeftCol: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  portraitTopCol: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  landscapeRightCol: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  portraitBottomCol: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  topSection: {
+    marginTop: isLandscape ? 12 : theme.spacing.xxl,
+  },
+  setupSection: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   iconContainer: {
-    width: 80,
-    height: 80,
+    width: isLandscape ? 64 : 80,
+    height: isLandscape ? 64 : 80,
     borderRadius: 20,
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: theme.spacing.xl,
+    marginBottom: isLandscape ? 12 : theme.spacing.xl,
   },
   logoImage: {
     width: '100%',
@@ -288,47 +364,48 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     resizeMode: 'contain',
   },
   iconContainerVariant: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: isLandscape ? 56 : 72,
+    height: isLandscape ? 56 : 72,
+    borderRadius: isLandscape ? 28 : 36,
     backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: isLandscape ? 12 : 24,
     borderWidth: 1,
     borderColor: colors.border,
   },
   title: {
     fontFamily: theme.fonts.bold,
-    fontSize: 32,
+    fontSize: isLandscape ? 26 : 32,
     color: colors.text,
     marginBottom: theme.spacing.sm,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontFamily: theme.fonts.regular,
-    fontSize: 16,
+    fontSize: isLandscape ? 14 : 16,
     color: colors.textMuted,
-    lineHeight: 24,
+    lineHeight: isLandscape ? 20 : 24,
   },
   titleCenter: {
     fontFamily: theme.fonts.bold,
-    fontSize: 26,
+    fontSize: isLandscape ? 22 : 26,
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'center',
   },
   subtitleCenter: {
     fontFamily: theme.fonts.medium,
-    fontSize: 15,
+    fontSize: isLandscape ? 13 : 15,
     color: colors.textMuted,
     textAlign: 'center',
-    marginBottom: 40,
-    paddingHorizontal: 20,
-    lineHeight: 22,
+    marginBottom: isLandscape ? 16 : 36,
+    paddingHorizontal: 16,
+    lineHeight: 20,
   },
   inputSection: {
-    marginBottom: theme.spacing.xl,
+    marginTop: isLandscape ? 16 : 0,
+    marginBottom: isLandscape ? 12 : theme.spacing.xl,
   },
   inputLabel: {
     fontFamily: theme.fonts.medium,
@@ -352,7 +429,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 16,
-    marginBottom: 44,
+    marginBottom: isLandscape ? 8 : 40,
   },
   pinDot: {
     width: 14,
@@ -366,11 +443,15 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
+  pinDotError: {
+    backgroundColor: '#ef4444',
+    borderColor: '#ef4444',
+  },
   keypad: {
     alignSelf: 'center',
     width: '100%',
-    maxWidth: 280,
-    gap: 16,
+    maxWidth: isLandscape ? 240 : 280,
+    gap: isLandscape ? 8 : 16,
   },
   keypadRow: {
     flexDirection: 'row',
@@ -378,9 +459,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     alignItems: 'center',
   },
   key: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: isLandscape ? 52 : 72,
+    height: isLandscape ? 52 : 72,
+    borderRadius: isLandscape ? 26 : 36,
     backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
@@ -393,7 +474,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   keyText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 28,
+    fontSize: isLandscape ? 22 : 28,
     color: colors.text,
   },
   button: {
@@ -416,10 +497,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   step3Actions: {
     width: '100%',
     paddingHorizontal: 20,
-    marginTop: 20,
+    marginTop: isLandscape ? 12 : 20,
   },
   skipButton: {
-    paddingVertical: 16,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },

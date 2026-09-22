@@ -5,9 +5,7 @@ import { useAppContext } from '../context/AppContext';
 import { ChevronsUpDown, CreditCard, Check } from 'lucide-react-native';
 import WalletBrandLogo from './WalletBrandLogo';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const scale = SCREEN_WIDTH / 375;
-const rf = (size: number) => Math.round(size * scale);
+import { rf } from '../utils/responsive';
 
 interface BottomWalletBarProps {
   selectedWallet: any;
@@ -84,6 +82,9 @@ const getStyles = (colors: any, isDarkMode: boolean) =>
       gap: 12,
       paddingTop: 8,
       paddingBottom: 6,
+      maxWidth: 480,
+      width: '100%',
+      alignSelf: 'center',
     },
     walletButton: {
       flex: 1.15,

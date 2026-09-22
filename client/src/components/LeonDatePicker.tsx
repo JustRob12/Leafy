@@ -12,8 +12,10 @@ interface LeonDatePickerProps {
   title?: string;
 }
 
-const { width } = Dimensions.get('window');
-const COLUMN_WIDTH = (width - 80) / 7;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_MAX_WIDTH = 380;
+const effectiveWidth = Math.min(SCREEN_WIDTH - 40, CARD_MAX_WIDTH);
+const COLUMN_WIDTH = Math.floor((effectiveWidth - 40) / 7);
 
 export default function LeonDatePicker({ visible, onClose, onSelect, initialDate, title = "Select Date" }: LeonDatePickerProps) {
   const { colors, isDarkMode } = useAppContext();
@@ -139,6 +141,8 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   container: {
     width: '100%',
+    maxWidth: CARD_MAX_WIDTH,
+    alignSelf: 'center',
     backgroundColor: colors.card,
     borderRadius: 24,
     padding: 20,

@@ -22,10 +22,7 @@ import {
 } from 'lucide-react-native';
 import { useAppContext, calculateNextDueDate } from '../context/AppContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const scale = SCREEN_WIDTH / 375;
-const rf = (size: number) => Math.round(size * scale);
+import { rf } from '../utils/responsive';
 
 export default function AddRentScreen() {
   const { wallets, addRent, editRent, showFeedback, colors, isDarkMode, usdToPhpRate } = useAppContext();
@@ -370,6 +367,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   backBtn: {
     padding: 8,
@@ -382,6 +382,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     paddingBottom: 40,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   formCard: {
     borderRadius: 24,

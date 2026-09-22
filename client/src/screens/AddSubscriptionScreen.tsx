@@ -30,10 +30,7 @@ import {
   resolveSubscriptionLogo,
   AppStoreSearchResult,
 } from '../services/SubscriptionCatalogService';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const scale = SCREEN_WIDTH / 375;
-const rf = (size: number) => Math.round(size * scale);
+import { rf } from '../utils/responsive';
 
 const SUBS_ICONS: { [key: string]: any } = {
   'capcut.png': require('../../public/subs/capcut.png'),
@@ -355,6 +352,9 @@ const getStyles = (colors: any, isDarkMode: boolean) =>
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
       backgroundColor: colors.card,
+      maxWidth: 680,
+      width: '100%',
+      alignSelf: 'center',
     },
     backBtn: {
       padding: 8,
@@ -368,6 +368,9 @@ const getStyles = (colors: any, isDarkMode: boolean) =>
     scrollContent: {
       padding: 18,
       paddingBottom: 40,
+      maxWidth: 680,
+      width: '100%',
+      alignSelf: 'center',
     },
     searchSection: {
       backgroundColor: colors.card,

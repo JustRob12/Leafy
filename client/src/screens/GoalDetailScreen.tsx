@@ -6,7 +6,6 @@ import { ChevronLeft, Target, Wallet, Edit3, Trash2, X, TrendingUp, AlertCircle,
 import { useAppContext, getWalletTotalBalanceInPhp } from '../context/AppContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
-const { width } = Dimensions.get('window');
 
 export default function GoalDetailScreen() {
   const { wallets, goals, deleteGoal, showConfirm, colors, isDarkMode, usdToPhpRate } = useAppContext();
@@ -179,20 +178,22 @@ export default function GoalDetailScreen() {
 
       {/* Floating Actions */}
       <View style={styles.actionFooter}>
-        <TouchableOpacity 
-          style={[styles.actionBtn, styles.editBtn]}
-          onPress={() => navigation.navigate('AddGoal', { goal })}
-        >
-          <Edit3 size={20} color="#ffffff" />
-          <Text style={styles.actionBtnText}>Edit Goal</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.actionBtn, styles.deleteBtn]}
-          onPress={handleDelete}
-        >
-          <Trash2 size={20} color="#ef4444" />
-        </TouchableOpacity>
+        <View style={styles.actionFooterInner}>
+          <TouchableOpacity 
+            style={[styles.actionBtn, styles.editBtn]}
+            onPress={() => navigation.navigate('AddGoal', { goal })}
+          >
+            <Edit3 size={20} color="#ffffff" />
+            <Text style={styles.actionBtnText}>Edit Goal</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.actionBtn, styles.deleteBtn]}
+            onPress={handleDelete}
+          >
+            <Trash2 size={20} color="#ef4444" />
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -214,6 +215,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    maxWidth: 720,
+    width: '100%',
+    alignSelf: 'center',
   },
   backBtnCircle: {
     width: 44,
@@ -237,6 +241,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexGrow: 1,
     paddingTop: 20,
     paddingHorizontal: 24,
+    paddingBottom: 120,
+    maxWidth: 720,
+    width: '100%',
+    alignSelf: 'center',
   },
   bannerImageContainer: {
     width: 180,
@@ -386,10 +394,16 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   actionFooter: {
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 40 : 20,
-    left: 24,
-    right: 24,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  actionFooterInner: {
     flexDirection: 'row',
     gap: 12,
+    maxWidth: 720,
+    width: '100%',
   },
   actionBtn: {
     height: 56,
@@ -439,8 +453,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     marginTop: 10,
   },
   overlayImageWrapper: {
-    width: width,
-    height: width,
+    width: '90%',
+    height: '75%',
+    maxWidth: 520,
+    maxHeight: 520,
     justifyContent: 'center',
     alignItems: 'center',
   },

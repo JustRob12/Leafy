@@ -7,13 +7,13 @@ import WalletDropdown from '../components/WalletDropdown';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const { width } = Dimensions.get('window');
-const BUTTON_WIDTH = Math.min((width - 80) / 4, 75); // Slightly narrower
+import { useResponsive } from '../utils/responsive';
 
 export default function CalculatorScreen() {
   const navigation = useNavigation<any>();
   const { wallets, colors, isDarkMode } = useAppContext();
-  const styles = getStyles(colors, isDarkMode);
+  const { isLandscape, isTablet } = useResponsive();
+  const styles = getStyles(colors, isDarkMode, isLandscape);
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
   const [currentValue, setCurrentValue] = useState('0');
   const [expression, setExpression] = useState('');
@@ -127,161 +127,200 @@ export default function CalculatorScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Calculator</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Wallet Selector */}
-      <View style={styles.walletSection}>
-        <Text style={styles.sectionLabel}>Reference Wallet</Text>
-        <WalletDropdown
-          selectedWalletId={selectedWalletId}
-          onSelectWallet={handleSelectWallet}
-        />
-      </View>
+      <View style={isLandscape ? styles.landscapeContainer : styles.portraitContainer}>
+        {/* Left column in landscape / top in portrait */}
+        <View style={isLandscape ? styles.leftCol : styles.displayWrapper}>
+          {/* Wallet Selector */}
+          <View style={styles.walletSection}>
+            <Text style={styles.sectionLabel}>Reference Wallet</Text>
+            <WalletDropdown
+              selectedWalletId={selectedWalletId}
+              onSelectWallet={handleSelectWallet}
+            />
+          </View>
 
-      {/* Display Area */}
-      <View style={styles.displayArea}>
-        <Text style={styles.expressionText}>{expression}</Text>
-        <Text style={styles.currentValueText} numberOfLines={1} adjustsFontSizeToFit>
-          {currentValue}
-        </Text>
-      </View>
-
-      {/* Keypad */}
-      <View style={styles.keypad}>
-        <View style={styles.row}>
-          <CalcButton label="C" onPress={clear} type="clear" />
-          <CalcButton label="÷" icon={Divide} onPress={() => handleOperator('/')} type="operator" />
-          <CalcButton label="×" icon={X} onPress={() => handleOperator('*')} type="operator" />
-          <CalcButton label="DEL" icon={Delete} onPress={backspace} type="operator" />
+          {/* Display Area */}
+          <View style={styles.displayArea}>
+            <Text style={styles.expressionText}>{expression}</Text>
+            <Text style={styles.currentValueText} numberOfLines={1} adjustsFontSizeToFit>
+              {currentValue}
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.row}>
-          <CalcButton label="7" onPress={() => handleNumber('7')} />
-          <CalcButton label="8" onPress={() => handleNumber('8')} />
-          <CalcButton label="9" onPress={() => handleNumber('9')} />
-          <CalcButton label="-" icon={Minus} onPress={() => handleOperator('-')} type="operator" />
-        </View>
+        {/* Right column in landscape / bottom in portrait: Keypad */}
+        <View style={isLandscape ? styles.rightCol : undefined}>
+          <View style={styles.keypad}>
+            <View style={styles.row}>
+              <CalcButton label="C" onPress={clear} type="clear" />
+              <CalcButton label="÷" icon={Divide} onPress={() => handleOperator('/')} type="operator" />
+              <CalcButton label="×" icon={X} onPress={() => handleOperator('*')} type="operator" />
+              <CalcButton label="DEL" icon={Delete} onPress={backspace} type="operator" />
+            </View>
 
-        <View style={styles.row}>
-          <CalcButton label="4" onPress={() => handleNumber('4')} />
-          <CalcButton label="5" onPress={() => handleNumber('5')} />
-          <CalcButton label="6" onPress={() => handleNumber('6')} />
-          <CalcButton label="+" icon={Plus} onPress={() => handleOperator('+')} type="operator" />
-        </View>
+            <View style={styles.row}>
+              <CalcButton label="7" onPress={() => handleNumber('7')} />
+              <CalcButton label="8" onPress={() => handleNumber('8')} />
+              <CalcButton label="9" onPress={() => handleNumber('9')} />
+              <CalcButton label="-" icon={Minus} onPress={() => handleOperator('-')} type="operator" />
+            </View>
 
-        <View style={styles.row}>
-          <View style={{ flex: 3, flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <View style={styles.row}>
-                <CalcButton label="1" onPress={() => handleNumber('1')} />
-                <CalcButton label="2" onPress={() => handleNumber('2')} />
-                <CalcButton label="3" onPress={() => handleNumber('3')} />
+            <View style={styles.row}>
+              <CalcButton label="4" onPress={() => handleNumber('4')} />
+              <CalcButton label="5" onPress={() => handleNumber('5')} />
+              <CalcButton label="6" onPress={() => handleNumber('6')} />
+              <CalcButton label="+" icon={Plus} onPress={() => handleOperator('+')} type="operator" />
+            </View>
+
+            <View style={styles.row}>
+              <View style={{ flex: 3, flexDirection: 'row', gap: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.row}>
+                    <CalcButton label="1" onPress={() => handleNumber('1')} />
+                    <CalcButton label="2" onPress={() => handleNumber('2')} />
+                    <CalcButton label="3" onPress={() => handleNumber('3')} />
+                  </View>
+                  <View style={[styles.row, { marginTop: 8 }]}>
+                    <CalcButton label="0" onPress={() => handleNumber('0')} style={{ flex: 2 }} />
+                    <CalcButton label="." onPress={() => handleNumber('.')} />
+                  </View>
+                </View>
               </View>
-              <View style={[styles.row, { marginTop: 8 }]}>
-                <CalcButton label="0" onPress={() => handleNumber('0')} style={{ flex: 2 }} />
-                <CalcButton label="." onPress={() => handleNumber('.')} />
-              </View>
+              <CalcButton icon={Equal} onPress={calculate} type="equal" />
             </View>
           </View>
-          <CalcButton icon={Equal} onPress={calculate} type="equal" />
         </View>
       </View>
     </SafeAreaView>
   );
 }
 
-
-const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.md,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backBtn: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 18,
-    color: colors.text,
-  },
-  walletSection: {
-    paddingHorizontal: 24,
-    marginBottom: 10,
-  },
-  sectionLabel: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 14,
-    color: colors.textMuted,
-    marginBottom: 8,
-  },
-  displayArea: {
-    flex: 1,
-    paddingHorizontal: 32,
-    justifyContent: 'flex-end',
-    alignItems: 'flex-end',
-    marginBottom: 32,
-  },
-  expressionText: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 20,
-    color: colors.textMuted,
-    marginBottom: 8,
-    textAlign: 'right',
-    width: '100%',
-  },
-  currentValueText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 64,
-    color: colors.text,
-    textAlign: 'right',
-    width: '100%',
-  },
-  keypad: {
-    width: '100%',
-    maxWidth: 480,
-    alignSelf: 'center',
-    padding: 16,
-    backgroundColor: colors.card,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: isDarkMode ? 0.3 : 0.05,
-    shadowRadius: 20,
-    elevation: 20,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  btn: {
-    flex: 1,
-    height: BUTTON_WIDTH - 15,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  btnText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 20,
-  },
-});
+const getStyles = (colors: any, isDarkMode: boolean, isLandscape?: boolean) => {
+  const btnHeight = isLandscape ? 40 : 54;
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.md,
+      paddingBottom: theme.spacing.md,
+      backgroundColor: colors.card,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      maxWidth: 900,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    landscapeContainer: {
+      flex: 1,
+      flexDirection: 'row',
+      maxWidth: 880,
+      width: '100%',
+      alignSelf: 'center',
+      padding: 16,
+      gap: 16,
+    },
+    portraitContainer: {
+      flex: 1,
+      maxWidth: 480,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    leftCol: {
+      flex: 1,
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+    },
+    rightCol: {
+      flex: 1.2,
+      justifyContent: 'center',
+    },
+    displayWrapper: {
+      flex: 1,
+    },
+    backBtn: {
+      padding: 4,
+    },
+    headerTitle: {
+      fontFamily: theme.fonts.bold,
+      fontSize: 18,
+      color: colors.text,
+    },
+    walletSection: {
+      paddingHorizontal: isLandscape ? 8 : 24,
+      marginBottom: 10,
+    },
+    sectionLabel: {
+      fontFamily: theme.fonts.medium,
+      fontSize: 14,
+      color: colors.textMuted,
+      marginBottom: 8,
+    },
+    displayArea: {
+      flex: 1,
+      paddingHorizontal: isLandscape ? 12 : 32,
+      justifyContent: 'flex-end',
+      alignItems: 'flex-end',
+      marginBottom: isLandscape ? 8 : 32,
+    },
+    expressionText: {
+      fontFamily: theme.fonts.medium,
+      fontSize: 20,
+      color: colors.textMuted,
+      marginBottom: 8,
+      textAlign: 'right',
+      width: '100%',
+    },
+    currentValueText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: isLandscape ? 44 : 64,
+      color: colors.text,
+      textAlign: 'right',
+      width: '100%',
+    },
+    keypad: {
+      width: '100%',
+      maxWidth: 480,
+      alignSelf: 'center',
+      padding: isLandscape ? 12 : 16,
+      backgroundColor: colors.card,
+      borderRadius: isLandscape ? 24 : 0,
+      borderTopLeftRadius: 32,
+      borderTopRightRadius: 32,
+      gap: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -10 },
+      shadowOpacity: isDarkMode ? 0.3 : 0.05,
+      shadowRadius: 20,
+      elevation: 20,
+    },
+    row: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    btn: {
+      flex: 1,
+      height: btnHeight,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: 'transparent',
+    },
+    btnText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: isLandscape ? 17 : 20,
+    },
+  });
+};

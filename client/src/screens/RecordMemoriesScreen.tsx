@@ -7,9 +7,6 @@ import { useAppContext } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 
-const { width } = Dimensions.get('window');
-const GRID_SIZE = (width - 40) / 3 - 0.2;
-
 export default function RecordMemoriesScreen({ route }: any) {
   const { editTravel, colors, isDarkMode, showFeedback } = useAppContext();
   const trip = route.params?.trip;
@@ -150,6 +147,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 15,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   backBtn: {
     width: 40,
@@ -172,6 +172,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   infoBox: {
     flexDirection: 'row',
@@ -200,10 +203,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 20,
     overflow: 'hidden',
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
   },
   imageWrapper: {
-    width: GRID_SIZE,
-    height: GRID_SIZE,
+    width: '32%',
+    aspectRatio: 1,
+    margin: '0.6%',
     overflow: 'hidden',
     position: 'relative',
     elevation: 2,
@@ -211,6 +218,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    borderRadius: 12,
   },
   previewImage: {
     width: '100%',
@@ -244,8 +252,10 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   addImageBtn: {
-    width: GRID_SIZE,
-    height: GRID_SIZE,
+    width: '32%',
+    aspectRatio: 1,
+    margin: '0.6%',
+    borderRadius: 12,
     borderWidth: 1,
     borderStyle: 'dashed',
     alignItems: 'center',
@@ -262,14 +272,19 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   placeholderSlot: {
-    width: GRID_SIZE,
-    height: GRID_SIZE,
+    width: '32%',
+    aspectRatio: 1,
+    margin: '0.6%',
+    borderRadius: 12,
     borderWidth: 1,
     borderStyle: 'dashed',
   },
   footer: {
     padding: 24,
     borderTopWidth: 1,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   saveBtn: {
     height: 56,

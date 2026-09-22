@@ -10,9 +10,6 @@ import LeonDatePicker from '../components/LeonDatePicker';
 import { useNavigation } from '@react-navigation/native';
 import { X, Image as ImageIcon } from 'lucide-react-native';
 
-const { width } = Dimensions.get('window');
-const GRID_SIZE = (width - 48) / 3 - 0.2;
-
 export default function TravelScreen() {
   const travels = useAppContext().travels;
   const deleteTravel = useAppContext().deleteTravel;
@@ -242,6 +239,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     backgroundColor: colors.card,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    maxWidth: 720,
+    width: '100%',
+    alignSelf: 'center',
   },
   backBtn: {
     padding: 4,
@@ -262,6 +262,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   scrollContent: {
     padding: theme.spacing.lg,
     paddingBottom: 140,
+    maxWidth: 720,
+    width: '100%',
+    alignSelf: 'center',
   },
   emptyState: {
     alignItems: 'center',
@@ -495,7 +498,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    height: '80%',
+    height: '85%',
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     padding: 24,
@@ -539,12 +545,16 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     overflow: 'hidden',
   },
   modalGridImage: {
-    width: GRID_SIZE,
-    height: GRID_SIZE,
+    width: '32%',
+    aspectRatio: 1,
+    margin: '0.6%',
+    borderRadius: 8,
   },
   emptyGridSlot: {
-    width: GRID_SIZE,
-    height: GRID_SIZE,
+    width: '32%',
+    aspectRatio: 1,
+    margin: '0.6%',
+    borderRadius: 8,
     backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
     borderWidth: 1,
     borderColor: colors.border,

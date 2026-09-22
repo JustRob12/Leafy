@@ -14,8 +14,8 @@ import { useNavigation } from '@react-navigation/native';
 import AdvancedColorPicker from '../components/AdvancedColorPicker';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.92;
-const CARD_HEIGHT = CARD_WIDTH * (1.8); // Slightly taller than 16:9 to accommodate more data
+const CARD_WIDTH = Math.min(width * 0.92, 360);
+const CARD_HEIGHT = CARD_WIDTH * (1.78); // Slightly taller than 16:9 to accommodate more data
 
 const PRESET_COLORS = [
   '#FFFFFF', // White
@@ -745,6 +745,8 @@ const styles = StyleSheet.create({
 
   exportPanel: {
     width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
     padding: 24,
   },
   controlSection: {

@@ -6,13 +6,11 @@ import { ChevronLeft, Edit2, QrCode, CreditCard, PieChart, TrendingUp, Tag, X, C
 import { useAppContext, getWalletTotalBalanceInPhp } from '../context/AppContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import WalletBrandLogo from '../components/WalletBrandLogo';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const scale = SCREEN_WIDTH / 375;
-const rf = (size: number) => Math.round(size * scale);
+import { rf, useResponsive } from '../utils/responsive';
 
 export default function WalletDetailScreen() {
   const { wallets, colors, isDarkMode, usdToPhpRate, deleteWallet, showConfirm } = useAppContext();
+  const { width, height } = useResponsive();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const initialWallet = route.params?.wallet;
@@ -257,7 +255,7 @@ export default function WalletDetailScreen() {
                 </TouchableOpacity>
                 <Image 
                     source={{ uri: wallet.qrCodeImage }} 
-                    style={styles.enlargedQr as any} 
+                    style={[styles.enlargedQr, { width: Math.min(width * 0.8, height * 0.65, 340), height: Math.min(width * 0.8, height * 0.65, 340) } as any]} 
                     resizeMode="contain" 
                 />
                 <Text style={styles.modalHint}>Tap anywhere to close</Text>
@@ -291,6 +289,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   backBtn: {
     padding: 8,
@@ -307,6 +308,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 24,
     paddingBottom: 40,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   identityCard: {
     borderRadius: 24,
@@ -447,8 +451,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   enlargedQr: {
-    width: SCREEN_WIDTH * 0.85,
-    height: SCREEN_WIDTH * 0.85,
+    width: 320,
+    height: 320,
     borderRadius: 20,
     backgroundColor: '#ffffff',
   },

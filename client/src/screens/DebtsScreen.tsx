@@ -255,6 +255,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       backgroundColor: colors.card,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
+      maxWidth: 720,
+      width: '100%',
+      alignSelf: 'center',
     },
     backBtn: {
       padding: 4,
@@ -275,6 +278,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     scrollContent: {
       padding: theme.spacing.lg,
       paddingBottom: 140,
+      maxWidth: 720,
+      width: '100%',
+      alignSelf: 'center',
     },
     emptyState: {
       alignItems: 'center',

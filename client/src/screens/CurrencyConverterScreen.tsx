@@ -232,6 +232,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   backButton: {
     width: 40,
@@ -248,6 +251,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   scrollContent: {
     padding: 20,
     paddingBottom: 40,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   converterCard: {
     backgroundColor: colors.card,

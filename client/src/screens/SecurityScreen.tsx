@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Vibration, StatusBar, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Vibration, StatusBar, Image, ScrollView } from 'react-native';
 import { theme } from '../theme';
 import { Shield, Fingerprint, Lock, ShieldAlert, CheckCircle2, Leaf, Key, Delete } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as LocalAuthentication from 'expo-local-authentication';
+import { useResponsive } from '../utils/responsive';
 const LogoSource = require('../../assets/icon.png');
 
 export default function SecurityScreen() {
   const { appPin, unlockApp, colors, isBiometricsEnabled } = useAppContext();
+  const { isLandscape, isTablet } = useResponsive();
 
   const UI_COLORS = {
     deepBackground: '#064E3B',
@@ -20,7 +22,7 @@ export default function SecurityScreen() {
     error: '#FF4B4B',
   };
 
-  const styles = getStyles(UI_COLORS);
+  const styles = getStyles(UI_COLORS, isLandscape);
 
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
@@ -92,10 +94,11 @@ export default function SecurityScreen() {
 
   const triggerShake = () => {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 12, duration: 40, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -12, duration: 40, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 12, duration: 40, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 8, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -8, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
     ]).start();
   };
 
@@ -118,109 +121,124 @@ export default function SecurityScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.safeArea}>
-        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-
-          <View style={styles.header}>
-            <View style={styles.brand}>
-              <Image source={LogoSource} style={styles.brandLogo} />
-              <Text style={styles.brandText}>Leon</Text>
-            </View>
-            <View style={[styles.iconWrapper, error && styles.iconWrapperError]}>
-              <Lock size={28} color={error ? UI_COLORS.error : UI_COLORS.text} />
-            </View>
-            <Text style={styles.title}>Vault Access</Text>
-            <Text style={styles.subtitle}>Choose your preferred way to unlock</Text>
-          </View>
-
-          {screen === 'choice' ? (
-            <View style={styles.choiceContainer}>
-              {isBiometricsEnabled && (
-                <TouchableOpacity
-                  style={styles.choiceBtn}
-                  onPress={handleBiometrics}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.choiceIconBox}>
-                    <Fingerprint size={32} color={UI_COLORS.primary} />
-                  </View>
-                  <View style={styles.choiceTextBox}>
-                    <Text style={styles.choiceTitle}>Unlock with Fingerprint</Text>
-                    <Text style={styles.choiceSub}>Quick biometric access</Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity
-                style={[styles.choiceBtn, { marginTop: 12 }]}
-                onPress={switchToPin}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.choiceIconBox, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
-                  <Key size={28} color="#FFFFFF" />
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+            <View style={isLandscape ? styles.landscapeRow : styles.portraitCol}>
+              {/* Left Column in Landscape / Top in Portrait */}
+              <View style={isLandscape ? styles.landscapeLeftCol : styles.portraitTopCol}>
+                <View style={styles.brand}>
+                  <Image source={LogoSource} style={styles.brandLogo} />
+                  <Text style={styles.brandText}>Leon</Text>
                 </View>
-                <View style={styles.choiceTextBox}>
-                  <Text style={styles.choiceTitle}>Unlock with PIN</Text>
-                  <Text style={styles.choiceSub}>Enter your 6-digit code</Text>
+                <View style={[styles.iconWrapper, error && styles.iconWrapperError]}>
+                  <Lock size={isLandscape ? 22 : 28} color={error ? UI_COLORS.error : UI_COLORS.text} />
                 </View>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <>
-              <Animated.View style={[styles.pinContainer, { transform: [{ translateX: shakeAnim }] }]}>
-                {[1, 2, 3, 4, 5, 6].map((_, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.pinDot,
-                      pin.length > i && styles.pinDotFilled,
-                      error && styles.pinDotError
-                    ]}
-                  />
-                ))}
-              </Animated.View>
+                <Text style={styles.title}>Vault Access</Text>
+                <Text style={styles.subtitle}>
+                  {screen === 'choice' ? 'Choose your preferred way to unlock' : 'Enter your 6-digit code'}
+                </Text>
 
-              <View style={styles.keypad}>
-                {keypadRows.map((row, rowIndex) => (
-                  <View key={rowIndex} style={styles.keypadRow}>
-                    {row.map((key, colIndex) => (
-                      <TouchableOpacity
-                        key={colIndex}
+                {screen === 'pin' && (
+                  <Animated.View style={[styles.pinContainer, { transform: [{ translateX: shakeAnim }] }]}>
+                    {[1, 2, 3, 4, 5, 6].map((_, i) => (
+                      <View
+                        key={i}
                         style={[
-                          styles.key,
-                          key === '' && styles.keyEmpty,
+                          styles.pinDot,
+                          pin.length > i && styles.pinDotFilled,
+                          error && styles.pinDotError
                         ]}
-                        onPress={() => handlePress(key)}
-                        activeOpacity={0.5}
-                        disabled={key === ''}
-                      >
-                        {key === '0' || (key !== '' && key !== 'delete') ? (
-                          <Text style={styles.keyText}>{key}</Text>
-                        ) : key === 'delete' ? (
-                          <Delete size={24} color="#FFFFFF" />
-                        ) : null}
-                      </TouchableOpacity>
+                      />
                     ))}
-                  </View>
-                ))}
+                  </Animated.View>
+                )}
+
+                {screen === 'pin' && (
+                  <TouchableOpacity style={styles.backBtn} onPress={() => setScreen('choice')}>
+                    <Text style={styles.backBtnText}>BACK TO METHODS</Text>
+                  </TouchableOpacity>
+                )}
+
+                <View style={styles.footer}>
+                  <Shield size={14} color={UI_COLORS.textMuted} />
+                  <Text style={styles.footerText}>Secure local encryption</Text>
+                </View>
               </View>
 
-              <TouchableOpacity style={styles.backBtn} onPress={() => setScreen('choice')}>
-                <Text style={styles.backBtnText}>BACK TO METHODS</Text>
-              </TouchableOpacity>
-            </>
-          )}
+              {/* Right Column in Landscape / Bottom in Portrait */}
+              <View style={isLandscape ? styles.landscapeRightCol : styles.portraitBottomCol}>
+                {screen === 'choice' ? (
+                  <View style={styles.choiceContainer}>
+                    {isBiometricsEnabled && (
+                      <TouchableOpacity
+                        style={styles.choiceBtn}
+                        onPress={handleBiometrics}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.choiceIconBox}>
+                          <Fingerprint size={28} color={UI_COLORS.primary} />
+                        </View>
+                        <View style={styles.choiceTextBox}>
+                          <Text style={styles.choiceTitle}>Unlock with Fingerprint</Text>
+                          <Text style={styles.choiceSub}>Quick biometric access</Text>
+                        </View>
+                      </TouchableOpacity>
+                    )}
 
-          <View style={styles.footer}>
-            <Shield size={14} color={UI_COLORS.textMuted} />
-            <Text style={styles.footerText}>Secure local encryption</Text>
-          </View>
-        </Animated.View>
+                    <TouchableOpacity
+                      style={[styles.choiceBtn, { marginTop: 12 }]}
+                      onPress={switchToPin}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.choiceIconBox, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
+                        <Key size={26} color="#FFFFFF" />
+                      </View>
+                      <View style={styles.choiceTextBox}>
+                        <Text style={styles.choiceTitle}>Unlock with PIN</Text>
+                        <Text style={styles.choiceSub}>Enter your 6-digit code</Text>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.keypad}>
+                    {keypadRows.map((row, rowIndex) => (
+                      <View key={rowIndex} style={styles.keypadRow}>
+                        {row.map((key, colIndex) => (
+                          <TouchableOpacity
+                            key={colIndex}
+                            style={[
+                              styles.key,
+                              key === '' && styles.keyEmpty,
+                            ]}
+                            onPress={() => handlePress(key)}
+                            activeOpacity={0.5}
+                            disabled={key === ''}
+                          >
+                            {key === '0' || (key !== '' && key !== 'delete') ? (
+                              <Text style={styles.keyText}>{key}</Text>
+                            ) : key === 'delete' ? (
+                              <Delete size={22} color="#FFFFFF" />
+                            ) : null}
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            </View>
+          </Animated.View>
+        </ScrollView>
       </SafeAreaView>
     </View>
   );
 }
 
-const getStyles = (colors: any) => StyleSheet.create({
+const getStyles = (colors: any, isLandscape?: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.deepBackground,
@@ -228,21 +246,57 @@ const getStyles = (colors: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  content: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingVertical: isLandscape ? 12 : 24,
+    paddingHorizontal: isLandscape ? 24 : 16,
+  },
+  content: {
+    width: '100%',
+    maxWidth: isLandscape ? 780 : 420,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  landscapeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    width: '100%',
+    gap: 24,
+  },
+  portraitCol: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  landscapeLeftCol: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  portraitTopCol: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  landscapeRightCol: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  portraitBottomCol: {
+    width: '100%',
+    alignItems: 'center',
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: isLandscape ? 12 : 24,
   },
   brand: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 24,
+    marginBottom: isLandscape ? 10 : 20,
     opacity: 0.9,
   },
   brandText: {
@@ -337,7 +391,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   pinContainer: {
     flexDirection: 'row',
     gap: 16,
-    marginBottom: 32,
+    marginBottom: isLandscape ? 12 : 28,
     backgroundColor: 'rgba(0,0,0,0.15)',
     paddingVertical: 10,
     paddingHorizontal: 20,
@@ -364,8 +418,8 @@ const getStyles = (colors: any) => StyleSheet.create({
   keypad: {
     alignSelf: 'center',
     width: '100%',
-    maxWidth: 280,
-    gap: 16,
+    maxWidth: isLandscape ? 240 : 280,
+    gap: isLandscape ? 8 : 16,
   },
   keypadRow: {
     flexDirection: 'row',
@@ -373,9 +427,9 @@ const getStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
   },
   key: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: isLandscape ? 50 : 64,
+    height: isLandscape ? 50 : 64,
+    borderRadius: isLandscape ? 25 : 32,
     backgroundColor: colors.keyBackground,
     alignItems: 'center',
     justifyContent: 'center',
@@ -388,11 +442,11 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   keyText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 22,
+    fontSize: isLandscape ? 19 : 22,
     color: colors.text,
   },
   footer: {
-    marginTop: 40,
+    marginTop: isLandscape ? 14 : 32,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,

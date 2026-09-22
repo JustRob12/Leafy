@@ -8,6 +8,7 @@ import { useScrollToTop } from '@react-navigation/native';
 import * as LucideIcons from 'lucide-react-native';
 import { Image } from 'react-native';
 import WalletBrandLogo from '../components/WalletBrandLogo';
+import { rf } from '../utils/responsive';
 
 const ICON_MAP: { [key: string]: any } = {
   Utensils: LucideIcons.Utensils,
@@ -253,11 +254,6 @@ export default function HistoryScreen() {
   );
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const scale = SCREEN_WIDTH / 375;
-
-const rf = (size: number) => Math.round(size * scale);
-
 const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
@@ -269,6 +265,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     justifyContent: 'space-between',
     padding: theme.spacing.lg,
     backgroundColor: colors.background,
+    maxWidth: 860,
+    width: '100%',
+    alignSelf: 'center',
   },
   filterNavBtn: {
     padding: 10,
@@ -296,6 +295,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   scrollContent: {
     paddingHorizontal: theme.spacing.lg,
     paddingBottom: 140,
+    maxWidth: 860,
+    width: '100%',
+    alignSelf: 'center',
   },
   emptyState: {
     alignItems: 'center',
@@ -365,6 +367,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
     gap: 8,
+    maxWidth: 860,
+    width: '100%',
+    alignSelf: 'center',
   },
   typeChip: {
     flexDirection: 'row',
@@ -404,6 +409,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   walletFilterContainer: {
     paddingBottom: theme.spacing.sm,
+    maxWidth: 860,
+    width: '100%',
+    alignSelf: 'center',
   },
   walletFilterScroll: {
     flexDirection: 'row',

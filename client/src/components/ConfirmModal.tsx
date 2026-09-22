@@ -93,6 +93,8 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.xl,
     width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: isDarkMode ? 0.3 : 0.15,

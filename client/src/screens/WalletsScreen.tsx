@@ -6,11 +6,17 @@ import { useAppContext, WalletCategory, getWalletTotalBalanceInPhp } from '../co
 import { useNavigation, useRoute, useScrollToTop } from '@react-navigation/native';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 import WalletBrandLogo from '../components/WalletBrandLogo';
+import { rf, useResponsive } from '../utils/responsive';
 
 export default function WalletsScreen() {
   const [selectedWalletDetail, setSelectedWalletDetail] = useState<any | null>(null);
   const [showBalances, setShowBalances] = useState(true);
   const { wallets, colors, isDarkMode, usdToPhpRate } = useAppContext();
+  const { width, height, isLandscape, isTablet } = useResponsive();
+  const contentWidth = Math.min(width - (theme.spacing.lg * 2), 1040);
+  const cols = isLandscape || isTablet ? (contentWidth >= 800 ? 4 : 3) : 2;
+  const cardWidth = Math.floor((contentWidth - (12 * (cols - 1))) / cols);
+
   const styles = getStyles(colors, isDarkMode);
   const { handleScroll } = useScrollHideTabBar();
 
@@ -73,7 +79,7 @@ export default function WalletsScreen() {
     <View style={styles.container}>
       <ScrollView 
         ref={scrollViewRef}
-        contentContainerStyle={styles.scrollContent} 
+        contentContainerStyle={[styles.scrollContent, { maxWidth: 1040, width: '100%', alignSelf: 'center' }]} 
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
@@ -159,7 +165,7 @@ export default function WalletsScreen() {
                 <Text style={styles.categoryLabel}>{group.title}</Text>
                 <View style={styles.gridContainer}>
                   {group.data.map((wallet) => (
-                    <View key={wallet.id} style={styles.premiumCardWrapper}>
+                    <View key={wallet.id} style={[styles.premiumCardWrapper, { width: cardWidth }]}>
                         <TouchableOpacity 
                           style={[styles.premiumCard, { backgroundColor: wallet.color || colors.primary }]}
                           onPress={() => navigation.navigate('WalletDetail', { wallet })}
@@ -256,7 +262,13 @@ export default function WalletsScreen() {
 
       {/* Floating Add Button */}
       <TouchableOpacity
-        style={styles.fab}
+        style={[
+          styles.fab,
+          {
+            bottom: isLandscape ? 80 : 120,
+            right: Math.max(24, (width - 1040) / 2 + 24),
+          },
+        ]}
         onPress={() => navigation.navigate('AddWallet')}
         activeOpacity={0.8}
       >
@@ -265,12 +277,6 @@ export default function WalletsScreen() {
     </View>
   );
 }
-
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const scale = SCREEN_WIDTH / 375;
-
-const rf = (size: number) => Math.round(size * scale);
 
 const getStyles = (colors: any, isDarkMode: boolean) => {
   const { height } = Dimensions.get('window');
@@ -345,7 +351,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       marginLeft: 4,
     },
     premiumCardWrapper: {
-      width: (Dimensions.get('window').width - theme.spacing.lg * 2 - 12) / 2,
+      width: '48%',
       height: 140,
       marginBottom: 12,
       shadowColor: '#000',

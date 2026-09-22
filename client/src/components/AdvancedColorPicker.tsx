@@ -72,7 +72,7 @@ export default function AdvancedColorPicker({ color, onColorChange, colors, isDa
   const [hsv, setHsv] = useState(() => hexToHsv(color));
   const [hexInput, setHexInput] = useState(color);
   
-  const containerWidth = Dimensions.get('window').width - 80;
+  const containerWidth = Math.min(Dimensions.get('window').width - 80, 360);
   const areaHeight = 180;
 
   // Track color updates from parent
@@ -241,6 +241,9 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     padding: 10,
+    maxWidth: 400,
+    width: '100%',
+    alignSelf: 'center',
   },
   areaPicker: {
     borderRadius: 12,

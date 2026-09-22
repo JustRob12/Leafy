@@ -10,7 +10,6 @@ import AdvancedColorPicker from '../components/AdvancedColorPicker';
 import WalletBrandLogo from '../components/WalletBrandLogo';
 import { PHILIPPINE_BANKS_AND_WALLETS, BankBrandItem } from '../constants/philippineBanks';
 
-const { height, width } = Dimensions.get('window');
 
 const POPULAR_TOP_BANKS: BankBrandItem[] = [
   PHILIPPINE_BANKS_AND_WALLETS.find(b => b.id === 'gcash.png')!,
@@ -494,6 +493,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   backBtn: {
     padding: 8,
@@ -507,6 +509,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   scrollContent: {
     padding: 24,
     paddingBottom: 40,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   bankPickerHeader: {
     flexDirection: 'row',
@@ -815,7 +820,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     paddingTop: 20,
     paddingHorizontal: 20,
     paddingBottom: 40,
-    maxHeight: height * 0.85,
+    maxWidth: 600,
+    width: '100%',
+    alignSelf: 'center',
+    maxHeight: '85%',
   },
   logoModalHeader: {
     flexDirection: 'row',
@@ -886,11 +894,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     paddingBottom: 24,
   },
   logoItem: {
-    width: (width - 64) / 3,
+    width: 98,
+    minHeight: 110,
     backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc',
     borderRadius: 16,
     padding: 10,

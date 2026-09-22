@@ -15,9 +15,7 @@ import { X, CreditCard, Check, WalletCards } from 'lucide-react-native';
 import WalletBrandLogo from './WalletBrandLogo';
 import { useAppContext, getWalletTotalBalanceInPhp } from '../context/AppContext';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const scale = SCREEN_WIDTH / 375;
-const rf = (size: number) => Math.round(size * scale);
+import { rf } from '../utils/responsive';
 
 interface WalletPickerModalProps {
   visible: boolean;
@@ -173,6 +171,9 @@ const getStyles = (colors: any, isDarkMode: boolean) =>
       paddingTop: 12,
       paddingBottom: 8,
       paddingHorizontal: 12,
+      maxWidth: 480,
+      width: '100%',
+      alignSelf: 'center',
       borderWidth: 1,
       borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
       shadowColor: '#000',

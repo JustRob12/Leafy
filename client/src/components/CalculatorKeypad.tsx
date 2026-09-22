@@ -4,9 +4,7 @@ import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { Delete, XCircle } from 'lucide-react-native';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const scale = Math.min(SCREEN_WIDTH / 375, 1.25);
-const rf = (size: number) => Math.round(size * scale);
+import { rf } from '../utils/responsive';
 
 interface CalculatorKeypadProps {
   onDigit: (digit: string) => void;

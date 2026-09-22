@@ -232,6 +232,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   backBtn: {
     padding: 8,
@@ -244,6 +247,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   infoCard: {
     flexDirection: 'row',

@@ -41,9 +41,10 @@ export const POPULAR_SUBSCRIPTIONS: SubscriptionPreset[] = [
   // Internet & Telecom / Utilities
   {
     id: 'pldt_wifi',
-    name: 'PLDT WiFi / Home Fiber',
+    name: 'PLDT Home / Fiber',
     category: 'Utilities',
-    iconUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Purple116/v4/21/53/78/21537829-9e85-b1a1-f3b1-a96cbbfa4ca1/AppIcon-0-0-1x_U007emarketing-0-7-0-85-220.png/512x512bb.jpg',
+    localIconKey: 'pldt.png',
+    iconUrl: 'https://upload.wikimedia.org/wikipedia/tl/thumb/3/35/PLDT_logo.svg/500px-PLDT_logo.svg.png',
     color: '#ED1C24',
   },
   {
@@ -341,7 +342,7 @@ export async function searchAppStoreApi(query: string): Promise<AppStoreSearchRe
     const data = await response.json();
     if (!data.results || !Array.isArray(data.results)) return [];
 
-    return data.results
+    const parsed = data.results
       .filter((item: any) => {
         const icon = item.artworkUrl512 || item.artworkUrl100 || item.artworkUrl60;
         return typeof icon === 'string' && icon.trim().length > 0;
@@ -359,6 +360,19 @@ export async function searchAppStoreApi(query: string): Promise<AppStoreSearchRe
           sellerName: item.sellerName,
         };
       });
+
+    if (query.toLowerCase().trim().includes('pldt')) {
+      const pldtEntry: AppStoreSearchResult = {
+        id: 'pldt_official',
+        name: 'PLDT Home / Fiber',
+        category: 'Utilities',
+        iconUrl: 'pldt.png',
+        sellerName: 'PLDT Inc.',
+      };
+      return [pldtEntry, ...parsed.filter((p: any) => !p.name.toLowerCase().includes('pldt'))];
+    }
+
+    return parsed;
   } catch (error) {
     return [];
   }
@@ -383,10 +397,11 @@ export function resolveSubscriptionLogo(title?: string, explicitIcon?: string): 
   // 2. Keyword brand directory for automatic logo resolution
   const BRAND_DIRECTORY: Record<string, string> = {
     // Philippine Telco & Utilities / WiFi
-    pldt: 'https://is1-ssl.mzstatic.com/image/thumb/Purple116/v4/21/53/78/21537829-9e85-b1a1-f3b1-a96cbbfa4ca1/AppIcon-0-0-1x_U007emarketing-0-7-0-85-220.png/512x512bb.jpg',
-    'pldt wifi': 'https://is1-ssl.mzstatic.com/image/thumb/Purple116/v4/21/53/78/21537829-9e85-b1a1-f3b1-a96cbbfa4ca1/AppIcon-0-0-1x_U007emarketing-0-7-0-85-220.png/512x512bb.jpg',
-    'pldt home': 'https://is1-ssl.mzstatic.com/image/thumb/Purple116/v4/21/53/78/21537829-9e85-b1a1-f3b1-a96cbbfa4ca1/AppIcon-0-0-1x_U007emarketing-0-7-0-85-220.png/512x512bb.jpg',
-    'pldt fiber': 'https://is1-ssl.mzstatic.com/image/thumb/Purple116/v4/21/53/78/21537829-9e85-b1a1-f3b1-a96cbbfa4ca1/AppIcon-0-0-1x_U007emarketing-0-7-0-85-220.png/512x512bb.jpg',
+    pldt: 'pldt.png',
+    'pldt wifi': 'pldt.png',
+    'pldt home': 'pldt.png',
+    'pldt fiber': 'pldt.png',
+    phi: 'pldt.png',
     converge: 'https://is1-ssl.mzstatic.com/image/thumb/Purple126/v4/0d/bb/ea/0dbbea14-e0eb-047f-f7d9-c9a9dc898495/AppIcon-0-0-1x_U007emarketing-0-7-0-85-220.png/512x512bb.jpg',
     globe: 'https://is1-ssl.mzstatic.com/image/thumb/Purple126/v4/58/01/a8/5801a8ba-9941-ad4e-5e92-f04523c14d9b/AppIcon-0-0-1x_U007emarketing-0-7-0-85-220.png/512x512bb.jpg',
     gfiber: 'https://is1-ssl.mzstatic.com/image/thumb/Purple126/v4/58/01/a8/5801a8ba-9941-ad4e-5e92-f04523c14d9b/AppIcon-0-0-1x_U007emarketing-0-7-0-85-220.png/512x512bb.jpg',

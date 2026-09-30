@@ -162,11 +162,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
 
       {/* Infinite Horizontal Running Marquee Quote Under Header */}
       {statusMessage ? (
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate('StatusCard')}
-          style={styles.marqueeContainer}
-        >
+        <View style={styles.marqueeContainer}>
           <Animated.View style={[styles.marqueeTrack, { transform: [{ translateX }] }]}>
             {[0, 1, 2, 3, 4, 5].map((idx) => (
               <View
@@ -185,7 +181,7 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
               </View>
             ))}
           </Animated.View>
-        </TouchableOpacity>
+        </View>
       ) : null}
 
       <ProfileMenuModal

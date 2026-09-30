@@ -7,8 +7,8 @@ import { AudioPlayer, createAudioPlayer } from 'expo-audio';
 
 
 import { theme } from '../theme';
-import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, ShoppingBag, Plane, RefreshCw, Leaf, Eye, EyeOff, CreditCard, Coins, Sparkles, ArrowRightLeft, TrendingUp, Layers, MapPin, Building, Home, PieChart } from 'lucide-react-native';
-import { useAppContext, getTransactionAmountInPhp, getWalletTotalBalanceInPhp } from '../context/AppContext';
+import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, ShoppingBag, Plane, RefreshCw, Leaf, Eye, EyeOff, CreditCard, Coins, Sparkles, ArrowRightLeft, TrendingUp, Layers, MapPin, Building, Home, PieChart, GitFork, Zap } from 'lucide-react-native';
+import { useAppContext, getTransactionAmountInPhp, getWalletTotalBalanceInPhp, MoneySplitPlan } from '../context/AppContext';
 import { useNavigation, useScrollToTop } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 import WalletDropdown from '../components/WalletDropdown';
@@ -27,6 +27,8 @@ const SUBS_ICONS: { [key: string]: any } = {
   'netflix.png': require('../../public/subs/netflix.png'),
   'prime.png': require('../../public/subs/prime.png'),
   'spotify.png': require('../../public/subs/spotify.png'),
+  'pldt.png': require('../../public/subs/pldt.png'),
+  'PHI.png': require('../../public/subs/PHI.png'),
 };
 
 const BRAND_LOGOS: { [key: string]: any } = {
@@ -72,7 +74,7 @@ const ICON_MAP: { [key: string]: any } = {
 
 
 export default function HomeScreen() {
-  const { totalBalance, totalReceivables, totalDebts, wallets, debts, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode, treeType, isTutorialActive, stopTutorial, groceryLists, subscriptions, recursions, installments, rents, usdToPhpRate, isBalanceHidden, setIsBalanceHidden, toggleBalanceVisibility } = useAppContext();
+  const { totalBalance, totalReceivables, totalDebts, wallets, debts, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode, treeType, isTutorialActive, stopTutorial, groceryLists, subscriptions, recursions, installments, rents, splits, usdToPhpRate, isBalanceHidden, setIsBalanceHidden, toggleBalanceVisibility, executeSplit } = useAppContext();
 
   const navigation = useNavigation<any>();
   const { handleScroll } = useScrollHideTabBar();
@@ -148,6 +150,41 @@ export default function HomeScreen() {
       if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
     };
   }, [goals.length]);
+
+  const formatSplitSchedule = (plan: MoneySplitPlan) => {
+    const s = plan.schedule;
+    if (!s) return 'Flexible';
+    if (s.type === 'once') return s.date ? `Once • ${s.date}` : 'One-time';
+    if (s.type === 'weekly') {
+      if (s.weeklyOption === 'weekdays') return 'Weekly • Mon-Fri';
+      if (s.weeklyOption === 'weekends') return 'Weekly • Weekends';
+      return `Weekly • Every ${s.weeklyOption}`;
+    }
+    if (s.type === 'semi-monthly') return s.dayOfMonth === 30 ? '15th & 30th' : 'Every 15th';
+    if (s.type === 'monthly') return `Monthly • Day ${s.dayOfMonth || 1}`;
+    if (s.type === 'yearly') {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `Yearly • ${months[s.yearlyMonth ?? 0]} ${s.yearlyDay || 1}`;
+    }
+    return 'Recurring';
+  };
+
+  const handleExecuteSplit = (plan: MoneySplitPlan) => {
+    const sourceWallet = wallets.find(w => w.id === plan.sourceWalletId);
+    const totalAllocated = plan.splits.reduce((sum, sp) => sum + (sp.amount || 0), 0);
+    const sym = plan.currency === 'USD' ? '$' : '₱';
+
+    showConfirm(
+      'Execute Split Now?',
+      `Deduct ${sym}${totalAllocated.toLocaleString()} from ${sourceWallet?.name || 'source wallet'} and transfer across ${plan.splits.length} destination accounts? Transactions will be recorded immediately.`,
+      async () => {
+        await executeSplit(plan.id);
+      },
+      false,
+      'Approve',
+      'check'
+    );
+  };
 
   const topSubscriptions = useMemo(() => {
     const getRemaining = (day: number) => {
@@ -448,10 +485,15 @@ export default function HomeScreen() {
   const pendingDebts = debts.filter(d => isDueTodayOrOverdue(d.dueDate)).length;
   const pendingGroceries = groceryLists.filter(list => list.scheduledDays && list.scheduledDays.includes(todayIndex)).length;
 
-  // Subscription due soon count (due within 3 days or today)
+  // Subscription due soon count (due within 3 days or today, excluding already paid for current cycle)
   const pendingSubscriptions = subscriptions.filter(sub => {
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentCycleKey = `${monthNames[currentMonth]} ${currentYear}`;
+    const isPaidThisMonth = (sub.paymentHistory || []).some(h => h.cycleKey === currentCycleKey);
+    if (isPaidThisMonth) return false;
+
     let targetDate = new Date(currentYear, currentMonth, sub.dayOfMonth);
     if (targetDate < today) {
       targetDate = new Date(currentYear, currentMonth + 1, sub.dayOfMonth);
@@ -1041,6 +1083,234 @@ export default function HomeScreen() {
 
 
 
+        {/* MONEY SPLIT */}
+        <View style={styles.sectionHeader}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.sectionTitle}>Money Split</Text>
+            {splits.length > 0 && (
+              <View style={styles.splitCountBadge}>
+                <Text style={styles.splitCountBadgeText}>{splits.length}</Text>
+              </View>
+            )}
+          </View>
+          <TouchableOpacity onPress={() => navigation.navigate('Split')}>
+            <Text style={styles.seeAllText}>SEE ALL</Text>
+          </TouchableOpacity>
+        </View>
+
+        {splits.length === 0 ? (
+          <TouchableOpacity
+            style={styles.emptySplitCard}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('Split')}
+          >
+            <View style={styles.emptySplitIconBox}>
+              <GitFork size={18} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.emptySplitTitle}>No Active Split Plan</Text>
+              <Text style={styles.emptySplitSub} numberOfLines={1}>
+                Allocate your salary into GCash, GoTyme & savings
+              </Text>
+            </View>
+            <View style={styles.emptySplitBtn}>
+              <Plus size={13} color="#ffffff" style={{ marginRight: 2 }} />
+              <Text style={styles.emptySplitBtnText}>Create</Text>
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.splitCardsContainer}>
+            {splits.length === 1 ? (
+              (() => {
+                const plan = splits[0];
+                const sourceWallet = wallets.find(w => w.id === plan.sourceWalletId);
+                const totalAllocated = plan.splits.reduce((sum, sp) => sum + (sp.amount || 0), 0);
+                const remaining = Math.max(0, plan.totalAmount - totalAllocated);
+                const sym = plan.currency === 'USD' ? '$' : '₱';
+                const sliceColors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4'];
+
+                return (
+                  <TouchableOpacity
+                    style={styles.homeSplitCard}
+                    activeOpacity={0.9}
+                    onPress={() => navigation.navigate('Split')}
+                  >
+                    {/* Top Row: Title, Schedule & Total Budget */}
+                    <View style={styles.homeSplitTopRow}>
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                          <View style={styles.homeSplitMiniIcon}>
+                            <GitFork size={13} color={colors.primary} />
+                          </View>
+                          <Text style={styles.homeSplitTitle} numberOfLines={1}>{plan.title}</Text>
+                        </View>
+                        <View style={styles.homeSplitScheduleRow}>
+                          <Clock size={10} color={colors.primary} style={{ marginRight: 3 }} />
+                          <Text style={styles.homeSplitScheduleText} numberOfLines={1}>
+                            {formatSplitSchedule(plan)}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={styles.homeSplitAmountText}>
+                          {isBalanceHidden ? `${sym} ******` : `${sym}${plan.totalAmount.toLocaleString()}`}
+                        </Text>
+                        <Text style={styles.homeSplitSourceLabel}>
+                          From: {sourceWallet?.name || 'Source'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Segmented Progress Bar */}
+                    <View style={styles.homeSplitProgressBar}>
+                      {plan.splits.map((sp, idx) => {
+                        const pct = plan.totalAmount > 0 ? (sp.amount / plan.totalAmount) * 100 : 0;
+                        return (
+                          <View
+                            key={sp.id}
+                            style={{
+                              height: '100%',
+                              width: `${Math.min(100, pct)}%`,
+                              backgroundColor: sliceColors[idx % sliceColors.length],
+                            }}
+                          />
+                        );
+                      })}
+                      {remaining > 0 && (
+                        <View
+                          style={{
+                            height: '100%',
+                            width: `${(remaining / plan.totalAmount) * 100}%`,
+                            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
+                          }}
+                        />
+                      )}
+                    </View>
+
+                    {/* Bottom Row: Destination Chips & Execute Button */}
+                    <View style={styles.homeSplitBottomRow}>
+                      <View style={styles.homeSplitDestPills}>
+                        {plan.splits.slice(0, 3).map((sp, idx) => {
+                          const dw = wallets.find(w => w.id === sp.walletId);
+                          return (
+                            <View key={sp.id} style={styles.homeSplitDestPill}>
+                              <View style={[styles.destPillDot, { backgroundColor: sliceColors[idx % sliceColors.length] }]} />
+                              <Text style={styles.homeSplitDestPillText} numberOfLines={1}>
+                                {dw?.name || 'Account'}: {sym}{sp.amount.toLocaleString()}
+                              </Text>
+                            </View>
+                          );
+                        })}
+                        {plan.splits.length > 3 && (
+                          <Text style={styles.homeSplitMoreDestText}>+{plan.splits.length - 3} more</Text>
+                        )}
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.homeSplitExecuteBtn}
+                        activeOpacity={0.8}
+                        onPress={() => handleExecuteSplit(plan)}
+                      >
+                        <Zap size={12} color="#ffffff" style={{ marginRight: 4 }} />
+                        <Text style={styles.homeSplitExecuteBtnText}>Execute</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })()
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.homeSplitScroll}
+              >
+                {splits.map((plan) => {
+                  const sourceWallet = wallets.find(w => w.id === plan.sourceWalletId);
+                  const totalAllocated = plan.splits.reduce((sum, sp) => sum + (sp.amount || 0), 0);
+                  const remaining = Math.max(0, plan.totalAmount - totalAllocated);
+                  const sym = plan.currency === 'USD' ? '$' : '₱';
+                  const sliceColors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4'];
+
+                  return (
+                    <TouchableOpacity
+                      key={plan.id}
+                      style={styles.homeSplitCardMultiple}
+                      activeOpacity={0.9}
+                      onPress={() => navigation.navigate('Split')}
+                    >
+                      <View style={styles.homeSplitTopRow}>
+                        <View style={{ flex: 1, marginRight: 6 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                            <View style={styles.homeSplitMiniIcon}>
+                              <GitFork size={12} color={colors.primary} />
+                            </View>
+                            <Text style={styles.homeSplitTitle} numberOfLines={1}>{plan.title}</Text>
+                          </View>
+                          <View style={styles.homeSplitScheduleRow}>
+                            <Clock size={10} color={colors.primary} style={{ marginRight: 3 }} />
+                            <Text style={styles.homeSplitScheduleText} numberOfLines={1}>
+                              {formatSplitSchedule(plan)}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={styles.homeSplitAmountText}>
+                            {isBalanceHidden ? `${sym} ******` : `${sym}${plan.totalAmount.toLocaleString()}`}
+                          </Text>
+                          <Text style={styles.homeSplitSourceLabel}>
+                            From: {sourceWallet?.name || 'Source'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.homeSplitProgressBar}>
+                        {plan.splits.map((sp, idx) => {
+                          const pct = plan.totalAmount > 0 ? (sp.amount / plan.totalAmount) * 100 : 0;
+                          return (
+                            <View
+                              key={sp.id}
+                              style={{
+                                height: '100%',
+                                width: `${Math.min(100, pct)}%`,
+                                backgroundColor: sliceColors[idx % sliceColors.length],
+                              }}
+                            />
+                          );
+                        })}
+                        {remaining > 0 && (
+                          <View
+                            style={{
+                              height: '100%',
+                              width: `${(remaining / plan.totalAmount) * 100}%`,
+                              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
+                            }}
+                          />
+                        )}
+                      </View>
+
+                      <View style={styles.homeSplitBottomRow}>
+                        <Text style={styles.homeSplitDestCountText} numberOfLines={1}>
+                          {plan.splits.length} {plan.splits.length === 1 ? 'Destination' : 'Destinations'}
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.homeSplitExecuteBtn}
+                          activeOpacity={0.8}
+                          onPress={() => handleExecuteSplit(plan)}
+                        >
+                          <Zap size={11} color="#ffffff" style={{ marginRight: 3 }} />
+                          <Text style={styles.homeSplitExecuteBtnText}>Execute</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+        )}
+
         {/* ACTIVE GOALS */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Active Goals</Text>
@@ -1123,17 +1393,24 @@ export default function HomeScreen() {
             </View>
             <View style={{ gap: 12 }}>
               {topSubscriptions.map((sub) => {
-                // Calculate days remaining
                 const today = new Date();
                 const currentYear = today.getFullYear();
                 const currentMonth = today.getMonth();
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const currentCycleKey = `${monthNames[currentMonth]} ${currentYear}`;
+                const sortedHistory = [...(sub.paymentHistory || [])].sort(
+                  (a: any, b: any) => new Date(b.paidDate).getTime() - new Date(a.paidDate).getTime()
+                );
+                const latestPayment = sortedHistory[0];
+                const isPaidThisMonth = (sub.paymentHistory || []).some(h => h.cycleKey === currentCycleKey);
+
                 let targetDate = new Date(currentYear, currentMonth, sub.dayOfMonth);
                 if (targetDate < today) {
                   targetDate = new Date(currentYear, currentMonth + 1, sub.dayOfMonth);
                 }
                 const diffTime = targetDate.getTime() - today.getTime();
                 const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                const isDueSoon = daysRemaining <= 3;
+                const isDueSoon = !isPaidThisMonth && daysRemaining <= 3;
                 const logo = resolveSubscriptionLogo(sub.title, sub.icon);
 
                 return (
@@ -1153,9 +1430,15 @@ export default function HomeScreen() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.homeSubTitle, isDueSoon && styles.homeSubTitleDueSoon]} numberOfLines={1}>{sub.title}</Text>
-                      <Text style={[styles.homeSubDays, isDueSoon && styles.homeSubDaysDueSoon]}>
-                        {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
-                      </Text>
+                      {isPaidThisMonth && latestPayment ? (
+                        <Text style={[styles.homeSubDays, { color: '#10b981', fontFamily: theme.fonts.bold }]}>
+                          ✓ Paid on {new Date(latestPayment.paidDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
+                        </Text>
+                      ) : (
+                        <Text style={[styles.homeSubDays, isDueSoon && styles.homeSubDaysDueSoon]}>
+                          {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
+                        </Text>
+                      )}
                     </View>
                     <Text style={[styles.homeSubAmount, isDueSoon && styles.homeSubAmountDueSoon]}>
                       {isBalanceHidden ? "₱ ******" : `₱${sub.amount.toLocaleString()}`}
@@ -1486,18 +1769,6 @@ export default function HomeScreen() {
             style={styles.moreActionItem} 
             activeOpacity={0.65}
             delayPressIn={0}
-            onPress={() => { setMoreActionsVisible(false); navigation.navigate('Calculator'); }}
-          >
-            <View style={styles.moreActionIconBox}>
-              <Calculator size={22} color={colors.text} />
-            </View>
-            <Text style={styles.moreActionText}>Calculator</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.moreActionItem} 
-            activeOpacity={0.65}
-            delayPressIn={0}
             onPress={() => { setMoreActionsVisible(false); navigation.navigate('Receivables'); }}
           >
             <View style={styles.moreActionIconBox}>
@@ -1649,6 +1920,23 @@ export default function HomeScreen() {
               )}
             </View>
             <Text style={styles.moreActionText}>Rent</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.moreActionItem} 
+            activeOpacity={0.65}
+            delayPressIn={0}
+            onPress={() => { setMoreActionsVisible(false); navigation.navigate('Split'); }}
+          >
+            <View style={styles.moreActionIconBox}>
+              <GitFork size={22} color={colors.text} />
+              {splits.length > 0 && (
+                <View style={styles.gridBadge}>
+                  <Text style={styles.gridBadgeText}>{splits.length}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.moreActionText}>Split</Text>
           </TouchableOpacity>
         </View>
       </ActionSheet>
@@ -2149,6 +2437,203 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.medium,
     fontSize: rf(12),
     color: colors.primary,
+  },
+  splitCountBadge: {
+    backgroundColor: colors.primary + '20',
+    paddingHorizontal: 7,
+    paddingVertical: 1,
+    borderRadius: 8,
+  },
+  splitCountBadgeText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(10.5),
+    color: colors.primary,
+  },
+  emptySplitCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: theme.borderRadius.xl,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 20,
+    gap: 10,
+  },
+  emptySplitIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: colors.primary + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptySplitTitle: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: rf(13),
+    color: colors.text,
+  },
+  emptySplitSub: {
+    fontFamily: theme.fonts.regular,
+    fontSize: rf(11),
+    color: colors.textMuted,
+  },
+  emptySplitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  emptySplitBtnText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(11.5),
+    color: '#ffffff',
+  },
+  splitCardsContainer: {
+    marginBottom: 20,
+  },
+  homeSplitCard: {
+    backgroundColor: colors.card,
+    borderRadius: theme.borderRadius.xl,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  homeSplitCardMultiple: {
+    backgroundColor: colors.card,
+    borderRadius: theme.borderRadius.xl,
+    padding: 14,
+    width: 290,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  homeSplitScroll: {
+    gap: 12,
+    paddingHorizontal: 2,
+    paddingBottom: 4,
+  },
+  homeSplitTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  homeSplitMiniIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    backgroundColor: colors.primary + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  homeSplitTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(14),
+    color: colors.text,
+    flex: 1,
+  },
+  homeSplitScheduleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  homeSplitScheduleText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: rf(10.5),
+    color: colors.primary,
+  },
+  homeSplitAmountText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(15),
+    color: colors.text,
+  },
+  homeSplitSourceLabel: {
+    fontFamily: theme.fonts.regular,
+    fontSize: rf(10),
+    color: colors.textMuted,
+  },
+  homeSplitProgressBar: {
+    flexDirection: 'row',
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#e2e8f0',
+    marginBottom: 10,
+  },
+  homeSplitBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  homeSplitDestPills: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    flex: 1,
+    marginRight: 8,
+  },
+  homeSplitDestPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#f1f5f9',
+    paddingVertical: 3,
+    paddingHorizontal: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  destPillDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 5,
+  },
+  homeSplitDestPillText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: rf(10.5),
+    color: colors.text,
+    maxWidth: 120,
+  },
+  homeSplitMoreDestText: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: rf(10),
+    color: colors.textMuted,
+  },
+  homeSplitDestCountText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: rf(11),
+    color: colors.textMuted,
+    flex: 1,
+  },
+  homeSplitExecuteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#10b981',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  homeSplitExecuteBtnText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(11.5),
+    color: '#ffffff',
   },
   emptyGoalCard: {
     backgroundColor: colors.card,

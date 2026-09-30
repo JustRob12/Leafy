@@ -40,6 +40,8 @@ import {
   Map,
   X,
   ClipboardPaste,
+  Trash2,
+  Check,
 } from 'lucide-react-native';
 import CalculatorKeypad from '../components/CalculatorKeypad';
 import BottomWalletBar from '../components/BottomWalletBar';
@@ -51,6 +53,7 @@ import { rf, useResponsive } from '../utils/responsive';
 
 const ICON_MAP = PRESET_ICON_MAP;
 const AVAILABLE_ICONS = AVAILABLE_PRESET_ICONS;
+const defaultIds = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
 
 export default function DepositScreen() {
   const {
@@ -63,6 +66,7 @@ export default function DepositScreen() {
     usdToPhpRate,
     incomePresets,
     addIncomePreset,
+    deleteIncomePreset,
   } = useAppContext();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -80,6 +84,7 @@ export default function DepositScreen() {
   const [showWalletPicker, setShowWalletPicker] = useState(false);
 
   // Custom Preset Modal State
+  const [showAllPresets, setShowAllPresets] = useState(false);
   const [showAddPreset, setShowAddPreset] = useState(false);
   const [newPresetName, setNewPresetName] = useState('');
   const [newPresetIcon, setNewPresetIcon] = useState('Briefcase');
@@ -262,6 +267,7 @@ export default function DepositScreen() {
       const created = await addIncomePreset(newPresetName.trim(), newPresetIcon);
       setNewPresetName('');
       setShowAddPreset(false);
+      setShowAllPresets(false);
       if (created) {
         setSelectedPreset(created);
       }
@@ -280,14 +286,37 @@ export default function DepositScreen() {
   const selectedWallet = wallets.find(w => w.id === selectedWalletId);
   const numericAmount = parseFloat(amount) || 0;
 
-  // Split presets into 3 rows for compact horizontal scrolling
+  const customPresets = useMemo(() => {
+    return effectivePresets.filter(p => !defaultIds.includes(p.id) && p.name !== 'Others');
+  }, [effectivePresets]);
+
+  // Main 3-row layout: Top 11 presets + 1 'Others' preset = 12 items forming an exact 4-col x 3-row grid
+  const mainRowPresets = useMemo(() => {
+    const withoutOthers = effectivePresets.filter(p => p.name !== 'Others' && p.iconName !== 'MoreHorizontal');
+    const topItems = withoutOthers.slice(0, 11);
+    const othersPreset = effectivePresets.find(p => p.name === 'Others') || {
+      id: 'others-special',
+      name: 'Others',
+      iconName: 'MoreHorizontal',
+    };
+    return [...topItems, othersPreset];
+  }, [effectivePresets]);
+
   const presetsIn3Rows = useMemo(() => {
     const rows: IncomePresetType[][] = [[], [], []];
-    effectivePresets.forEach((p, idx) => {
+    mainRowPresets.forEach((p, idx) => {
       rows[idx % 3].push(p);
     });
     return rows;
-  }, [effectivePresets]);
+  }, [mainRowPresets]);
+
+  const handlePresetPress = (preset: IncomePresetType) => {
+    if (preset.name === 'Others' || preset.iconName === 'MoreHorizontal') {
+      setShowAllPresets(true);
+    } else {
+      setSelectedPreset((prev: any) => (prev?.id === preset.id ? null : preset));
+    }
+  };
 
   // Recent income transactions (excluding daily interest)
   const recentIncomes = (transactions || [])
@@ -302,29 +331,9 @@ export default function DepositScreen() {
           <ChevronLeft color={colors.text} size={28} />
         </TouchableOpacity>
 
-        {/* Selected Wallet Amount Badge (Medium-sized, Simple Badge) */}
-        {selectedWallet ? (
-          <TouchableOpacity
-            style={styles.walletHeaderBadge}
-            onPress={() => setShowWalletPicker(true)}
-            activeOpacity={0.75}
-          >
-            <View style={[styles.walletBadgeDot, { backgroundColor: selectedWallet.color || colors.primary }]} />
-            <Text style={[styles.walletBadgeName, { color: colors.text }]} numberOfLines={1}>
-              {selectedWallet.name}
-            </Text>
-            <Text style={[styles.walletBadgeDivider, { color: colors.textMuted }]}>•</Text>
-            <Text style={[styles.walletBadgeBalance, { color: colors.primary }]}>
-              {currency === 'USD'
-                ? `$${(selectedWallet.usdBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                : `₱${(selectedWallet.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            </Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.headerTitleWrapper}>
-            <Text style={styles.headerTitle}>Income</Text>
-          </View>
-        )}
+        <View style={styles.headerTitleWrapper}>
+          <Text style={styles.headerTitle}>Income</Text>
+        </View>
 
         <TouchableOpacity
           style={styles.switchTypeBtn}
@@ -417,7 +426,23 @@ export default function DepositScreen() {
                   </View>
                 )}
 
-                {/* Action Hint Row: Paste Button & Selected Preset Badge */}
+                {/* Picked Wallet Balance Display (Only display, not a dropdown) */}
+                {selectedWallet ? (
+                  <View style={styles.walletDisplayBadge}>
+                    <View style={[styles.walletBadgeDot, { backgroundColor: selectedWallet.color || colors.primary }]} />
+                    <Text style={[styles.walletBadgeName, { color: colors.text }]} numberOfLines={1}>
+                      {selectedWallet.name}
+                    </Text>
+                    <Text style={[styles.walletBadgeDivider, { color: colors.textMuted }]}>•</Text>
+                    <Text style={[styles.walletBadgeBalance, { color: colors.primary }]}>
+                      {currency === 'USD'
+                        ? `$${(selectedWallet.usdBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : `₱${(selectedWallet.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {/* Bottom of picked wallet display: Paste Button & Selected Preset Badge */}
                 <View style={styles.statusHintRow}>
                   <TouchableOpacity
                     style={[styles.pasteBadge, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
@@ -463,19 +488,21 @@ export default function DepositScreen() {
                               style={[
                                 styles.smallPresetChip,
                                 isSelected && styles.smallPresetChipActive,
+                                (preset.name === 'Others' || preset.iconName === 'MoreHorizontal') && styles.smallPresetChipOthers,
                               ]}
-                              onPress={() => setSelectedPreset(isSelected ? null : preset)}
+                              onPress={() => handlePresetPress(preset)}
                               activeOpacity={0.75}
                             >
                               <Icon
                                 size={11}
-                                color={isSelected ? '#ffffff' : colors.primary}
+                                color={isSelected ? '#ffffff' : (preset.name === 'Others' ? colors.primary : colors.primary)}
                                 style={{ marginRight: 3 }}
                               />
                               <Text
                                 style={[
                                   styles.smallPresetText,
                                   isSelected && styles.smallPresetTextActive,
+                                  (preset.name === 'Others' || preset.iconName === 'MoreHorizontal') && { color: isSelected ? '#ffffff' : colors.primary, fontFamily: theme.fonts.bold },
                                 ]}
                                 numberOfLines={1}
                               >
@@ -616,7 +643,23 @@ export default function DepositScreen() {
                 </View>
               )}
 
-              {/* Action Hint Row: Paste Button & Selected Preset Badge */}
+              {/* Picked Wallet Balance Display (Only display, not a dropdown) */}
+              {selectedWallet ? (
+                <View style={styles.walletDisplayBadge}>
+                  <View style={[styles.walletBadgeDot, { backgroundColor: selectedWallet.color || colors.primary }]} />
+                  <Text style={[styles.walletBadgeName, { color: colors.text }]} numberOfLines={1}>
+                    {selectedWallet.name}
+                  </Text>
+                  <Text style={[styles.walletBadgeDivider, { color: colors.textMuted }]}>•</Text>
+                  <Text style={[styles.walletBadgeBalance, { color: colors.primary }]}>
+                    {currency === 'USD'
+                      ? `$${(selectedWallet.usdBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : `₱${(selectedWallet.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Bottom of picked wallet display: Paste Button & Selected Preset Badge */}
               <View style={styles.statusHintRow}>
                 <TouchableOpacity
                   style={[styles.pasteBadge, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
@@ -663,21 +706,21 @@ export default function DepositScreen() {
                               style={[
                                 styles.smallPresetChip,
                                 isSelected && styles.smallPresetChipActive,
+                                (preset.name === 'Others' || preset.iconName === 'MoreHorizontal') && styles.smallPresetChipOthers,
                               ]}
-                              onPress={() =>
-                                setSelectedPreset((prev: any) => (prev?.id === preset.id ? null : preset))
-                              }
+                              onPress={() => handlePresetPress(preset)}
                               activeOpacity={0.75}
                             >
                               <Icon
                                 size={11}
-                                color={isSelected ? '#ffffff' : colors.primary}
+                                color={isSelected ? '#ffffff' : (preset.name === 'Others' ? colors.primary : colors.primary)}
                                 style={{ marginRight: 3 }}
                               />
                               <Text
                                 style={[
                                   styles.smallPresetText,
                                   isSelected && styles.smallPresetTextActive,
+                                  (preset.name === 'Others' || preset.iconName === 'MoreHorizontal') && { color: isSelected ? '#ffffff' : colors.primary, fontFamily: theme.fonts.bold },
                                 ]}
                                 numberOfLines={1}
                               >
@@ -767,6 +810,193 @@ export default function DepositScreen() {
         selectedWalletId={selectedWalletId}
         onSelectWallet={setSelectedWalletId}
       />
+
+      {/* All Presets Modal (Opened when clicking 'Others') */}
+      {showAllPresets && (
+        <Modal
+          visible={showAllPresets}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowAllPresets(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.presetsSheetContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {/* Header */}
+              <View style={styles.modalHeader}>
+                <View>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>Income Presets</Text>
+                  <Text style={[styles.presetsModalSub, { color: colors.textMuted }]}>
+                    Select a preset or add a new one
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowAllPresets(false)} style={styles.modalCloseBtn}>
+                  <X size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Add New Preset Action Button */}
+              <TouchableOpacity
+                style={[styles.addPresetActionBtn, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '35' }]}
+                onPress={() => {
+                  setShowAddPreset(true);
+                }}
+                activeOpacity={0.8}
+              >
+                <Plus size={16} color={colors.primary} style={{ marginRight: 6 }} />
+                <Text style={[styles.addPresetActionText, { color: colors.primary }]}>
+                  Add New Preset
+                </Text>
+              </TouchableOpacity>
+
+              {/* Presets List */}
+              <ScrollView
+                style={styles.presetsModalScrollView}
+                contentContainerStyle={styles.presetsModalScrollContent}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+                indicatorStyle={isDarkMode ? 'white' : 'black'}
+              >
+                {customPresets.length > 0 && (
+                  <View style={styles.presetSectionWrapper}>
+                    <Text style={[styles.presetSectionTitle, { color: colors.textMuted }]}>CUSTOM PRESETS</Text>
+                    {customPresets.map((preset) => {
+                      const isSelected = selectedPreset?.id === preset.id || selectedPreset?.name === preset.name;
+                      const Icon = PRESET_ICON_MAP[preset.iconName] || TrendingUp;
+                      return (
+                        <View
+                          key={preset.id}
+                          style={[
+                            styles.presetCardItem,
+                            {
+                              backgroundColor: isSelected
+                                ? colors.primary + '16'
+                                : (isDarkMode ? 'rgba(255,255,255,0.05)' : '#f8fafc'),
+                              borderColor: isSelected ? colors.primary : (isDarkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
+                            },
+                          ]}
+                        >
+                          <TouchableOpacity
+                            style={styles.presetCardTouchable}
+                            onPress={() => {
+                              setSelectedPreset(preset);
+                              setShowAllPresets(false);
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <View
+                              style={[
+                                styles.presetIconBox,
+                                {
+                                  backgroundColor: isSelected
+                                    ? colors.primary
+                                    : (isDarkMode ? 'rgba(255,255,255,0.1)' : colors.primary + '18'),
+                                },
+                              ]}
+                            >
+                              <Icon size={18} color={isSelected ? '#ffffff' : colors.primary} />
+                            </View>
+                            <Text
+                              style={[
+                                styles.presetCardTitle,
+                                {
+                                  color: isSelected ? colors.primary : colors.text,
+                                  fontFamily: isSelected ? theme.fonts.bold : theme.fonts.semiBold,
+                                },
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {preset.name}
+                            </Text>
+                          </TouchableOpacity>
+
+                          <View style={styles.presetCardActions}>
+                            {isSelected && (
+                              <View style={[styles.selectedCheckBadge, { backgroundColor: colors.primary }]}>
+                                <Check size={12} color="#ffffff" strokeWidth={3} />
+                              </View>
+                            )}
+                            <TouchableOpacity
+                              style={styles.deleteCustomPresetRowBtn}
+                              onPress={() => deleteIncomePreset(preset.id)}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              activeOpacity={0.7}
+                            >
+                              <Trash2 size={15} color="#ef4444" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+
+                <View style={styles.presetSectionWrapper}>
+                  <Text style={[styles.presetSectionTitle, { color: colors.textMuted }]}>ALL PRESETS</Text>
+                  {effectivePresets.map((preset) => {
+                    const isSelected = selectedPreset?.id === preset.id || selectedPreset?.name === preset.name;
+                    const Icon = PRESET_ICON_MAP[preset.iconName] || TrendingUp;
+                    return (
+                      <TouchableOpacity
+                        key={preset.id}
+                        style={[
+                          styles.presetCardItem,
+                          {
+                            backgroundColor: isSelected
+                              ? colors.primary + '16'
+                              : (isDarkMode ? 'rgba(255,255,255,0.05)' : '#f8fafc'),
+                            borderColor: isSelected ? colors.primary : (isDarkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
+                          },
+                        ]}
+                        onPress={() => {
+                          setSelectedPreset(preset);
+                          setShowAllPresets(false);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.presetCardTouchable}>
+                          <View
+                            style={[
+                              styles.presetIconBox,
+                              {
+                                backgroundColor: isSelected
+                                  ? colors.primary
+                                  : (isDarkMode ? 'rgba(255,255,255,0.08)' : '#e2e8f0'),
+                              },
+                            ]}
+                          >
+                            <Icon
+                              size={18}
+                              color={isSelected ? '#ffffff' : colors.text}
+                            />
+                          </View>
+                          <Text
+                            style={[
+                              styles.presetCardTitle,
+                              {
+                                color: isSelected ? colors.primary : colors.text,
+                                fontFamily: isSelected ? theme.fonts.bold : theme.fonts.semiBold,
+                              },
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {preset.name}
+                          </Text>
+                        </View>
+
+                        {isSelected && (
+                          <View style={[styles.selectedCheckBadge, { backgroundColor: colors.primary }]}>
+                            <Check size={12} color="#ffffff" strokeWidth={3} />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
 
       {/* Add Custom Income Preset Modal */}
       {showAddPreset && (
@@ -956,6 +1186,7 @@ const getStyles = (colors: any, isDarkMode: boolean, isLandscape?: boolean) =>
       flexDirection: 'row',
       alignItems: 'baseline',
       justifyContent: 'center',
+      width: '100%',
     },
     currencyPrefix: {
       fontFamily: theme.fonts.bold,
@@ -966,6 +1197,7 @@ const getStyles = (colors: any, isDarkMode: boolean, isLandscape?: boolean) =>
       fontFamily: theme.fonts.bold,
       fontSize: rf(36),
       letterSpacing: -0.5,
+      textAlign: 'center',
     },
     conversionHintWrapper: {
       marginTop: 4,
@@ -973,16 +1205,19 @@ const getStyles = (colors: any, isDarkMode: boolean, isLandscape?: boolean) =>
       paddingVertical: 3,
       borderRadius: 10,
       backgroundColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+      alignSelf: 'center',
     },
     conversionHintText: {
       fontFamily: theme.fonts.medium,
       fontSize: rf(11.5),
+      textAlign: 'center',
     },
     statusHintRow: {
-      marginTop: 4,
+      marginTop: 6,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      flexWrap: 'wrap',
       gap: 6,
       minHeight: 22,
     },
@@ -1043,6 +1278,10 @@ const getStyles = (colors: any, isDarkMode: boolean, isLandscape?: boolean) =>
       backgroundColor: colors.primary,
       borderColor: colors.primary,
     },
+    smallPresetChipOthers: {
+      backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)',
+      borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.35)' : 'rgba(16, 185, 129, 0.25)',
+    },
     smallPresetText: {
       fontFamily: theme.fonts.medium,
       fontSize: rf(11),
@@ -1092,17 +1331,19 @@ const getStyles = (colors: any, isDarkMode: boolean, isLandscape?: boolean) =>
       fontSize: rf(15),
       color: '#ffffff',
     },
-    walletHeaderBadge: {
+    walletDisplayBadge: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+      justifyContent: 'center',
+      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : colors.card,
       paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 20,
+      paddingVertical: 5,
+      borderRadius: 12,
       borderWidth: 1,
-      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.07)',
-      maxWidth: '56%',
-      flexShrink: 1,
+      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : colors.border,
+      marginTop: 6,
+      marginBottom: 5,
+      alignSelf: 'center',
     },
     walletBadgeDot: {
       width: 7,
@@ -1236,6 +1477,104 @@ const getStyles = (colors: any, isDarkMode: boolean, isLandscape?: boolean) =>
       fontFamily: theme.fonts.bold,
       fontSize: rf(14),
       color: '#ffffff',
+    },
+    presetsSheetContent: {
+      borderRadius: 24,
+      borderWidth: 1,
+      padding: 18,
+      width: '100%',
+      maxWidth: 420,
+      maxHeight: '85%',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.25,
+      shadowRadius: 20,
+      elevation: 20,
+    },
+    presetsModalSub: {
+      fontFamily: theme.fonts.regular,
+      fontSize: rf(12),
+      marginTop: 2,
+    },
+    addPresetActionBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 11,
+      paddingHorizontal: 16,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderStyle: 'dashed',
+      marginBottom: 16,
+    },
+    addPresetActionText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(13.5),
+    },
+    presetsModalScrollView: {
+      maxHeight: 460,
+    },
+    presetsModalScrollContent: {
+      paddingBottom: 16,
+    },
+    presetSectionWrapper: {
+      marginBottom: 16,
+    },
+    presetSectionTitle: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(11),
+      letterSpacing: 0.8,
+      marginBottom: 8,
+    },
+    presetCardItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      width: '100%',
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      marginBottom: 8,
+    },
+    presetCardTouchable: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    presetIconBox: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    presetCardTitle: {
+      fontSize: rf(14.5),
+      flexShrink: 1,
+    },
+    presetCardActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    selectedCheckBadge: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    deleteCustomPresetRowBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: '#fee2e2',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: '#fca5a5',
     },
   });
 

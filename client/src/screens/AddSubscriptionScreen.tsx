@@ -40,6 +40,8 @@ const SUBS_ICONS: { [key: string]: any } = {
   'netflix.png': require('../../public/subs/netflix.png'),
   'prime.png': require('../../public/subs/prime.png'),
   'spotify.png': require('../../public/subs/spotify.png'),
+  'pldt.png': require('../../public/subs/pldt.png'),
+  'PHI.png': require('../../public/subs/PHI.png'),
 };
 
 export default function AddSubscriptionScreen() {

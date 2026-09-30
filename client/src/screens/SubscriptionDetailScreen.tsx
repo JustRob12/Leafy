@@ -42,6 +42,8 @@ const SUBS_ICONS: { [key: string]: any } = {
   'netflix.png': require('../../public/subs/netflix.png'),
   'prime.png': require('../../public/subs/prime.png'),
   'spotify.png': require('../../public/subs/spotify.png'),
+  'pldt.png': require('../../public/subs/pldt.png'),
+  'PHI.png': require('../../public/subs/PHI.png'),
 };
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -108,19 +110,62 @@ export default function SubscriptionDetailScreen() {
   const currentYear = today.getFullYear();
   const currentMonthIdx = today.getMonth();
   const dayOfMonth = Math.min(31, Math.max(1, subscription.dayOfMonth || 1));
-
-  let nextRenewalDate = new Date(currentYear, currentMonthIdx, dayOfMonth);
   today.setHours(0, 0, 0, 0);
-  nextRenewalDate.setHours(0, 0, 0, 0);
 
-  if (nextRenewalDate.getTime() < today.getTime()) {
-    nextRenewalDate = new Date(currentYear, currentMonthIdx + 1, dayOfMonth);
+  // Build billing cycles for 12 months centered around the current date
+  const cycles = [];
+  const startMonthOffset = -5; // 5 months back, current month, 6 months forward
+  for (let offset = startMonthOffset; offset <= 6; offset++) {
+    const targetDate = new Date(currentYear, currentMonthIdx + offset, dayOfMonth);
+    const y = targetDate.getFullYear();
+    const m = targetDate.getMonth();
+    const cycleKey = `${MONTH_NAMES[m]} ${y}`;
+    const dueDateFormatted = `${String(dayOfMonth).padStart(2, '0')} ${MONTH_NAMES[m]} ${y}`;
+
+    // Status checks
+    const targetMidnight = new Date(y, m, dayOfMonth);
+    targetMidnight.setHours(0, 0, 0, 0);
+    const isPast = targetMidnight.getTime() < today.getTime();
+
+    const historyRecord = (subscription.paymentHistory || []).find((h: any) => h.cycleKey === cycleKey);
+    const isPaid = !!historyRecord;
+
+    cycles.push({
+      cycleKey,
+      dueDateFormatted,
+      isPaid,
+      historyRecord,
+      isPast,
+      targetMidnight,
+      y,
+      m
+    });
   }
 
-  const diffTime = nextRenewalDate.getTime() - today.getTime();
-  const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-  const nextRenewalFormatted = `${String(dayOfMonth).padStart(2, '0')} ${MONTH_NAMES[nextRenewalDate.getMonth()]} ${nextRenewalDate.getFullYear()}`;
-  const currentMonthCycleKey = `${MONTH_NAMES[nextRenewalDate.getMonth()]} ${nextRenewalDate.getFullYear()}`;
+  // Count how many are paid
+  const paidCount = cycles.filter(c => c.isPaid).length;
+
+  // Latest payment in history
+  const sortedHistory = [...(subscription.paymentHistory || [])].sort(
+    (a: any, b: any) => new Date(b.paidDate).getTime() - new Date(a.paidDate).getTime()
+  );
+  const latestPayment = sortedHistory[0];
+
+  // Current calendar month cycle check
+  const currentMonthCycleKey = `${MONTH_NAMES[currentMonthIdx]} ${currentYear}`;
+  const currentMonthCycle = cycles.find(c => c.cycleKey === currentMonthCycleKey);
+  const isCurrentMonthPaid = !!currentMonthCycle?.isPaid;
+
+  // Next active unpaid renewal
+  const nextUnpaidCycle = cycles.find(c => !c.isPaid && c.targetMidnight.getTime() >= today.getTime()) ||
+                          cycles.find(c => !c.isPaid);
+
+  const activeTargetCycle = nextUnpaidCycle || currentMonthCycle;
+  const activeCycleKey = activeTargetCycle ? activeTargetCycle.cycleKey : currentMonthCycleKey;
+  const activeDueDateFormatted = activeTargetCycle ? activeTargetCycle.dueDateFormatted : `${String(dayOfMonth).padStart(2, '0')} ${MONTH_NAMES[currentMonthIdx]} ${currentYear}`;
+  const activeDiffTime = activeTargetCycle ? activeTargetCycle.targetMidnight.getTime() - today.getTime() : 0;
+  const activeDaysRemaining = Math.max(0, Math.ceil(activeDiffTime / (1000 * 60 * 60 * 24)));
+  const isActiveDueSoon = activeDaysRemaining <= 3;
 
   const handleOpenPay = (cycleKeyToPay: string) => {
     setSelectedCycleKey(cycleKeyToPay);
@@ -150,39 +195,6 @@ export default function SubscriptionDetailScreen() {
       'alert'
     );
   };
-
-  // Build billing cycles for 12 months centered around the current date
-  const cycles = [];
-  const startMonthOffset = -5; // 5 months back, current month, 6 months forward
-  for (let offset = startMonthOffset; offset <= 6; offset++) {
-    const targetDate = new Date(currentYear, currentMonthIdx + offset, dayOfMonth);
-    const y = targetDate.getFullYear();
-    const m = targetDate.getMonth();
-    const cycleKey = `${MONTH_NAMES[m]} ${y}`;
-    const dueDateFormatted = `${String(dayOfMonth).padStart(2, '0')} ${MONTH_NAMES[m]} ${y}`;
-
-    // Status checks
-    const targetMidnight = new Date(y, m, dayOfMonth);
-    targetMidnight.setHours(0, 0, 0, 0);
-    const isPast = targetMidnight.getTime() < today.getTime();
-    const isCurrent = y === nextRenewalDate.getFullYear() && m === nextRenewalDate.getMonth();
-
-    const historyRecord = (subscription.paymentHistory || []).find((h: any) => h.cycleKey === cycleKey);
-    const isPaid = !!historyRecord;
-
-    cycles.push({
-      cycleKey,
-      dueDateFormatted,
-      isPaid,
-      historyRecord,
-      isCurrent,
-      isPast,
-      targetMidnight
-    });
-  }
-
-  // Count how many are paid
-  const paidCount = cycles.filter(c => c.isPaid).length;
 
   // Resolve logo
   const logo = resolveSubscriptionLogo(subscription.title, subscription.icon);
@@ -274,33 +286,63 @@ export default function SubscriptionDetailScreen() {
             </View>
           </View>
 
+          {/* Latest Payment Record Display */}
+          {latestPayment && (
+            <View style={[styles.lastPaymentBanner, { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)', borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.25)' }]}>
+              <View style={styles.lastPaymentIconBox}>
+                <CheckCircle2 size={18} color="#10b981" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.lastPaymentTitle, { color: colors.text }]}>
+                  {formatPaidTimestamp(latestPayment.paidDate)}
+                </Text>
+                <Text style={[styles.lastPaymentSub, { color: colors.textMuted }]}>
+                  Cycle: {latestPayment.cycleKey} • {latestPayment.walletName || 'External / Card'}
+                </Text>
+              </View>
+              <View style={styles.lastPaymentBadge}>
+                <Text style={styles.lastPaymentBadgeText}>✓ Recorded</Text>
+              </View>
+            </View>
+          )}
+
           {/* Next Renewal Box */}
           <View style={[styles.nextPaymentBox, { backgroundColor: isDarkMode ? '#172033' : '#f8fafc', borderColor: colors.border }]}>
             <View style={styles.nextPaymentLeft}>
-              <Text style={[styles.nextPaymentLabel, { color: colors.textMuted }]}>NEXT RENEWAL</Text>
+              <Text style={[styles.nextPaymentLabel, { color: colors.textMuted }]}>
+                {isCurrentMonthPaid ? 'NEXT RENEWAL' : 'CURRENT RENEWAL'}
+              </Text>
               <Text style={[styles.nextPaymentAmount, { color: colors.text }]}>
                 {formatAmount(monthlyCost)}
               </Text>
               <View style={styles.dueStatusRow}>
-                <Calendar size={13} color={daysRemaining <= 3 ? '#ef4444' : colors.textMuted} />
+                <Calendar size={13} color={isActiveDueSoon && !isCurrentMonthPaid ? '#ef4444' : colors.textMuted} />
                 <Text
                   style={[
                     styles.nextPaymentDueDate,
-                    { color: daysRemaining <= 3 ? '#ef4444' : colors.textMuted }
+                    { color: isActiveDueSoon && !isCurrentMonthPaid ? '#ef4444' : colors.textMuted }
                   ]}
                 >
-                  Due {nextRenewalFormatted} ({daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left)
+                  {isCurrentMonthPaid
+                    ? `Next due ${activeDueDateFormatted} (${activeDaysRemaining}d remaining)`
+                    : `Due ${activeDueDateFormatted} (${activeDaysRemaining} ${activeDaysRemaining === 1 ? 'day' : 'days'} left)`}
                 </Text>
               </View>
             </View>
 
             <TouchableOpacity
-              style={[styles.payButton, { backgroundColor: colors.primary }]}
-              onPress={() => handleOpenPay(currentMonthCycleKey)}
+              style={[
+                styles.payButton,
+                { backgroundColor: colors.primary },
+                isCurrentMonthPaid && { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.12)', borderWidth: 1, borderColor: colors.primary }
+              ]}
+              onPress={() => handleOpenPay(activeCycleKey)}
               activeOpacity={0.8}
             >
-              <CreditCard size={18} color="#ffffff" style={{ marginRight: 6 }} />
-              <Text style={styles.payButtonText}>Pay</Text>
+              <CreditCard size={18} color={isCurrentMonthPaid ? colors.primary : '#ffffff'} style={{ marginRight: 6 }} />
+              <Text style={[styles.payButtonText, isCurrentMonthPaid && { color: colors.primary }]}>
+                {isCurrentMonthPaid ? 'Pay Next' : 'Pay'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -325,9 +367,9 @@ export default function SubscriptionDetailScreen() {
                   styles.scheduleItemCard,
                   {
                     backgroundColor: colors.card,
-                    borderColor: item.isCurrent && !item.isPaid ? colors.primary + '60' : colors.border,
+                    borderColor: item.cycleKey === activeCycleKey && !item.isPaid ? colors.primary + '60' : colors.border,
                   },
-                  item.isCurrent && !item.isPaid && styles.activeDueCardHighlight
+                  item.cycleKey === activeCycleKey && !item.isPaid && styles.activeDueCardHighlight
                 ]}
               >
                 <View style={styles.scheduleItemLeft}>
@@ -351,9 +393,9 @@ export default function SubscriptionDetailScreen() {
 
                   {/* Paid Timestamp */}
                   {item.isPaid ? (
-                    <View style={styles.paidInfoBox}>
-                      <Clock size={12} color="#10b981" />
-                      <Text style={[styles.paidInfoText, { color: colors.textMuted }]} numberOfLines={1}>
+                    <View style={[styles.paidInfoBox, { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.14)' : 'rgba(16, 185, 129, 0.08)', borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.25)' : 'rgba(16, 185, 129, 0.2)' }]}>
+                      <CheckCircle2 size={12} color="#10b981" />
+                      <Text style={[styles.paidInfoText, { color: colors.text }]} numberOfLines={2}>
                         {item.historyRecord
                           ? `${formatPaidTimestamp(item.historyRecord.paidDate)}${item.historyRecord.walletName ? ` • ${item.historyRecord.walletName}` : ''}`
                           : 'Marked paid before tracking'}
@@ -380,7 +422,7 @@ export default function SubscriptionDetailScreen() {
                         <RotateCcw size={13} color={colors.textMuted} />
                       </TouchableOpacity>
                     </View>
-                  ) : item.isCurrent || item.isPast ? (
+                  ) : item.cycleKey === activeCycleKey || item.isPast ? (
                     <TouchableOpacity
                       style={[styles.duePayBtn, { backgroundColor: colors.primary }]}
                       onPress={() => handleOpenPay(item.cycleKey)}
@@ -426,6 +468,14 @@ export default function SubscriptionDetailScreen() {
               <Text style={[styles.modalAmountLabel, { color: colors.primary }]}>Subscription Renewal Amount</Text>
               <Text style={[styles.modalAmountValue, { color: colors.primary }]}>
                 {formatAmount(monthlyCost)}
+              </Text>
+            </View>
+
+            {/* Exact Timestamp Notice */}
+            <View style={[styles.paymentDateNotice, { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.06)', borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.2)' }]}>
+              <Clock size={14} color="#10b981" />
+              <Text style={[styles.paymentDateNoticeText, { color: colors.text }]}>
+                Payment Date: {new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
               </Text>
             </View>
 
@@ -933,5 +983,57 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize: rf(14),
     color: '#ffffff',
+  },
+  lastPaymentBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  lastPaymentIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#dcfce7',
+  },
+  lastPaymentTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(12.5),
+  },
+  lastPaymentSub: {
+    fontFamily: theme.fonts.medium,
+    fontSize: rf(11),
+    marginTop: 1,
+  },
+  lastPaymentBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: '#dcfce7',
+  },
+  lastPaymentBadgeText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(10.5),
+    color: '#15803d',
+  },
+  paymentDateNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  paymentDateNoticeText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: rf(12),
+    flex: 1,
   },
 });

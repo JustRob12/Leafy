@@ -168,6 +168,40 @@ export type PaymentHistoryRecord = {
   note?: string;
 };
 
+export type SplitScheduleType = {
+  type: 'once' | 'weekly' | 'semi-monthly' | 'monthly' | 'yearly';
+  date?: string; // For 'once' (e.g. "2026-10-01")
+  weeklyOption?: 'weekdays' | 'weekends' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  dayOfMonth?: number; // 1-31 (for 'monthly' or 'semi-monthly')
+  yearlyMonth?: number; // 0-11 (for 'yearly')
+  yearlyDay?: number; // 1-31 (for 'yearly')
+};
+
+export type SplitItem = {
+  id: string;
+  walletId: string;
+  amount: number;
+  note?: string;
+};
+
+export type MoneySplitPlan = {
+  id: string;
+  title: string;
+  sourceWalletId: string;
+  totalAmount: number;
+  currency?: 'PHP' | 'USD';
+  schedule: SplitScheduleType;
+  splits: SplitItem[];
+  createdAt: string;
+  lastExecutedAt?: string;
+  executionHistory?: {
+    date: string;
+    totalAmount: number;
+    splitsExecuted: { walletName: string; amount: number }[];
+    remainingKept: number;
+  }[];
+};
+
 export type SubscriptionType = {
   id: string;
   title: string;
@@ -178,6 +212,9 @@ export type SubscriptionType = {
   currency?: 'PHP' | 'USD';
   walletId?: string;
   paymentHistory?: PaymentHistoryRecord[];
+  lastPaidDate?: string;
+  lastPaidCycle?: string;
+  lastPaidWalletName?: string;
 };
 
 export const calculateNextDueDate = (startDateStr: string, paidMonths: number): string => {
@@ -336,11 +373,16 @@ type AppContextType = {
   deleteRent: (id: string) => Promise<void>;
   payRentMonth: (id: string, walletId?: string) => Promise<void>;
   revertRentMonth: (id: string) => Promise<void>;
-  paySubscriptionMonth: (id: string, billingMonthKey: string, walletId?: string) => Promise<void>;
+  paySubscriptionMonth: (id: string, billingMonthKey: string, walletId?: string, customPaidDate?: string) => Promise<void>;
   revertSubscriptionMonth: (id: string, billingMonthKey: string) => Promise<void>;
   isBalanceHidden: boolean;
   setIsBalanceHidden: (hidden: boolean | ((prev: boolean) => boolean)) => void;
   toggleBalanceVisibility: () => void;
+  splits: MoneySplitPlan[];
+  addSplit: (plan: Omit<MoneySplitPlan, 'id' | 'createdAt'>, andExecute?: boolean) => Promise<MoneySplitPlan>;
+  editSplit: (id: string, updates: Partial<MoneySplitPlan>) => Promise<void>;
+  deleteSplit: (id: string) => Promise<void>;
+  executeSplit: (id: string, customSplitsList?: MoneySplitPlan[]) => Promise<boolean>;
 };
 
 
@@ -362,6 +404,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [subscriptions, setSubscriptions] = useState<SubscriptionType[]>([]);
   const [installments, setInstallments] = useState<InstallmentType[]>([]);
   const [rents, setRents] = useState<RentType[]>([]);
+  const [splits, setSplits] = useState<MoneySplitPlan[]>([]);
   const [isBalanceHidden, setIsBalanceHiddenState] = useState<boolean>(false);
 
   const setIsBalanceHidden = useCallback((val: boolean | ((prev: boolean) => boolean)) => {
@@ -495,6 +538,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const storedRents = await AsyncStorage.getItem('@rents');
       if (storedRents) setRents(JSON.parse(storedRents));
+      const storedSplits = await AsyncStorage.getItem('@money_splits');
+      if (storedSplits) setSplits(JSON.parse(storedSplits));
       const storedBalanceHidden = await AsyncStorage.getItem('@isBalanceHidden');
       if (storedBalanceHidden !== null) setIsBalanceHiddenState(storedBalanceHidden === 'true');
       const storedGrocery = await AsyncStorage.getItem('@groceryLists');
@@ -1062,6 +1107,179 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showFeedback('success', 'Processed Successfully');
   };
 
+  const addSplit = async (planData: Omit<MoneySplitPlan, 'id' | 'createdAt'>, andExecute: boolean = false): Promise<MoneySplitPlan> => {
+    const newPlan: MoneySplitPlan = {
+      ...planData,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      executionHistory: [],
+    };
+
+    const updated = [newPlan, ...splits];
+    setSplits(updated);
+    await AsyncStorage.setItem('@money_splits', JSON.stringify(updated));
+
+    if (andExecute) {
+      await executeSplit(newPlan.id, updated);
+    } else {
+      showFeedback('success', 'Split Plan Created');
+    }
+
+    return newPlan;
+  };
+
+  const editSplit = async (id: string, updates: Partial<MoneySplitPlan>) => {
+    const updated = splits.map(s => s.id === id ? { ...s, ...updates } : s);
+    setSplits(updated);
+    await AsyncStorage.setItem('@money_splits', JSON.stringify(updated));
+    showFeedback('success', 'Split Plan Updated');
+  };
+
+  const deleteSplit = async (id: string) => {
+    const updated = splits.filter(s => s.id !== id);
+    setSplits(updated);
+    await AsyncStorage.setItem('@money_splits', JSON.stringify(updated));
+    showFeedback('delete', 'Split Plan Removed');
+  };
+
+  const executeSplit = async (splitId: string, customSplitsList?: MoneySplitPlan[]): Promise<boolean> => {
+    const currentList = customSplitsList || splits;
+    const plan = currentList.find(s => s.id === splitId);
+    if (!plan) {
+      showFeedback('error', 'Split plan not found');
+      return false;
+    }
+
+    const sourceWallet = wallets.find(w => w.id === plan.sourceWalletId);
+    if (!sourceWallet) {
+      showFeedback('error', 'Source wallet not found');
+      return false;
+    }
+
+    const validSplits = (plan.splits || []).filter(item => item.amount > 0 && item.walletId);
+    if (validSplits.length === 0) {
+      showFeedback('error', 'No valid splits configured');
+      return false;
+    }
+
+    const totalAllocated = validSplits.reduce((sum, item) => sum + (item.amount || 0), 0);
+    const rate = usdToPhpRate || 58.5;
+    const isUsd = plan.currency === 'USD';
+    const sourceAvailable = isUsd
+      ? (sourceWallet.usdBalance || 0) + ((sourceWallet.balance || 0) / rate)
+      : (sourceWallet.balance || 0) + ((sourceWallet.usdBalance || 0) * rate);
+
+    if (totalAllocated > sourceAvailable) {
+      const sym = isUsd ? '$' : '₱';
+      showFeedback('error', `Insufficient funds in ${sourceWallet.name} (Available: ${sym}${Math.floor(sourceAvailable).toLocaleString()})`);
+      return false;
+    }
+
+    const now = new Date();
+    const dateStr = now.toISOString();
+    const newTransactions: TransactionType[] = [];
+    let currentWallets = [...wallets];
+
+    for (let i = 0; i < validSplits.length; i++) {
+      const item = validSplits[i];
+      const destWallet = currentWallets.find(w => w.id === item.walletId);
+      const destName = destWallet ? destWallet.name : 'Target Wallet';
+      const txBase = `${Date.now()}_${i}_split`;
+
+      newTransactions.push({
+        id: `${txBase}_out`,
+        title: `Split: Transfer to ${destName}${item.note ? ` • ${item.note}` : ''}`,
+        amount: item.amount,
+        currency: plan.currency || 'PHP',
+        exchangeRate: isUsd ? rate : 1,
+        date: dateStr,
+        type: 'withdrawal',
+        walletId: plan.sourceWalletId,
+        category: 'transfer',
+      });
+
+      newTransactions.push({
+        id: `${txBase}_in`,
+        title: `Split: Transfer from ${sourceWallet.name}${item.note ? ` • ${item.note}` : ''}`,
+        amount: item.amount,
+        currency: plan.currency || 'PHP',
+        exchangeRate: isUsd ? rate : 1,
+        date: dateStr,
+        type: 'deposit',
+        walletId: item.walletId,
+        category: 'transfer',
+      });
+
+      currentWallets = currentWallets.map(w => {
+        if (w.id === plan.sourceWalletId) {
+          if (isUsd) {
+            const curUsd = w.usdBalance || 0;
+            if (curUsd >= item.amount) {
+              return { ...w, usdBalance: curUsd - item.amount };
+            } else {
+              const remUsd = item.amount - curUsd;
+              return { ...w, usdBalance: 0, balance: Math.max(0, (w.balance || 0) - remUsd * rate) };
+            }
+          } else {
+            const curPhp = w.balance || 0;
+            if (curPhp >= item.amount) {
+              return { ...w, balance: curPhp - item.amount };
+            } else {
+              const remPhp = item.amount - Math.max(0, curPhp);
+              return { ...w, balance: 0, usdBalance: Math.max(0, (w.usdBalance || 0) - remPhp / rate) };
+            }
+          }
+        }
+        if (w.id === item.walletId) {
+          if (isUsd) {
+            return { ...w, usdBalance: (w.usdBalance || 0) + item.amount };
+          } else {
+            return { ...w, balance: (w.balance || 0) + item.amount };
+          }
+        }
+        return w;
+      });
+    }
+
+    const updatedAllTx = [...newTransactions, ...transactions];
+    setTransactions(updatedAllTx);
+    await AsyncStorage.setItem('@transactions', JSON.stringify(updatedAllTx));
+
+    setWallets(currentWallets);
+    await AsyncStorage.setItem('@wallets', JSON.stringify(currentWallets));
+
+    const updatedSplits = currentList.map(s => {
+      if (s.id === splitId) {
+        const history = s.executionHistory || [];
+        const newHist = [
+          {
+            date: dateStr,
+            totalAmount: totalAllocated,
+            splitsExecuted: validSplits.map(sp => {
+              const dw = currentWallets.find(w => w.id === sp.walletId);
+              return { walletName: dw ? dw.name : 'Wallet', amount: sp.amount };
+            }),
+            remainingKept: Math.max(0, (plan.totalAmount || 0) - totalAllocated),
+          },
+          ...history,
+        ];
+        return {
+          ...s,
+          lastExecutedAt: dateStr,
+          executionHistory: newHist.slice(0, 20),
+        };
+      }
+      return s;
+    });
+
+    setSplits(updatedSplits);
+    await AsyncStorage.setItem('@money_splits', JSON.stringify(updatedSplits));
+
+    const sym = isUsd ? '$' : '₱';
+    showFeedback('success', `Split of ${sym}${totalAllocated.toLocaleString()} executed!`);
+    return true;
+  };
+
   const setUserImage = async (image: string | null) => {
     const permanentImage = await saveImagePermanently(image);
     if (permanentImage) await AsyncStorage.setItem('@userImage', permanentImage);
@@ -1317,6 +1535,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSubscriptions([]);
     setInstallments([]);
     setRents([]);
+    setSplits([]);
     setIsBalanceHiddenState(false);
     setAppPinState(null);
     setIsSecurityEnabled(false);
@@ -1392,6 +1611,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ['@subscriptions', data.subscriptions ? JSON.stringify(data.subscriptions) : '[]'],
         ['@installments', JSON.stringify(importedInstallments)],
         ['@rents', JSON.stringify(importedRents)],
+        ['@money_splits', data.moneySplits ? JSON.stringify(data.moneySplits) : '[]'],
         ['@appPin', data.appPin || null],
         ['@isSecurityEnabled', data.isSecurityEnabled !== undefined ? String(data.isSecurityEnabled) : null],
         ['@isBiometricsEnabled', data.isBiometricsEnabled !== undefined ? String(data.isBiometricsEnabled) : null],
@@ -1423,6 +1643,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setRecursions(data.recursions || []);
       setInstallments(importedInstallments);
       setRents(importedRents);
+      setSplits(data.moneySplits || []);
       setAppPinState(data.appPin || null);
 
       if (data.isSecurityEnabled !== undefined) {
@@ -1499,11 +1720,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     icon?: 'alert' | 'pay' | 'delete' | 'trash' | 'check'
   ) => {
     const isPayAction = title.toLowerCase().includes('pay') || confirmText?.toLowerCase() === 'pay';
+    const isApproveAction = title.toLowerCase().includes('execute') || title.toLowerCase().includes('approve') || confirmText?.toLowerCase() === 'approve';
     const finalDestructive = isDestructive !== undefined 
       ? isDestructive 
-      : (isPayAction ? false : true);
-    const finalConfirmText = confirmText || (isPayAction ? 'Pay' : (finalDestructive ? 'Delete' : 'Confirm'));
-    const finalIcon = icon || (isPayAction ? 'pay' : (finalDestructive ? 'delete' : 'check'));
+      : (isPayAction || isApproveAction ? false : true);
+    const finalConfirmText = confirmText || (isPayAction ? 'Pay' : (isApproveAction ? 'Approve' : (finalDestructive ? 'Delete' : 'Confirm')));
+    const finalIcon = icon || (isPayAction ? 'pay' : (isApproveAction ? 'check' : (finalDestructive ? 'delete' : 'check')));
 
     setConfirmState({ 
       visible: true, 
@@ -2111,7 +2333,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showFeedback('delete', `Reverted Rent Payment`);
   };
 
-  const paySubscriptionMonth = async (id: string, billingMonthKey: string, customWalletId?: string) => {
+  const paySubscriptionMonth = async (id: string, billingMonthKey: string, customWalletId?: string, customPaidDate?: string) => {
     const item = subscriptions.find(s => s.id === id);
     if (!item) return;
 
@@ -2137,12 +2359,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           icon: 'CreditCard'
         });
       }
+    } else {
+      targetWalletName = 'External / Card';
     }
 
+    const exactPaidIso = customPaidDate || new Date().toISOString();
     const historyRecord: PaymentHistoryRecord = {
       cycleKey: billingMonthKey,
       amount: item.amount,
-      paidDate: new Date().toISOString(),
+      paidDate: exactPaidIso,
       walletId: targetWalletId,
       walletName: targetWalletName,
     };
@@ -2152,6 +2377,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const filteredHistory = (s.paymentHistory || []).filter(h => h.cycleKey !== billingMonthKey);
         return {
           ...s,
+          lastPaidDate: exactPaidIso,
+          lastPaidCycle: billingMonthKey,
+          lastPaidWalletName: targetWalletName,
           paymentHistory: [...filteredHistory, historyRecord],
         };
       }
@@ -2169,9 +2397,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const updated = subscriptions.map(s => {
       if (s.id === id) {
+        const remainingHistory = (s.paymentHistory || []).filter(h => h.cycleKey !== billingMonthKey);
+        const lastRec = remainingHistory[remainingHistory.length - 1];
         return {
           ...s,
-          paymentHistory: (s.paymentHistory || []).filter(h => h.cycleKey !== billingMonthKey),
+          lastPaidDate: lastRec ? lastRec.paidDate : undefined,
+          lastPaidCycle: lastRec ? lastRec.cycleKey : undefined,
+          lastPaidWalletName: lastRec ? lastRec.walletName : undefined,
+          paymentHistory: remainingHistory,
         };
       }
       return s;
@@ -2296,6 +2529,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isBalanceHidden,
         setIsBalanceHidden,
         toggleBalanceVisibility,
+        splits,
+        addSplit,
+        editSplit,
+        deleteSplit,
+        executeSplit,
       }}
     >
       {children}

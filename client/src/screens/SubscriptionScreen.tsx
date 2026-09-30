@@ -2,10 +2,11 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
-import { ChevronLeft, Plus, CreditCard, Trash2, Calendar, AlertTriangle } from 'lucide-react-native';
+import { ChevronLeft, Plus, CreditCard, Trash2, Calendar, AlertTriangle, CheckCircle2 } from 'lucide-react-native';
 import { useAppContext } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
 import { resolveSubscriptionLogo } from '../services/SubscriptionCatalogService';
+import { formatPaidTimestamp } from '../utils/paymentSchedule';
 
 const SUBS_ICONS: { [key: string]: any } = {
   'capcut.png': require('../../public/subs/capcut.png'),
@@ -15,6 +16,8 @@ const SUBS_ICONS: { [key: string]: any } = {
   'netflix.png': require('../../public/subs/netflix.png'),
   'prime.png': require('../../public/subs/prime.png'),
   'spotify.png': require('../../public/subs/spotify.png'),
+  'pldt.png': require('../../public/subs/pldt.png'),
+  'PHI.png': require('../../public/subs/PHI.png'),
 };
 
 export default function SubscriptionScreen() {
@@ -75,8 +78,20 @@ export default function SubscriptionScreen() {
           </View>
         ) : (
           subscriptions.map((sub) => {
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonthIdx = today.getMonth();
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const currentCycleKey = `${monthNames[currentMonthIdx]} ${currentYear}`;
+
+            const sortedHistory = [...(sub.paymentHistory || [])].sort(
+              (a: any, b: any) => new Date(b.paidDate).getTime() - new Date(a.paidDate).getTime()
+            );
+            const latestPayment = sortedHistory[0];
+            const isCurrentMonthPaid = (sub.paymentHistory || []).some(h => h.cycleKey === currentCycleKey);
+
             const daysRemaining = getDaysRemaining(sub.dayOfMonth);
-            const isDueSoon = daysRemaining <= 3;
+            const isDueSoon = !isCurrentMonthPaid && daysRemaining <= 3;
 
             const logo = resolveSubscriptionLogo(sub.title, sub.icon);
 
@@ -96,22 +111,38 @@ export default function SubscriptionScreen() {
                       <CreditCard size={20} color={isDueSoon ? '#ef4444' : colors.primary} />
                     )}
                   </View>
-                  <View>
-                    <Text style={[styles.subTitle, isDueSoon && styles.dueSoonText]}>{sub.title}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.subTitle, isDueSoon && styles.dueSoonText]} numberOfLines={1}>{sub.title}</Text>
                     <View style={styles.row}>
                       <Calendar size={12} color={colors.textMuted} />
                       <Text style={styles.subDetail}>Every {sub.dayOfMonth}th</Text>
                     </View>
+                    {latestPayment ? (
+                      <View style={styles.paidDateRow}>
+                        <CheckCircle2 size={11} color="#10b981" />
+                        <Text style={styles.paidDateText} numberOfLines={1}>
+                          {formatPaidTimestamp(latestPayment.paidDate)}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
                 
                 <View style={styles.cardRight}>
-                  <Text style={[styles.subAmount, isDueSoon && styles.dueSoonText]}>₱{sub.amount.toLocaleString()}</Text>
-                  <View style={[styles.daysBadge, isDueSoon ? styles.dueSoonBadge : styles.normalBadge]}>
-                    <Text style={[styles.daysText, isDueSoon && styles.dueSoonBadgeText]}>
-                      {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
-                    </Text>
-                  </View>
+                  <Text style={[styles.subAmount, isDueSoon && styles.dueSoonText]}>
+                    {sub.currency === 'USD' ? '$' : '₱'}{sub.amount.toLocaleString()}
+                  </Text>
+                  {isCurrentMonthPaid ? (
+                    <View style={[styles.daysBadge, styles.paidBadge]}>
+                      <Text style={[styles.daysText, styles.paidBadgeText]}>✓ Paid</Text>
+                    </View>
+                  ) : (
+                    <View style={[styles.daysBadge, isDueSoon ? styles.dueSoonBadge : styles.normalBadge]}>
+                      <Text style={[styles.daysText, isDueSoon && styles.dueSoonBadgeText]}>
+                        {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
+                      </Text>
+                    </View>
+                  )}
                   <TouchableOpacity 
                     onPress={() => handleDelete(sub.id, sub.title)}
                     style={styles.deleteBtn}
@@ -261,6 +292,11 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   dueSoonBadge: {
     backgroundColor: '#ef4444',
   },
+  paidBadge: {
+    backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.16)' : '#dcfce7',
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(16, 185, 129, 0.35)' : '#bbf7d0',
+  },
   daysText: {
     fontFamily: theme.fonts.bold,
     fontSize: 10,
@@ -268,6 +304,20 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   dueSoonBadgeText: {
     color: '#ffffff',
+  },
+  paidBadgeText: {
+    color: '#15803d',
+  },
+  paidDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
+  },
+  paidDateText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 11,
+    color: '#10b981',
   },
   deleteBtn: {
     marginTop: 4,

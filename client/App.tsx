@@ -65,6 +65,8 @@ import ConfirmModal from './src/components/ConfirmModal';
 import BottomTabNavigator from './src/navigation/BottomTabNavigator';
 import CurrencyConverterScreen from './src/screens/CurrencyConverterScreen';
 import TransferScreen from './src/screens/TransferScreen';
+import SplitScreen from './src/screens/SplitScreen';
+import AddSplitScreen from './src/screens/AddSplitScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -160,6 +162,8 @@ function MainNavigation() {
             <Stack.Screen name="SubscriptionDetail" component={SubscriptionDetailScreen} />
             <Stack.Screen name="CurrencyConverter" component={CurrencyConverterScreen} />
             <Stack.Screen name="Transfer" component={TransferScreen} />
+            <Stack.Screen name="Split" component={SplitScreen} />
+            <Stack.Screen name="AddSplit" component={AddSplitScreen} />
             
             {/* Fallback Aliases that redirect into the Tab Navigator to keep Tabs and Header */}
             <Stack.Screen name="Goals">

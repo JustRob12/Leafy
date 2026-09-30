@@ -27,6 +27,8 @@ export interface ResponsiveInfo {
   height: number;
   isLandscape: boolean;
   isTablet: boolean;
+  sidebarWidth: number;
+  contentWidth: number;
   minDimension: number;
   maxDimension: number;
   scale: number;
@@ -52,10 +54,13 @@ export const useResponsive = (): ResponsiveInfo => {
   const isTablet = minDimension >= 600 || width >= 768;
   const scale = getResponsiveScale(width, height);
 
+  const sidebarWidth = isLandscape ? (isTablet ? 250 : 215) : 0;
+  const contentWidth = width - sidebarWidth;
+
   const rfDynamic = (size: number) => Math.round(size * scale);
 
   const getGridColumns = (minItemWidth = 160, gap = 12, maxCols = 6): number => {
-    const availableWidth = width - 40; // Approx screen padding
+    const availableWidth = contentWidth - 40; // Screen padding relative to content width
     const cols = Math.floor((availableWidth + gap) / (minItemWidth + gap));
     return Math.max(1, Math.min(cols, maxCols));
   };
@@ -65,6 +70,8 @@ export const useResponsive = (): ResponsiveInfo => {
     height,
     isLandscape,
     isTablet,
+    sidebarWidth,
+    contentWidth,
     minDimension,
     maxDimension,
     scale,

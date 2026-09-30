@@ -84,7 +84,7 @@ export default function SubscriptionScreen() {
               <TouchableOpacity 
                 key={sub.id} 
                 style={[styles.subscriptionCard, isDueSoon && styles.dueSoonCard]}
-                onPress={() => navigation.navigate('AddSubscription', { subscription: sub })}
+                onPress={() => navigation.navigate('SubscriptionDetail', { subscription: sub })}
               >
                 <View style={styles.cardLeft}>
                   <View style={[styles.iconWrapper, isDueSoon && styles.dueSoonIconWrapper, logo && { backgroundColor: 'transparent', borderWidth: 0 }]}>

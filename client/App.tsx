@@ -56,6 +56,9 @@ import InstallmentScreen from './src/screens/InstallmentScreen';
 import AddInstallmentScreen from './src/screens/AddInstallmentScreen';
 import RentScreen from './src/screens/RentScreen';
 import AddRentScreen from './src/screens/AddRentScreen';
+import InstallmentDetailScreen from './src/screens/InstallmentDetailScreen';
+import RentDetailScreen from './src/screens/RentDetailScreen';
+import SubscriptionDetailScreen from './src/screens/SubscriptionDetailScreen';
 import MainHeader from './src/components/MainHeader';
 import FeedbackModal from './src/components/FeedbackModal';
 import ConfirmModal from './src/components/ConfirmModal';
@@ -83,8 +86,11 @@ if (!CustomTextInput.defaultProps) CustomTextInput.defaultProps = {};
 CustomTextInput.defaultProps.style = CustomTextInput.defaultProps.style || {};
 CustomTextInput.defaultProps.style.fontFamily = 'Inter_400Regular';
 
+import { useResponsive } from './src/utils/responsive';
+
 function MainNavigation() {
   const { username, colors, isDarkMode } = useAppContext();
+  const { isLandscape } = useResponsive();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -106,7 +112,10 @@ function MainNavigation() {
             <Stack.Screen
               name="Main"
               component={BottomTabNavigator}
-              options={{ headerShown: true, header: () => <MainHeader /> }}
+              options={{ 
+                headerShown: !isLandscape, 
+                header: () => <MainHeader /> 
+              }}
             />
             <Stack.Screen name="Calculator" component={CalculatorScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
@@ -146,6 +155,9 @@ function MainNavigation() {
             <Stack.Screen name="AddInstallment" component={AddInstallmentScreen} />
             <Stack.Screen name="Rent" component={RentScreen} />
             <Stack.Screen name="AddRent" component={AddRentScreen} />
+            <Stack.Screen name="InstallmentDetail" component={InstallmentDetailScreen} />
+            <Stack.Screen name="RentDetail" component={RentDetailScreen} />
+            <Stack.Screen name="SubscriptionDetail" component={SubscriptionDetailScreen} />
             <Stack.Screen name="CurrencyConverter" component={CurrencyConverterScreen} />
             <Stack.Screen name="Transfer" component={TransferScreen} />
             

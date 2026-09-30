@@ -8,15 +8,17 @@ import { useAppContext } from '../context/AppContext';
 import ActionSheet from '../components/ActionSheet';
 import { useNavigation } from '@react-navigation/native';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { useResponsive } from '../utils/responsive';
+
 const CARD_MAX_WIDTH = 540;
-const effectiveWidth = Math.min(SCREEN_WIDTH - 48, CARD_MAX_WIDTH);
-const COLUMN_WIDTH = Math.floor(effectiveWidth / 7);
 
 export default function CalendarScreen() {
   const navigation = useNavigation<any>();
   const { transactions, wallets, colors, isDarkMode } = useAppContext();
-  const styles = getStyles(colors, isDarkMode);
+  const { contentWidth, isLandscape } = useResponsive();
+  const effectiveWidth = Math.min(contentWidth - 48, CARD_MAX_WIDTH);
+  const columnWidth = Math.floor(effectiveWidth / 7);
+  const styles = getStyles(colors, isDarkMode, columnWidth);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -212,7 +214,7 @@ export default function CalendarScreen() {
 }
 
 
-const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
+const getStyles = (colors: any, isDarkMode: boolean, columnWidth: number) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -277,7 +279,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     paddingBottom: theme.spacing.sm,
   },
   dayHeader: {
-    width: COLUMN_WIDTH,
+    width: columnWidth,
     alignItems: 'center',
   },
   dayHeaderText: {
@@ -290,8 +292,8 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     flexWrap: 'wrap',
   },
   dayCell: {
-    width: COLUMN_WIDTH,
-    height: COLUMN_WIDTH * 1.2,
+    width: columnWidth,
+    height: columnWidth * 1.2,
     alignItems: 'center',
     justifyContent: 'center',
   },

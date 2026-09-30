@@ -405,7 +405,9 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   infoItem: {
-    width: (Dimensions.get('window').width - 48 - 12) / 2,
+    width: '48%',
+    minWidth: 140,
+    flexGrow: 1,
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,

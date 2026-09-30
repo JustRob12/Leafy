@@ -1,14 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { theme } from '../theme';
 import { useAppContext } from '../context/AppContext';
-import { ArrowLeft, ArrowUpRight, ArrowDownRight, Calendar, Filter, Trash2, ArrowRightLeft, TrendingUp } from 'lucide-react-native';
+import { ArrowLeft, ArrowUpRight, ArrowDownRight, Calendar, Filter, Trash2, ArrowRightLeft, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useScrollHideTabBar } from '../hooks/useScrollHideTabBar';
 import { useScrollToTop } from '@react-navigation/native';
 import * as LucideIcons from 'lucide-react-native';
 import { Image } from 'react-native';
 import WalletBrandLogo from '../components/WalletBrandLogo';
-import { rf } from '../utils/responsive';
+import { rf, useResponsive } from '../utils/responsive';
 
 const ICON_MAP: { [key: string]: any } = {
   Utensils: LucideIcons.Utensils,
@@ -42,6 +42,7 @@ const ICON_MAP: { [key: string]: any } = {
 
 export default function HistoryScreen() {
   const { transactions, deleteTransaction, showConfirm, showFeedback, colors, isDarkMode, wallets, usdToPhpRate } = useAppContext();
+  const { isLandscape } = useResponsive();
   const styles = getStyles(colors, isDarkMode);
   const { handleScroll } = useScrollHideTabBar();
   const scrollViewRef = React.useRef<ScrollView>(null);
@@ -90,6 +91,18 @@ export default function HistoryScreen() {
       return matchesMonthYear && matchesType && matchesWallet;
     });
   }, [transactions, selectedMonth, selectedYear, typeFilter, walletFilter]);
+
+  const [showAll, setShowAll] = useState(false);
+
+  // Reset showAll when filters change to ensure fast switching
+  useEffect(() => {
+    setShowAll(false);
+  }, [selectedMonth, selectedYear, typeFilter, walletFilter]);
+
+  const displayedTransactions = useMemo(() => {
+    if (showAll) return filteredTransactions;
+    return filteredTransactions.slice(0, 5);
+  }, [filteredTransactions, showAll]);
 
   const formatTxDate = (dateString: string) => {
     const d = new Date(dateString);
@@ -206,7 +219,10 @@ export default function HistoryScreen() {
       {/* LIST */}
       <ScrollView 
         ref={scrollViewRef}
-        contentContainerStyle={styles.scrollContent} 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: isLandscape ? 40 : 140 }
+        ]} 
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
@@ -217,37 +233,56 @@ export default function HistoryScreen() {
             <Text style={styles.emptyStateText}>No transactions found for {months[selectedMonth]} {selectedYear}.</Text>
           </View>
         ) : (
-          filteredTransactions.map(tx => {
-            const isDeposit = tx.type === 'deposit';
-            const symbol = tx.currency === 'USD' ? '$' : '₱';
-            const formattedAmt = tx.amount.toLocaleString(tx.currency === 'USD' ? 'en-US' : 'en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const phpEquiv = tx.currency === 'USD' ? ` (≈ ₱${(tx.amount * usdToPhpRate).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : '';
+          <>
+            {displayedTransactions.map(tx => {
+              const isDeposit = tx.type === 'deposit';
+              const symbol = tx.currency === 'USD' ? '$' : '₱';
+              const formattedAmt = tx.amount.toLocaleString(tx.currency === 'USD' ? 'en-US' : 'en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              const phpEquiv = tx.currency === 'USD' ? ` (≈ ₱${(tx.amount * usdToPhpRate).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : '';
 
-            return (
-              <View key={tx.id} style={styles.txItem}>
-                <View style={styles.txLeft}>
-                    <View style={[
-                      styles.txIconWrapper,
-                      isDeposit ? 
-                        { backgroundColor: colors.primary + '15', borderColor: colors.primary + '33' } : 
-                        { backgroundColor: colors.danger + '15', borderColor: colors.danger + '33' }
-                    ]}>
-                    {getTxIcon(tx)}
+              return (
+                <View key={tx.id} style={styles.txItem}>
+                  <View style={styles.txLeft}>
+                      <View style={[
+                        styles.txIconWrapper,
+                        isDeposit ? 
+                          { backgroundColor: colors.primary + '15', borderColor: colors.primary + '33' } : 
+                          { backgroundColor: colors.danger + '15', borderColor: colors.danger + '33' }
+                      ]}>
+                      {getTxIcon(tx)}
+                    </View>
+                    <View style={styles.txInfo}>
+                      <Text style={styles.txTitle} numberOfLines={2}>{tx.title}</Text>
+                      <Text style={styles.txDate}>{formatTxDate(tx.date)}</Text>
+                      <Text style={[isDeposit ? styles.txAmountPositive : styles.txAmountNegative, { marginTop: 4 }]}>
+                        {isDeposit ? '+' : '-'}{symbol}{formattedAmt}{phpEquiv}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.txInfo}>
-                    <Text style={styles.txTitle} numberOfLines={2}>{tx.title}</Text>
-                    <Text style={styles.txDate}>{formatTxDate(tx.date)}</Text>
-                    <Text style={[isDeposit ? styles.txAmountPositive : styles.txAmountNegative, { marginTop: 4 }]}>
-                      {isDeposit ? '+' : '-'}{symbol}{formattedAmt}{phpEquiv}
-                    </Text>
-                  </View>
+                  <TouchableOpacity onPress={() => handleDeleteTx(tx.id, tx.title)}>
+                    <Trash2 size={20} color={colors.textMuted} />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => handleDeleteTx(tx.id, tx.title)}>
-                  <Trash2 size={20} color={colors.textMuted} />
-                </TouchableOpacity>
-              </View>
-            );
-          })
+              );
+            })}
+
+            {filteredTransactions.length > 5 && (
+              <TouchableOpacity
+                style={styles.moreButton}
+                onPress={() => setShowAll(prev => !prev)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.moreButtonText}>
+                  {showAll ? 'Show Less' : `More (${filteredTransactions.length - 5})`}
+                </Text>
+                {showAll ? (
+                  <ChevronUp size={16} color={colors.primary} style={{ marginLeft: 4 }} />
+                ) : (
+                  <ChevronDown size={16} color={colors.primary} style={{ marginLeft: 4 }} />
+                )}
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </ScrollView>
     </View>
@@ -447,5 +482,24 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+  },
+  moreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    marginTop: 8,
+    marginBottom: 20,
+    borderRadius: 20,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+  },
+  moreButtonText: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: rf(12),
+    color: colors.primary,
   },
 });

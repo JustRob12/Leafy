@@ -72,7 +72,7 @@ const ICON_MAP: { [key: string]: any } = {
 
 
 export default function HomeScreen() {
-  const { totalBalance, totalReceivables, totalDebts, wallets, debts, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode, treeType, isTutorialActive, stopTutorial, groceryLists, subscriptions, recursions, installments, rents, usdToPhpRate } = useAppContext();
+  const { totalBalance, totalReceivables, totalDebts, wallets, debts, transactions, addTransaction, showFeedback, showConfirm, goals, colors, isDarkMode, treeType, isTutorialActive, stopTutorial, groceryLists, subscriptions, recursions, installments, rents, usdToPhpRate, isBalanceHidden, setIsBalanceHidden, toggleBalanceVisibility } = useAppContext();
 
   const navigation = useNavigation<any>();
   const { handleScroll } = useScrollHideTabBar();
@@ -81,9 +81,9 @@ export default function HomeScreen() {
 
   const styles = getStyles(colors, isDarkMode);
 
-  const { width, isLandscape, isTablet } = useResponsive();
-  const CARD_WIDTH = Math.min(width - 48, isLandscape || isTablet ? 500 : width - 48);
-  const CARD_SIDE_INSET = Math.max(24, (width - CARD_WIDTH) / 2);
+  const { width, isLandscape, isTablet, contentWidth } = useResponsive();
+  const CARD_WIDTH = Math.min(contentWidth - 48, isLandscape || isTablet ? 500 : contentWidth - 48);
+  const CARD_SIDE_INSET = Math.max(24, (contentWidth - CARD_WIDTH) / 2);
   const CARD_GAP = 12;
   const CARD_SNAP_INTERVAL = CARD_WIDTH + CARD_GAP;
   const WALLET_ITEM_WIDTH = 100; // Tighter ticker
@@ -216,7 +216,6 @@ export default function HomeScreen() {
 
   // Tutorial Logic
   const [currentStep, setCurrentStep] = useState(0);
-  const [isBalanceHidden, setIsBalanceHidden] = useState(false);
   const [targetLayout, setTargetLayout] = useState<{ x: number, y: number, w: number, h: number } | null>(null);
   const soundRef = useRef<AudioPlayer | null>(null);
 
@@ -624,7 +623,15 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <ScrollView
         ref={scrollViewRef}
-        contentContainerStyle={[styles.scrollContent, { maxWidth: 960, width: '100%', alignSelf: 'center' }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            maxWidth: 960,
+            width: '100%',
+            alignSelf: 'center',
+            paddingBottom: isLandscape ? 40 : 140,
+          }
+        ]}
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled={true}
         onScroll={handleScroll}
@@ -948,9 +955,14 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* PAYDAY COUNTDOWN */}
+        {/* PAYDAY COUNTDOWN / RECURSION DISPLAY */}
         {paydayInfo && (
-          <View style={styles.paydayContainer}>
+          <TouchableOpacity
+            ref={recursionRef as any}
+            style={styles.paydayContainer}
+            onPress={() => navigation.navigate('Recursion')}
+            activeOpacity={0.7}
+          >
             <View style={styles.paydayIconWrapper}>
               <RefreshCw size={16} color={colors.primary} />
             </View>
@@ -962,7 +974,8 @@ export default function HomeScreen() {
             <Text style={styles.paydayAmount}>
               {isBalanceHidden ? "₱ ******" : `+₱${paydayInfo.amount.toLocaleString()}`}
             </Text>
-          </View>
+            <ChevronRight size={14} color={colors.primary} style={{ marginLeft: 2 }} />
+          </TouchableOpacity>
         )}
 
 
@@ -1179,7 +1192,7 @@ export default function HomeScreen() {
                     <TouchableOpacity 
                       key={item.id}
                       activeOpacity={0.9}
-                      onPress={() => navigation.navigate('Installment')}
+                      onPress={() => navigation.navigate('InstallmentDetail', { installment: item })}
                     >
                       <ExpoLinearGradient
                         colors={['#ef4444', '#dc2626', '#991b1b']}
@@ -1219,7 +1232,7 @@ export default function HomeScreen() {
                           adjustsFontSizeToFit={true}
                           minimumFontScale={0.5}
                         >
-                          {item.currency === 'USD' ? '$' : '₱'}{item.monthlyAmount.toLocaleString()} / mo
+                          {isBalanceHidden ? `${item.currency === 'USD' ? '$' : '₱'} ****** / mo` : `${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()} / mo`}
                         </Text>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
                           <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: 'rgba(255, 255, 255, 0.85)' }}>
@@ -1238,7 +1251,7 @@ export default function HomeScreen() {
                   <TouchableOpacity 
                     key={item.id}
                     activeOpacity={0.9}
-                    onPress={() => navigation.navigate('Installment')}
+                    onPress={() => navigation.navigate('InstallmentDetail', { installment: item })}
                     style={{
                       width: 240,
                       padding: 16,
@@ -1261,7 +1274,7 @@ export default function HomeScreen() {
                       adjustsFontSizeToFit={true}
                       minimumFontScale={0.5}
                     >
-                      {item.currency === 'USD' ? '$' : '₱'}{item.monthlyAmount.toLocaleString()} / mo
+                      {isBalanceHidden ? `${item.currency === 'USD' ? '$' : '₱'} ****** / mo` : `${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()} / mo`}
                     </Text>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
                       <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: colors.textMuted }}>
@@ -1303,7 +1316,7 @@ export default function HomeScreen() {
                     <TouchableOpacity 
                       key={item.id}
                       activeOpacity={0.9}
-                      onPress={() => navigation.navigate('Rent')}
+                      onPress={() => navigation.navigate('RentDetail', { rent: item })}
                     >
                       <ExpoLinearGradient
                         colors={['#ef4444', '#dc2626', '#991b1b']}
@@ -1349,7 +1362,7 @@ export default function HomeScreen() {
                           adjustsFontSizeToFit={true}
                           minimumFontScale={0.5}
                         >
-                          {item.currency === 'USD' ? '$' : '₱'}{item.monthlyAmount.toLocaleString()} / mo
+                          {isBalanceHidden ? `${item.currency === 'USD' ? '$' : '₱'} ****** / mo` : `${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()} / mo`}
                         </Text>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
                           <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: 'rgba(255, 255, 255, 0.85)' }}>
@@ -1368,7 +1381,7 @@ export default function HomeScreen() {
                   <TouchableOpacity 
                     key={item.id}
                     activeOpacity={0.9}
-                    onPress={() => navigation.navigate('Rent')}
+                    onPress={() => navigation.navigate('RentDetail', { rent: item })}
                     style={{
                       width: 240,
                       padding: 16,
@@ -1397,7 +1410,7 @@ export default function HomeScreen() {
                       adjustsFontSizeToFit={true}
                       minimumFontScale={0.5}
                     >
-                      {item.currency === 'USD' ? '$' : '₱'}{item.monthlyAmount.toLocaleString()} / mo
+                      {isBalanceHidden ? `${item.currency === 'USD' ? '$' : '₱'} ****** / mo` : `${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()} / mo`}
                     </Text>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
                       <Text style={{ fontFamily: theme.fonts.medium, fontSize: 11, color: colors.textMuted }}>
@@ -1714,12 +1727,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
+    paddingTop: 6,
     paddingBottom: 140,
   },
   carouselWrapper: {
     marginHorizontal: -theme.spacing.lg,
-    paddingTop: 8,
+    paddingTop: 0,
     paddingBottom: 2,
     marginBottom: 2,
   },
@@ -1728,7 +1741,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   carouselScrollContent: {
     alignItems: 'center',
-    paddingVertical: 6,
+    paddingVertical: 2,
   },
   carouselCard: {
     backgroundColor: colors.primary,

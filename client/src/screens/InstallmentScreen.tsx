@@ -22,7 +22,9 @@ import {
   ArrowUpRight,
   Clock,
   Zap,
-  Pencil
+  Pencil,
+  Eye,
+  EyeOff
 } from 'lucide-react-native';
 import { useAppContext, InstallmentType } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
@@ -38,7 +40,9 @@ export default function InstallmentScreen() {
     colors, 
     isDarkMode,
     usdToPhpRate,
-    wallets
+    wallets,
+    isBalanceHidden,
+    toggleBalanceVisibility
   } = useAppContext();
   
   const navigation = useNavigation<any>();
@@ -102,12 +106,21 @@ export default function InstallmentScreen() {
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Installments</Text>
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('AddInstallment')} 
-          style={[styles.addHeaderBtn, { backgroundColor: colors.primary }]}
-        >
-          <Plus size={18} color="#ffffff" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity 
+            onPress={toggleBalanceVisibility} 
+            style={[styles.visibilityBtn, { backgroundColor: isBalanceHidden ? colors.primary + '20' : colors.card, borderColor: colors.border }]}
+            activeOpacity={0.7}
+          >
+            {isBalanceHidden ? <EyeOff size={18} color={colors.primary} /> : <Eye size={18} color={colors.textMuted} />}
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('AddInstallment')} 
+            style={[styles.addHeaderBtn, { backgroundColor: colors.primary }]}
+          >
+            <Plus size={18} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -122,7 +135,7 @@ export default function InstallmentScreen() {
             <View>
               <Text style={styles.summaryLabel}>TOTAL MONTHLY OBLIGATION</Text>
               <Text style={styles.summaryMainVal}>
-                ₱{totalMonthlyPhp.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {isBalanceHidden ? '₱ ******' : `₱${totalMonthlyPhp.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               </Text>
             </View>
             <View style={styles.summaryIconCircle}>
@@ -134,7 +147,7 @@ export default function InstallmentScreen() {
             <View style={styles.summaryStatItem}>
               <Text style={styles.summaryStatLabel}>Remaining Balance</Text>
               <Text style={styles.summaryStatVal}>
-                ₱{totalRemainingPhp.toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                {isBalanceHidden ? '₱ ******' : `₱${totalRemainingPhp.toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
               </Text>
             </View>
             <View style={styles.summaryStatDivider} />
@@ -211,7 +224,7 @@ export default function InstallmentScreen() {
                     <View style={styles.cardHeaderRow}>
                       <TouchableOpacity 
                         style={styles.cardTitleBox}
-                        onPress={() => navigation.navigate('AddInstallment', { installment: item })}
+                        onPress={() => navigation.navigate('InstallmentDetail', { installment: item })}
                         activeOpacity={0.7}
                       >
                         <Text style={styles.urgentBadgeText}>
@@ -242,7 +255,7 @@ export default function InstallmentScreen() {
                           adjustsFontSizeToFit={true}
                           minimumFontScale={0.5}
                         >
-                          {item.currency === 'USD' ? '$' : '₱'}{item.monthlyAmount.toLocaleString()}
+                          {isBalanceHidden ? `${item.currency === 'USD' ? '$' : '₱'} ******` : `${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()}`}
                         </Text>
                       </View>
 
@@ -254,7 +267,7 @@ export default function InstallmentScreen() {
                           adjustsFontSizeToFit={true}
                           minimumFontScale={0.5}
                         >
-                          {item.currency === 'USD' ? '$' : '₱'}{item.totalAmount.toLocaleString()}
+                          {isBalanceHidden ? `${item.currency === 'USD' ? '$' : '₱'} ******` : `${item.currency === 'USD' ? '$' : '₱'}${item.totalAmount.toLocaleString()}`}
                         </Text>
                       </View>
                     </View>
@@ -317,7 +330,7 @@ export default function InstallmentScreen() {
                   <View style={styles.cardHeaderRow}>
                     <TouchableOpacity 
                       style={styles.cardTitleBox}
-                      onPress={() => navigation.navigate('AddInstallment', { installment: item })}
+                      onPress={() => navigation.navigate('InstallmentDetail', { installment: item })}
                       activeOpacity={0.7}
                     >
                       <View style={styles.titleIconRow}>
@@ -363,7 +376,7 @@ export default function InstallmentScreen() {
                         adjustsFontSizeToFit={true}
                         minimumFontScale={0.5}
                       >
-                        {item.currency === 'USD' ? '$' : '₱'}{item.monthlyAmount.toLocaleString()}
+                        {isBalanceHidden ? `${item.currency === 'USD' ? '$' : '₱'} ******` : `${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()}`}
                       </Text>
                     </View>
 
@@ -375,7 +388,7 @@ export default function InstallmentScreen() {
                         adjustsFontSizeToFit={true}
                         minimumFontScale={0.5}
                       >
-                        {item.currency === 'USD' ? '$' : '₱'}{item.totalAmount.toLocaleString()}
+                        {isBalanceHidden ? `${item.currency === 'USD' ? '$' : '₱'} ******` : `${item.currency === 'USD' ? '$' : '₱'}${item.totalAmount.toLocaleString()}`}
                       </Text>
                     </View>
                   </View>
@@ -461,6 +474,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  visibilityBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

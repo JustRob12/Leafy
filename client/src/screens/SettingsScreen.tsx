@@ -4,18 +4,27 @@ import * as ImagePicker from 'expo-image-picker';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { theme } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check, Fingerprint, ChevronLeft, Plus, Palette, Moon, Sun, Smartphone, Sparkles, RefreshCw, ExternalLink, Eye, EyeOff, Layers, Type, Sliders, CheckCircle2, Coins, Calendar, CreditCard, Home, Target, Receipt, Delete } from 'lucide-react-native';
+import { User, Bell, Shield, CircleHelp, Trash2, ChevronRight, Camera, Database, Leaf, Lock, Check, Fingerprint, ChevronLeft, Plus, Palette, Moon, Sun, Smartphone, Sparkles, RefreshCw, ExternalLink, Eye, EyeOff, Layers, Type, Sliders, CheckCircle2, Coins, Calendar, CreditCard, Home, Target, Receipt, Delete, Tag, Edit3, RotateCcw, X } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppContext } from '../context/AppContext';
 import { requestPinTotalBalanceWidget, syncWidgetBalance, getWidgetConfig, saveWidgetConfig, WIDGET_THEMES, WidgetConfig, DEFAULT_WIDGET_CONFIG } from '../services/WidgetService';
 import { requestNotificationPermissions, sendTestNotification, checkNotificationPermissionStatus } from '../services/NotificationService';
+import { PRESET_ICON_MAP, AVAILABLE_PRESET_ICONS } from '../constants/presetIcons';
 
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import ActionSheet from '../components/ActionSheet';
 
 export default function SettingsScreen() {
-  const { username, setUsername, userImage, setUserImage, clearData, showConfirm, showFeedback, isDarkMode, toggleTheme, treeType, setTreeType, colors, appPin, setAppPin, isSecurityEnabled, toggleSecurity, isBiometricsEnabled, toggleBiometrics, isNotificationsEnabled, toggleNotifications, totalBalance, wallets, transactions, usdToPhpRate } = useAppContext();
+  const {
+    username, setUsername, userImage, setUserImage, clearData, showConfirm, showFeedback,
+    isDarkMode, toggleTheme, treeType, setTreeType, colors, appPin, setAppPin,
+    isSecurityEnabled, toggleSecurity, isBiometricsEnabled, toggleBiometrics,
+    isNotificationsEnabled, toggleNotifications, totalBalance, wallets, transactions, usdToPhpRate,
+    incomePresets, withdrawPresets, addIncomePreset, addWithdrawPreset,
+    editIncomePreset, editWithdrawPreset, deleteIncomePreset, deleteWithdrawPreset, resetPresetsToDefault,
+  } = useAppContext();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
 
   const styles = getStyles(colors, isDarkMode);
 
@@ -35,6 +44,68 @@ export default function SettingsScreen() {
   const [firstPin, setFirstPin] = React.useState('');
   const [pinStep, setPinStep] = React.useState<'create' | 'confirm'>('create');
   const [pinError, setPinError] = React.useState<string | null>(null);
+
+  // Presets Management Modal State
+  const [presetsModalVisible, setPresetsModalVisible] = React.useState(false);
+  const [presetTab, setPresetTab] = React.useState<'income' | 'expense'>('income');
+  const [editingPreset, setEditingPreset] = React.useState<any>(null);
+  const [isAddingPreset, setIsAddingPreset] = React.useState(false);
+  const [presetFormName, setPresetFormName] = React.useState('');
+  const [presetFormIcon, setPresetFormIcon] = React.useState('Briefcase');
+
+  React.useEffect(() => {
+    if (route.params?.openPresets) {
+      setPresetsModalVisible(true);
+      if (route.params?.presetTab) {
+        setPresetTab(route.params.presetTab);
+      }
+    }
+  }, [route.params]);
+
+  const handleSavePreset = async () => {
+    const trimmed = presetFormName.trim();
+    if (!trimmed) return;
+    if (editingPreset) {
+      if (presetTab === 'income') {
+        await editIncomePreset(editingPreset.id, trimmed, presetFormIcon);
+      } else {
+        await editWithdrawPreset(editingPreset.id, trimmed, presetFormIcon);
+      }
+    } else {
+      if (presetTab === 'income') {
+        await addIncomePreset(trimmed, presetFormIcon);
+      } else {
+        await addWithdrawPreset(trimmed, presetFormIcon);
+      }
+    }
+    setEditingPreset(null);
+    setIsAddingPreset(false);
+    setPresetFormName('');
+  };
+
+  const handleDeletePreset = (id: string, name: string) => {
+    showConfirm(
+      'Delete Preset',
+      `Are you sure you want to delete the "${name}" preset?`,
+      async () => {
+        if (presetTab === 'income') {
+          await deleteIncomePreset(id);
+        } else {
+          await deleteWithdrawPreset(id);
+        }
+      }
+    );
+  };
+
+  const handleResetPresets = () => {
+    showConfirm(
+      'Reset Presets',
+      `Restore original default ${presetTab === 'income' ? 'income' : 'expense'} presets?`,
+      async () => {
+        await resetPresetsToDefault(presetTab === 'income' ? 'income' : 'withdraw');
+      }
+    );
+  };
 
   React.useEffect(() => {
     if (widgetModalVisible) {
@@ -92,6 +163,7 @@ export default function SettingsScreen() {
       title: 'General',
       options: [
         { id: '1', title: 'Change Name', icon: User, action: () => { setEditName(username || ''); setAccountModalVisible(true); } },
+        { id: 'presets', title: 'Transaction Presets', icon: Tag, action: () => setPresetsModalVisible(true) },
         { id: '10', title: 'Appearance & Themes', icon: Palette, action: () => setAppearanceModalVisible(true) },
         {
           id: '11',
@@ -195,6 +267,232 @@ export default function SettingsScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Transaction Presets Management Modal */}
+      <ActionSheet
+        visible={presetsModalVisible}
+        onClose={() => {
+          setPresetsModalVisible(false);
+          setEditingPreset(null);
+          setIsAddingPreset(false);
+        }}
+        title="Transaction Presets"
+      >
+        <View style={styles.modalContent}>
+          {/* Preset Type Tab Switcher */}
+          <View style={styles.presetTabContainer}>
+            <TouchableOpacity
+              style={[
+                styles.presetTab,
+                presetTab === 'income' && { backgroundColor: colors.primary, borderColor: colors.primary }
+              ]}
+              onPress={() => {
+                setPresetTab('income');
+                setEditingPreset(null);
+                setIsAddingPreset(false);
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.presetTabText,
+                presetTab === 'income' && styles.presetTabTextActive
+              ]}>
+                Income ({incomePresets.length})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.presetTab,
+                presetTab === 'expense' && { backgroundColor: colors.danger, borderColor: colors.danger }
+              ]}
+              onPress={() => {
+                setPresetTab('expense');
+                setEditingPreset(null);
+                setIsAddingPreset(false);
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.presetTabText,
+                presetTab === 'expense' && styles.presetTabTextActive
+              ]}>
+                Expense ({withdrawPresets.length})
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Preset Action Buttons Row */}
+          <View style={styles.presetActionButtonsRow}>
+            <TouchableOpacity
+              style={[
+                styles.presetAddBtn,
+                {
+                  backgroundColor: presetTab === 'income' ? colors.primary + '18' : colors.danger + '18',
+                  borderColor: presetTab === 'income' ? colors.primary + '40' : colors.danger + '40'
+                }
+              ]}
+              onPress={() => {
+                setEditingPreset(null);
+                setPresetFormName('');
+                setPresetFormIcon(presetTab === 'income' ? 'Briefcase' : 'Coffee');
+                setIsAddingPreset(true);
+              }}
+              activeOpacity={0.7}
+            >
+              <Plus size={15} color={presetTab === 'income' ? colors.primary : colors.danger} strokeWidth={2.5} />
+              <Text style={[styles.presetAddBtnText, { color: presetTab === 'income' ? colors.primary : colors.danger }]}>
+                Add Preset
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.presetResetBtn, { borderColor: colors.border }]}
+              onPress={handleResetPresets}
+              activeOpacity={0.7}
+            >
+              <RotateCcw size={13} color={colors.textMuted} />
+              <Text style={[styles.presetResetBtnText, { color: colors.textMuted }]}>
+                Reset Defaults
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Preset Editor / Creator Card */}
+          {(isAddingPreset || editingPreset) && (
+            <View style={[
+              styles.presetEditorCard,
+              { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f8fafc', borderColor: colors.border }
+            ]}>
+              <View style={styles.presetEditorHeader}>
+                <Text style={[styles.presetEditorTitle, { color: colors.text }]}>
+                  {editingPreset ? 'Edit Preset' : 'New Preset'}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setEditingPreset(null);
+                    setIsAddingPreset(false);
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <X size={18} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={[styles.presetFieldLabel, { color: colors.textMuted }]}>PRESET NAME</Text>
+              <TextInput
+                style={[styles.presetInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.card }]}
+                placeholder="e.g. Groceries, Gym, Salary..."
+                placeholderTextColor={colors.textMuted}
+                value={presetFormName}
+                onChangeText={setPresetFormName}
+                maxLength={20}
+              />
+
+              <Text style={[styles.presetFieldLabel, { color: colors.textMuted, marginTop: 12 }]}>
+                SELECT ICON
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.iconPickerScroll}
+              >
+                {AVAILABLE_PRESET_ICONS.map((iconName) => {
+                  const IconComp = PRESET_ICON_MAP[iconName];
+                  if (!IconComp) return null;
+                  const isSelected = presetFormIcon === iconName;
+                  const activeColor = presetTab === 'income' ? colors.primary : colors.danger;
+                  return (
+                    <TouchableOpacity
+                      key={iconName}
+                      style={[
+                        styles.iconPickerItem,
+                        { borderColor: colors.border, backgroundColor: colors.card },
+                        isSelected && { borderColor: activeColor, backgroundColor: activeColor + '20' }
+                      ]}
+                      onPress={() => setPresetFormIcon(iconName)}
+                    >
+                      <IconComp size={20} color={isSelected ? activeColor : colors.text} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              <View style={styles.presetEditorActions}>
+                <TouchableOpacity
+                  style={[styles.presetEditorCancelBtn, { borderColor: colors.border }]}
+                  onPress={() => {
+                    setEditingPreset(null);
+                    setIsAddingPreset(false);
+                  }}
+                >
+                  <Text style={[styles.presetEditorCancelText, { color: colors.text }]}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.presetEditorSaveBtn,
+                    { backgroundColor: presetTab === 'income' ? colors.primary : colors.danger },
+                    !presetFormName.trim() && { opacity: 0.5 }
+                  ]}
+                  onPress={handleSavePreset}
+                  disabled={!presetFormName.trim()}
+                >
+                  <Text style={styles.presetEditorSaveText}>
+                    {editingPreset ? 'Update Preset' : 'Save Preset'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* List of Presets */}
+          <View style={styles.presetsList}>
+            {(presetTab === 'income' ? incomePresets : withdrawPresets).map((preset) => {
+              const IconComp = PRESET_ICON_MAP[preset.iconName] || PRESET_ICON_MAP['MoreHorizontal'] || Tag;
+              const activeColor = presetTab === 'income' ? colors.primary : colors.danger;
+              return (
+                <View
+                  key={preset.id}
+                  style={[styles.presetListItem, { borderColor: colors.border, backgroundColor: colors.card }]}
+                >
+                  <View style={styles.presetListItemLeft}>
+                    <View style={[styles.presetIconBadge, { backgroundColor: activeColor + '15' }]}>
+                      <IconComp size={18} color={activeColor} />
+                    </View>
+                    <Text style={[styles.presetListItemName, { color: colors.text }]} numberOfLines={1}>
+                      {preset.name}
+                    </Text>
+                  </View>
+
+                  <View style={styles.presetListItemActions}>
+                    <TouchableOpacity
+                      style={[styles.presetActionIconBtn, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }]}
+                      onPress={() => {
+                        setEditingPreset(preset);
+                        setIsAddingPreset(false);
+                        setPresetFormName(preset.name);
+                        setPresetFormIcon(preset.iconName);
+                      }}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Edit3 size={15} color={colors.text} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.presetActionIconBtn, { backgroundColor: colors.danger + '15' }]}
+                      onPress={() => handleDeletePreset(preset.id, preset.name)}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Trash2 size={15} color={colors.danger} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      </ActionSheet>
 
       {/* Appearance & Themes Modal */}
       <ActionSheet
@@ -484,7 +782,7 @@ export default function SettingsScreen() {
               style={{ padding: 16, fontFamily: theme.fonts.medium, fontSize: 16, color: colors.text }}
               value={editName}
               onChangeText={setEditName}
-              maxLength={6}
+              maxLength={12}
               placeholder="Your Name"
               placeholderTextColor={colors.textMuted}
             />
@@ -1711,6 +2009,176 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   syncWidgetBtnText: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 14,
+  },
+  presetTabContainer: {
+    flexDirection: 'row',
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#f1f5f9',
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 14,
+    gap: 6,
+  },
+  presetTab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  presetTabText: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  presetTabTextActive: {
+    color: '#ffffff',
+    fontFamily: theme.fonts.bold,
+  },
+  presetActionButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    gap: 10,
+  },
+  presetAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 6,
+  },
+  presetAddBtnText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 13,
+  },
+  presetResetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 5,
+  },
+  presetResetBtnText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+  },
+  presetEditorCard: {
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  presetEditorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  presetEditorTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 15,
+  },
+  presetFieldLabel: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 11,
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  presetInput: {
+    height: 42,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    fontFamily: theme.fonts.medium,
+  },
+  iconPickerScroll: {
+    paddingVertical: 4,
+    gap: 8,
+  },
+  iconPickerItem: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  presetEditorActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 14,
+    gap: 10,
+  },
+  presetEditorCancelBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  presetEditorCancelText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 13,
+  },
+  presetEditorSaveBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  presetEditorSaveText: {
+    color: '#ffffff',
+    fontFamily: theme.fonts.bold,
+    fontSize: 13,
+  },
+  presetsList: {
+    gap: 8,
+  },
+  presetListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  presetListItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  presetIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  presetListItemName: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 14,
+    flex: 1,
+  },
+  presetListItemActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  presetActionIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { palettes, TreeType } from '../theme';
@@ -158,6 +158,16 @@ export type RecursionType = {
   date: string;
 };
 
+export type PaymentHistoryRecord = {
+  cycle?: number;
+  cycleKey?: string; // e.g. "Jun 2026"
+  amount: number;
+  paidDate: string; // ISO timestamp
+  walletId?: string;
+  walletName?: string;
+  note?: string;
+};
+
 export type SubscriptionType = {
   id: string;
   title: string;
@@ -165,6 +175,9 @@ export type SubscriptionType = {
   dayOfMonth: number;
   date: string;
   icon?: string;
+  currency?: 'PHP' | 'USD';
+  walletId?: string;
+  paymentHistory?: PaymentHistoryRecord[];
 };
 
 export const calculateNextDueDate = (startDateStr: string, paidMonths: number): string => {
@@ -198,6 +211,7 @@ export type InstallmentType = {
   currency?: 'PHP' | 'USD';
   date: string;
   notes?: string;
+  paymentHistory?: PaymentHistoryRecord[];
 };
 
 export type RentType = {
@@ -212,6 +226,7 @@ export type RentType = {
   walletId?: string; // Optional auto-deduct wallet
   notes?: string;
   date: string;
+  paymentHistory?: PaymentHistoryRecord[];
 };
 
 type AppContextType = {
@@ -287,10 +302,13 @@ type AppContextType = {
   stopTutorial: () => void;
   withdrawPresets: WithdrawPresetType[];
   addWithdrawPreset: (name: string, iconName: string) => Promise<WithdrawPresetType>;
+  editWithdrawPreset: (id: string, name: string, iconName: string) => Promise<void>;
   deleteWithdrawPreset: (id: string) => Promise<void>;
   incomePresets: IncomePresetType[];
   addIncomePreset: (name: string, iconName: string) => Promise<IncomePresetType>;
+  editIncomePreset: (id: string, name: string, iconName: string) => Promise<void>;
   deleteIncomePreset: (id: string) => Promise<void>;
+  resetPresetsToDefault: (type: 'income' | 'withdraw' | 'all') => Promise<void>;
   recursions: RecursionType[];
   addRecursion: (recursion: Omit<RecursionType, 'id' | 'date'>) => Promise<void>;
   editRecursion: (id: string, updates: Partial<Omit<RecursionType, 'id' | 'date'>>) => Promise<void>;
@@ -311,11 +329,18 @@ type AppContextType = {
   editInstallment: (id: string, updates: Partial<InstallmentType>) => Promise<void>;
   deleteInstallment: (id: string) => Promise<void>;
   payInstallmentMonth: (id: string, walletId?: string) => Promise<void>;
+  revertInstallmentMonth: (id: string) => Promise<void>;
   rents: RentType[];
   addRent: (rent: Omit<RentType, 'id' | 'dueDate' | 'paidCycles' | 'date'> & { startDate: string; paidCycles?: number }) => Promise<void>;
   editRent: (id: string, updates: Partial<RentType>) => Promise<void>;
   deleteRent: (id: string) => Promise<void>;
   payRentMonth: (id: string, walletId?: string) => Promise<void>;
+  revertRentMonth: (id: string) => Promise<void>;
+  paySubscriptionMonth: (id: string, billingMonthKey: string, walletId?: string) => Promise<void>;
+  revertSubscriptionMonth: (id: string, billingMonthKey: string) => Promise<void>;
+  isBalanceHidden: boolean;
+  setIsBalanceHidden: (hidden: boolean | ((prev: boolean) => boolean)) => void;
+  toggleBalanceVisibility: () => void;
 };
 
 
@@ -337,6 +362,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [subscriptions, setSubscriptions] = useState<SubscriptionType[]>([]);
   const [installments, setInstallments] = useState<InstallmentType[]>([]);
   const [rents, setRents] = useState<RentType[]>([]);
+  const [isBalanceHidden, setIsBalanceHiddenState] = useState<boolean>(false);
+
+  const setIsBalanceHidden = useCallback((val: boolean | ((prev: boolean) => boolean)) => {
+    setIsBalanceHiddenState(prev => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      AsyncStorage.setItem('@isBalanceHidden', String(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  const toggleBalanceVisibility = useCallback(() => {
+    setIsBalanceHidden(prev => !prev);
+  }, [setIsBalanceHidden]);
+
   const [userImage, setUserImageState] = useState<string | null>(null);
   const [appPin, setAppPinState] = useState<string | null>(null);
   const [isSecurityEnabled, setIsSecurityEnabled] = useState(false);
@@ -456,6 +495,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const storedRents = await AsyncStorage.getItem('@rents');
       if (storedRents) setRents(JSON.parse(storedRents));
+      const storedBalanceHidden = await AsyncStorage.getItem('@isBalanceHidden');
+      if (storedBalanceHidden !== null) setIsBalanceHiddenState(storedBalanceHidden === 'true');
       const storedGrocery = await AsyncStorage.getItem('@groceryLists');
       if (storedGrocery) setGroceryLists(JSON.parse(storedGrocery));
       const storedWallets = await AsyncStorage.getItem('@wallets');
@@ -1276,6 +1317,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSubscriptions([]);
     setInstallments([]);
     setRents([]);
+    setIsBalanceHiddenState(false);
     setAppPinState(null);
     setIsSecurityEnabled(false);
     setIsBiometricsEnabled(false);
@@ -1788,6 +1830,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showFeedback('delete', 'Preset Removed');
   };
 
+  const editWithdrawPreset = async (id: string, name: string, iconName: string) => {
+    const updated = withdrawPresets.map(p => (p.id === id ? { ...p, name, iconName } : p));
+    setWithdrawPresets(updated);
+    await AsyncStorage.setItem('@withdrawPresets', JSON.stringify(updated));
+    showFeedback('success', 'Preset Updated');
+  };
+
+  const editIncomePreset = async (id: string, name: string, iconName: string) => {
+    const updated = incomePresets.map(p => (p.id === id ? { ...p, name, iconName } : p));
+    setIncomePresets(updated);
+    await AsyncStorage.setItem('@incomePresets', JSON.stringify(updated));
+    showFeedback('success', 'Preset Updated');
+  };
+
+  const resetPresetsToDefault = async (type: 'income' | 'withdraw' | 'all') => {
+    if (type === 'income' || type === 'all') {
+      setIncomePresets(DEFAULT_INCOME_PRESETS);
+      await AsyncStorage.setItem('@incomePresets', JSON.stringify(DEFAULT_INCOME_PRESETS));
+    }
+    if (type === 'withdraw' || type === 'all') {
+      setWithdrawPresets(DEFAULT_WITHDRAW_PRESETS);
+      await AsyncStorage.setItem('@withdrawPresets', JSON.stringify(DEFAULT_WITHDRAW_PRESETS));
+    }
+    showFeedback('success', 'Presets Reset to Default');
+  };
+
   const addInstallment = async (data: Omit<InstallmentType, 'id' | 'dueDate' | 'date'> & { startDate: string; paidMonths?: number }) => {
     const initialPaidMonths = data.paidMonths || 0;
     const initialDueDate = calculateNextDueDate(data.startDate, initialPaidMonths);
@@ -1861,12 +1929,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const nextPaidMonths = item.paidMonths + 1;
     const nextDue = calculateNextDueDate(item.startDate, nextPaidMonths);
 
+    let targetWalletName: string | undefined = undefined;
+    if (targetWalletId) {
+      const w = wallets.find(wall => wall.id === targetWalletId);
+      if (w) targetWalletName = w.name;
+    }
+
+    const historyRecord: PaymentHistoryRecord = {
+      cycle: nextPaidMonths,
+      amount: item.monthlyAmount,
+      paidDate: new Date().toISOString(),
+      walletId: targetWalletId,
+      walletName: targetWalletName,
+    };
+
     const updated = installments.map(inst => {
       if (inst.id === id) {
         return {
           ...inst,
           paidMonths: nextPaidMonths,
           dueDate: nextDue,
+          paymentHistory: [...(inst.paymentHistory || []), historyRecord],
         };
       }
       return inst;
@@ -1875,6 +1958,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setInstallments(updated);
     await AsyncStorage.setItem('@installments', JSON.stringify(updated));
     showFeedback('success', `Paid Month ${nextPaidMonths} of ${item.monthsToPay}`);
+  };
+
+  const revertInstallmentMonth = async (id: string) => {
+    const item = installments.find(i => i.id === id);
+    if (!item || item.paidMonths <= 0) return;
+
+    const prevPaidMonths = item.paidMonths - 1;
+    const prevDue = calculateNextDueDate(item.startDate, prevPaidMonths);
+    const existingHistory = item.paymentHistory || [];
+    const updatedHistory = existingHistory.slice(0, -1);
+
+    const updated = installments.map(inst => {
+      if (inst.id === id) {
+        return {
+          ...inst,
+          paidMonths: prevPaidMonths,
+          dueDate: prevDue,
+          paymentHistory: updatedHistory,
+        };
+      }
+      return inst;
+    });
+
+    setInstallments(updated);
+    await AsyncStorage.setItem('@installments', JSON.stringify(updated));
+    showFeedback('delete', `Reverted Payment for Month ${item.paidMonths}`);
   };
 
   const addRent = async (data: Omit<RentType, 'id' | 'dueDate' | 'paidCycles' | 'date'> & { startDate: string; paidCycles?: number }) => {
@@ -1945,12 +2054,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const nextPaidCycles = item.paidCycles + 1;
     const nextDue = calculateNextDueDate(item.startDate, nextPaidCycles);
 
+    let targetWalletName: string | undefined = undefined;
+    if (targetWalletId) {
+      const w = wallets.find(wall => wall.id === targetWalletId);
+      if (w) targetWalletName = w.name;
+    }
+
+    const historyRecord: PaymentHistoryRecord = {
+      cycle: nextPaidCycles,
+      amount: item.monthlyAmount,
+      paidDate: new Date().toISOString(),
+      walletId: targetWalletId,
+      walletName: targetWalletName,
+    };
+
     const updated = rents.map(r => {
       if (r.id === id) {
         return {
           ...r,
           paidCycles: nextPaidCycles,
           dueDate: nextDue,
+          paymentHistory: [...(r.paymentHistory || []), historyRecord],
         };
       }
       return r;
@@ -1959,6 +2083,103 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRents(updated);
     await AsyncStorage.setItem('@rents', JSON.stringify(updated));
     showFeedback('success', `Rent Paid for ${item.propertyName}`);
+  };
+
+  const revertRentMonth = async (id: string) => {
+    const item = rents.find(r => r.id === id);
+    if (!item || item.paidCycles <= 0) return;
+
+    const prevPaidCycles = item.paidCycles - 1;
+    const prevDue = calculateNextDueDate(item.startDate, prevPaidCycles);
+    const existingHistory = item.paymentHistory || [];
+    const updatedHistory = existingHistory.slice(0, -1);
+
+    const updated = rents.map(r => {
+      if (r.id === id) {
+        return {
+          ...r,
+          paidCycles: prevPaidCycles,
+          dueDate: prevDue,
+          paymentHistory: updatedHistory,
+        };
+      }
+      return r;
+    });
+
+    setRents(updated);
+    await AsyncStorage.setItem('@rents', JSON.stringify(updated));
+    showFeedback('delete', `Reverted Rent Payment`);
+  };
+
+  const paySubscriptionMonth = async (id: string, billingMonthKey: string, customWalletId?: string) => {
+    const item = subscriptions.find(s => s.id === id);
+    if (!item) return;
+
+    const targetWalletId = customWalletId || item.walletId;
+    let targetWalletName: string | undefined = undefined;
+
+    if (targetWalletId) {
+      const wallet = wallets.find(w => w.id === targetWalletId);
+      if (wallet) {
+        targetWalletName = wallet.name;
+        const walletBal = item.currency === 'USD' ? (wallet.usdBalance || 0) : wallet.balance;
+        if (walletBal < item.amount) {
+          showFeedback('error', 'Insufficient Wallet Balance');
+          return;
+        }
+
+        await addTransaction({
+          title: `Subscription: ${item.title} (${billingMonthKey})`,
+          amount: item.amount,
+          currency: item.currency || 'PHP',
+          type: 'withdrawal',
+          walletId: targetWalletId,
+          icon: 'CreditCard'
+        });
+      }
+    }
+
+    const historyRecord: PaymentHistoryRecord = {
+      cycleKey: billingMonthKey,
+      amount: item.amount,
+      paidDate: new Date().toISOString(),
+      walletId: targetWalletId,
+      walletName: targetWalletName,
+    };
+
+    const updated = subscriptions.map(s => {
+      if (s.id === id) {
+        const filteredHistory = (s.paymentHistory || []).filter(h => h.cycleKey !== billingMonthKey);
+        return {
+          ...s,
+          paymentHistory: [...filteredHistory, historyRecord],
+        };
+      }
+      return s;
+    });
+
+    setSubscriptions(updated);
+    await AsyncStorage.setItem('@subscriptions', JSON.stringify(updated));
+    showFeedback('success', `Renewed ${item.title} for ${billingMonthKey}`);
+  };
+
+  const revertSubscriptionMonth = async (id: string, billingMonthKey: string) => {
+    const item = subscriptions.find(s => s.id === id);
+    if (!item) return;
+
+    const updated = subscriptions.map(s => {
+      if (s.id === id) {
+        return {
+          ...s,
+          paymentHistory: (s.paymentHistory || []).filter(h => h.cycleKey !== billingMonthKey),
+        };
+      }
+      return s;
+    });
+
+    setSubscriptions(updated);
+    await AsyncStorage.setItem('@subscriptions', JSON.stringify(updated));
+    showFeedback('delete', `Reverted Payment for ${billingMonthKey}`);
   };
 
   return (
@@ -2036,10 +2257,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         stopTutorial,
         withdrawPresets,
         addWithdrawPreset,
+        editWithdrawPreset,
         deleteWithdrawPreset,
         incomePresets,
         addIncomePreset,
+        editIncomePreset,
         deleteIncomePreset,
+        resetPresetsToDefault,
         recursions,
         addRecursion,
         editRecursion,
@@ -2060,11 +2284,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         editInstallment,
         deleteInstallment,
         payInstallmentMonth,
+        revertInstallmentMonth,
         rents,
         addRent,
         editRent,
         deleteRent,
         payRentMonth,
+        revertRentMonth,
+        paySubscriptionMonth,
+        revertSubscriptionMonth,
+        isBalanceHidden,
+        setIsBalanceHidden,
+        toggleBalanceVisibility,
       }}
     >
       {children}

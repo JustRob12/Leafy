@@ -10,11 +10,11 @@ import { rf, useResponsive } from '../utils/responsive';
 
 export default function WalletsScreen() {
   const [selectedWalletDetail, setSelectedWalletDetail] = useState<any | null>(null);
-  const [showBalances, setShowBalances] = useState(true);
-  const { wallets, colors, isDarkMode, usdToPhpRate } = useAppContext();
-  const { width, height, isLandscape, isTablet } = useResponsive();
-  const contentWidth = Math.min(width - (theme.spacing.lg * 2), 1040);
-  const cols = isLandscape || isTablet ? (contentWidth >= 800 ? 4 : 3) : 2;
+  const { wallets, colors, isDarkMode, usdToPhpRate, isBalanceHidden, toggleBalanceVisibility } = useAppContext();
+  const showBalances = !isBalanceHidden;
+  const { width, height, isLandscape, isTablet, contentWidth: responsiveContentWidth } = useResponsive();
+  const contentWidth = Math.min(responsiveContentWidth - (theme.spacing.lg * 2), 1040);
+  const cols = isLandscape || isTablet ? (contentWidth >= 760 ? (contentWidth >= 960 ? 4 : 3) : 2) : 2;
   const cardWidth = Math.floor((contentWidth - (12 * (cols - 1))) / cols);
 
   const styles = getStyles(colors, isDarkMode);
@@ -79,7 +79,15 @@ export default function WalletsScreen() {
     <View style={styles.container}>
       <ScrollView 
         ref={scrollViewRef}
-        contentContainerStyle={[styles.scrollContent, { maxWidth: 1040, width: '100%', alignSelf: 'center' }]} 
+        contentContainerStyle={[
+          styles.scrollContent, 
+          { 
+            maxWidth: 1040, 
+            width: '100%', 
+            alignSelf: 'center',
+            paddingBottom: isLandscape ? 40 : 140,
+          }
+        ]} 
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
@@ -117,7 +125,7 @@ export default function WalletsScreen() {
 
             <TouchableOpacity
               style={[styles.visibilityToggle, !showBalances && styles.visibilityToggleActive]}
-              onPress={() => setShowBalances(!showBalances)}
+              onPress={toggleBalanceVisibility}
               activeOpacity={0.7}
               delayPressIn={0}
             >
@@ -230,15 +238,9 @@ export default function WalletsScreen() {
 
                           <View style={styles.cardFooter}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, overflow: 'hidden' }}>
-                              <View style={[styles.purposePill, { backgroundColor: 'rgba(255, 255, 255, 0.2)', maxWidth: 75 }]}>
+                              <View style={[styles.purposePill, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
                                 <Text style={[styles.purposePillText, { color: '#ffffff' }]} numberOfLines={1} ellipsizeMode="tail">{wallet.purpose}</Text>
                               </View>
-
-                              {(wallet.interestRate ?? 0) > 0 && (
-                                 <View style={[styles.interestPill, { backgroundColor: 'rgba(255, 255, 255, 0.2)', marginLeft: 6 }]}>
-                                   <Text style={[styles.interestPillText, { color: '#ffffff' }]} numberOfLines={1}>{wallet.interestRate}%</Text>
-                                 </View>
-                              )}
                             </View>
 
                             {wallet.qrCodeImage && (
@@ -608,7 +610,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       paddingBottom: 40,
     },
     logoItem: {
-      width: (Dimensions.get('window').width - 48 - 32) / 3, // 3 columns
+      width: '30%',
+      minWidth: 80,
+      maxWidth: 120,
       alignItems: 'center',
       marginBottom: 8,
     },
@@ -851,10 +855,10 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       padding: 4,
     },
     qrModalImage: {
-      width: Dimensions.get('window').width * 0.7,
-      height: Dimensions.get('window').width * 0.7,
-      maxWidth: 300,
-      maxHeight: 300,
+      width: 240,
+      height: 240,
+      maxWidth: '85%',
+      maxHeight: 240,
       borderRadius: 16,
       marginBottom: 24,
       backgroundColor: '#ffffff',
@@ -928,7 +932,9 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
       marginBottom: 32,
     },
     detailInfoItem: {
-      width: (Dimensions.get('window').width - 48 - 12) / 2,
+      width: '48%',
+      minWidth: 130,
+      flexGrow: 1,
       backgroundColor: colors.card,
       padding: 16,
       borderRadius: 16,

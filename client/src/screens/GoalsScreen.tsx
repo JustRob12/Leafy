@@ -10,10 +10,11 @@ import { rf, useResponsive } from '../utils/responsive';
 
 export default function GoalsScreen() {
   const { goals, addGoal, editGoal, deleteGoal, wallets, showFeedback, showConfirm, colors, isDarkMode, usdToPhpRate } = useAppContext();
-  const { width, isLandscape, isTablet } = useResponsive();
+  const { width, isLandscape, isTablet, contentWidth: responsiveContentWidth } = useResponsive();
   const isGrid = isLandscape || isTablet;
-  const contentWidth = Math.min(width - 48, 1040);
-  const cardWidth = Math.floor((contentWidth - 12) / 2);
+  const contentWidth = Math.min(responsiveContentWidth - 48, 1040);
+  const cols = isLandscape || isTablet ? (contentWidth >= 700 ? 3 : 2) : 1;
+  const cardWidth = Math.floor((contentWidth - (12 * (cols - 1))) / cols);
 
   const styles = getStyles(colors, isDarkMode);
   const navigation = useNavigation<any>();
@@ -39,7 +40,15 @@ export default function GoalsScreen() {
     <View style={styles.container}>
       <ScrollView 
         ref={scrollViewRef}
-        contentContainerStyle={[styles.scrollContent, { maxWidth: 1040, width: '100%', alignSelf: 'center' }]} 
+        contentContainerStyle={[
+          styles.scrollContent, 
+          { 
+            maxWidth: 1040, 
+            width: '100%', 
+            alignSelf: 'center',
+            paddingBottom: isLandscape ? 40 : 140,
+          }
+        ]} 
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}

@@ -116,10 +116,14 @@ const CustomTabBar = ({ state, descriptors, navigation, colors, isDarkMode }: Cu
   );
 };
 
+import SidebarNavigator from '../components/SidebarNavigator';
+import { useResponsive } from '../utils/responsive';
+
 export default function BottomTabNavigator() {
   const { colors, isDarkMode } = useAppContext();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const { isLandscape } = useResponsive();
 
   const maxBarWidth = 520;
   const isWide = width > 600;
@@ -133,30 +137,35 @@ export default function BottomTabNavigator() {
     <Tab.Navigator
       detachInactiveScreens={false}
       tabBar={(props) => (
-        <Animated.View 
-          style={{ 
-            position: 'absolute', 
-            bottom: bottomMargin, 
-            left: horizontalMargin, 
-            right: horizontalMargin, 
-            transform: [{ translateY: globalTabBarTranslateY }],
-            zIndex: 100,
-            backgroundColor: colors.card,
-            borderRadius: 32,
-            elevation: 16,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: isDarkMode ? 0.4 : 0.15,
-            shadowRadius: 16,
-            borderWidth: 1,
-            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
-          }}
-        >
-          <CustomTabBar {...props} colors={colors} isDarkMode={isDarkMode} />
-        </Animated.View>
+        isLandscape ? (
+          <SidebarNavigator {...props} />
+        ) : (
+          <Animated.View 
+            style={{ 
+              position: 'absolute', 
+              bottom: bottomMargin, 
+              left: horizontalMargin, 
+              right: horizontalMargin, 
+              transform: [{ translateY: globalTabBarTranslateY }],
+              zIndex: 100,
+              backgroundColor: colors.card,
+              borderRadius: 32,
+              elevation: 16,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: isDarkMode ? 0.4 : 0.15,
+              shadowRadius: 16,
+              borderWidth: 1,
+              borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
+            }}
+          >
+            <CustomTabBar {...props} colors={colors} isDarkMode={isDarkMode} />
+          </Animated.View>
+        )
       )}
       screenOptions={{
         headerShown: false,
+        tabBarPosition: isLandscape ? 'left' : 'bottom',
       }}
     >
       <Tab.Screen

@@ -13,10 +13,11 @@ import {
 } from 'react-native';
 import { theme } from '../theme';
 import { useAppContext, DEFAULT_INCOME_PRESETS, IncomePresetType } from '../context/AppContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import {
   ChevronLeft,
   Plus,
+  ArrowRightLeft,
   TrendingUp,
   Briefcase,
   Laptop,
@@ -44,33 +45,12 @@ import CalculatorKeypad from '../components/CalculatorKeypad';
 import BottomWalletBar from '../components/BottomWalletBar';
 import WalletPickerModal from '../components/WalletPickerModal';
 import { getNumberFromClipboard } from '../utils/clipboardUtils';
+import { PRESET_ICON_MAP, AVAILABLE_PRESET_ICONS } from '../constants/presetIcons';
 
 import { rf, useResponsive } from '../utils/responsive';
 
-const ICON_MAP: { [key: string]: any } = {
-  Briefcase,
-  Laptop,
-  Store,
-  Coins,
-  Award,
-  TrendingUp,
-  Gift,
-  Home,
-  Receipt,
-  Sparkles,
-  ShoppingBag,
-  MoreHorizontal,
-  Coffee,
-  Heart,
-  Car,
-  Utensils,
-  CreditCard,
-  Smartphone,
-  Globe,
-  Map,
-};
-
-const AVAILABLE_ICONS = Object.keys(ICON_MAP);
+const ICON_MAP = PRESET_ICON_MAP;
+const AVAILABLE_ICONS = AVAILABLE_PRESET_ICONS;
 
 export default function DepositScreen() {
   const {
@@ -85,15 +65,18 @@ export default function DepositScreen() {
     addIncomePreset,
   } = useAppContext();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { isLandscape } = useResponsive();
   const styles = useMemo(() => getStyles(colors, isDarkMode, isLandscape), [colors, isDarkMode, isLandscape]);
 
   const [selectedPreset, setSelectedPreset] = useState<IncomePresetType | null>(null);
-  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
-  const [amount, setAmount] = useState('');
-  const [expression, setExpression] = useState('');
+  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(
+    route.params?.selectedWalletId || route.params?.walletId || null
+  );
+  const [amount, setAmount] = useState<string>(route.params?.amount || '');
+  const [expression, setExpression] = useState<string>(route.params?.expression || '');
   const [isResult, setIsResult] = useState(false);
-  const [currency, setCurrency] = useState<'PHP' | 'USD'>('PHP');
+  const [currency, setCurrency] = useState<'PHP' | 'USD'>(route.params?.currency || 'PHP');
   const [showWalletPicker, setShowWalletPicker] = useState(false);
 
   // Custom Preset Modal State
@@ -104,9 +87,43 @@ export default function DepositScreen() {
   // Auto-select first wallet if available
   useEffect(() => {
     if (wallets && wallets.length > 0 && !selectedWalletId) {
-      setSelectedWalletId(wallets[0].id);
+      const initialId = route.params?.selectedWalletId || route.params?.walletId;
+      setSelectedWalletId(initialId || wallets[0].id);
     }
-  }, [wallets]);
+  }, [wallets, selectedWalletId]);
+
+  useEffect(() => {
+    if (route.params?.amount !== undefined) {
+      setAmount(route.params.amount);
+    }
+    if (route.params?.expression !== undefined) {
+      setExpression(route.params.expression);
+    }
+    if (route.params?.selectedWalletId) {
+      setSelectedWalletId(route.params.selectedWalletId);
+    }
+    if (route.params?.currency) {
+      setCurrency(route.params.currency);
+    }
+  }, [route.params]);
+
+  const handleSwitchToExpense = () => {
+    if (typeof navigation.replace === 'function') {
+      navigation.replace('Withdraw', {
+        amount,
+        expression,
+        selectedWalletId,
+        currency,
+      });
+    } else {
+      navigation.navigate('Withdraw', {
+        amount,
+        expression,
+        selectedWalletId,
+        currency,
+      });
+    }
+  };
 
   // Safe arithmetic evaluator
   const evaluateMath = (expr: string): number => {
@@ -263,6 +280,15 @@ export default function DepositScreen() {
   const selectedWallet = wallets.find(w => w.id === selectedWalletId);
   const numericAmount = parseFloat(amount) || 0;
 
+  // Split presets into 3 rows for compact horizontal scrolling
+  const presetsIn3Rows = useMemo(() => {
+    const rows: IncomePresetType[][] = [[], [], []];
+    effectivePresets.forEach((p, idx) => {
+      rows[idx % 3].push(p);
+    });
+    return rows;
+  }, [effectivePresets]);
+
   // Recent income transactions (excluding daily interest)
   const recentIncomes = (transactions || [])
     .filter(tx => tx.type === 'deposit' && tx.category !== 'interest')
@@ -300,7 +326,16 @@ export default function DepositScreen() {
           </View>
         )}
 
-        <View style={{ width: 44 }} />
+        <TouchableOpacity
+          style={styles.switchTypeBtn}
+          onPress={handleSwitchToExpense}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel="Switch to Expense"
+        >
+          <ArrowRightLeft size={13} color={colors.danger} />
+          <Text style={styles.switchTypeBtnText}>Expense</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.mainContent}>
@@ -409,7 +444,53 @@ export default function DepositScreen() {
                 </View>
               </View>
 
-              {/* Horizontally Scrollable Recent Incomes */}
+              {/* Presets in 3 Rows */}
+              <View style={styles.presetsContainer}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.presets3RowScrollContent}
+                >
+                  <View style={styles.presets3RowColumnWrapper}>
+                    {presetsIn3Rows.map((rowPresets, rIdx) => (
+                      <View key={rIdx} style={styles.presetSingleRow}>
+                        {rowPresets.map(preset => {
+                          const isSelected = selectedPreset?.id === preset.id || selectedPreset?.name === preset.name;
+                          const Icon = PRESET_ICON_MAP[preset.iconName] || TrendingUp;
+                          return (
+                            <TouchableOpacity
+                              key={preset.id}
+                              style={[
+                                styles.smallPresetChip,
+                                isSelected && styles.smallPresetChipActive,
+                              ]}
+                              onPress={() => setSelectedPreset(isSelected ? null : preset)}
+                              activeOpacity={0.75}
+                            >
+                              <Icon
+                                size={11}
+                                color={isSelected ? '#ffffff' : colors.primary}
+                                style={{ marginRight: 3 }}
+                              />
+                              <Text
+                                style={[
+                                  styles.smallPresetText,
+                                  isSelected && styles.smallPresetTextActive,
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {preset.name}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+
+              {/* Recent Incomes - Placed BELOW presets */}
               {recentIncomes.length > 0 && (
                 <View style={styles.recentSection}>
                   <ScrollView
@@ -423,7 +504,7 @@ export default function DepositScreen() {
                         minimumFractionDigits: tx.amount % 1 === 0 ? 0 : 2,
                         maximumFractionDigits: 2,
                       })}`;
-                      const Icon = tx.icon && ICON_MAP[tx.icon] ? ICON_MAP[tx.icon] : TrendingUp;
+                      const Icon = (tx.icon && PRESET_ICON_MAP[tx.icon]) || TrendingUp;
                       return (
                         <TouchableOpacity
                           key={tx.id}
@@ -449,73 +530,6 @@ export default function DepositScreen() {
                   </ScrollView>
                 </View>
               )}
-
-              {/* Presets Row */}
-              <View style={styles.presetsContainer}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.presetsScrollContent}
-                >
-                  <TouchableOpacity
-                    style={[
-                      styles.smallPresetChip,
-                      styles.addPresetChip,
-                      {
-                        backgroundColor: isDarkMode ? 'rgba(16,185,129,0.15)' : '#eaf8f0',
-                        borderColor: isDarkMode ? 'rgba(16,185,129,0.3)' : 'rgba(16,185,129,0.25)',
-                      },
-                    ]}
-                    onPress={() => setShowAddPreset(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Plus size={13} color={colors.primary} strokeWidth={2.5} />
-                    <Text style={[styles.smallPresetText, { color: colors.primary, fontFamily: theme.fonts.bold }]}>
-                      Add
-                    </Text>
-                  </TouchableOpacity>
-
-                  {effectivePresets.map(preset => {
-                    const isSelected = selectedPreset?.name === preset.name;
-                    const Icon = ICON_MAP[preset.iconName] || TrendingUp;
-                    return (
-                      <TouchableOpacity
-                        key={preset.id}
-                        style={[
-                          styles.smallPresetChip,
-                          {
-                            backgroundColor: isSelected
-                              ? colors.primary
-                              : isDarkMode
-                                ? 'rgba(255,255,255,0.06)'
-                                : '#f1f5f9',
-                            borderColor: isSelected
-                              ? colors.primary
-                              : isDarkMode
-                                ? 'rgba(255,255,255,0.08)'
-                                : '#e2e8f0',
-                          },
-                        ]}
-                        onPress={() => {
-                          setSelectedPreset(isSelected ? null : preset);
-                        }}
-                        activeOpacity={0.75}
-                      >
-                        <Icon size={13} color={isSelected ? '#ffffff' : colors.text} />
-                        <Text
-                          style={[
-                            styles.smallPresetText,
-                            { color: isSelected ? '#ffffff' : colors.text },
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {preset.name}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
             </View>
 
             {/* Right Column in Landscape: Keypad + Bottom Wallet Bar */}
@@ -630,7 +644,55 @@ export default function DepositScreen() {
             </View>
 
             <View style={styles.bottomSection}>
-              {/* Horizontally Scrollable Recent Incomes */}
+              {/* Presets in 3 Rows */}
+              <View style={styles.presetsContainer}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.presets3RowScrollContent}
+                >
+                  <View style={styles.presets3RowColumnWrapper}>
+                    {presetsIn3Rows.map((rowPresets, rIdx) => (
+                      <View key={rIdx} style={styles.presetSingleRow}>
+                        {rowPresets.map(preset => {
+                          const isSelected = selectedPreset?.id === preset.id || selectedPreset?.name === preset.name;
+                          const Icon = PRESET_ICON_MAP[preset.iconName] || TrendingUp;
+                          return (
+                            <TouchableOpacity
+                              key={preset.id}
+                              style={[
+                                styles.smallPresetChip,
+                                isSelected && styles.smallPresetChipActive,
+                              ]}
+                              onPress={() =>
+                                setSelectedPreset((prev: any) => (prev?.id === preset.id ? null : preset))
+                              }
+                              activeOpacity={0.75}
+                            >
+                              <Icon
+                                size={11}
+                                color={isSelected ? '#ffffff' : colors.primary}
+                                style={{ marginRight: 3 }}
+                              />
+                              <Text
+                                style={[
+                                  styles.smallPresetText,
+                                  isSelected && styles.smallPresetTextActive,
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {preset.name}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+
+              {/* Horizontally Scrollable Recent Incomes - Placed BELOW presets */}
               {recentIncomes.length > 0 && (
                 <View style={styles.recentSection}>
                   <ScrollView
@@ -644,7 +706,7 @@ export default function DepositScreen() {
                         minimumFractionDigits: tx.amount % 1 === 0 ? 0 : 2,
                         maximumFractionDigits: 2,
                       })}`;
-                      const Icon = tx.icon && ICON_MAP[tx.icon] ? ICON_MAP[tx.icon] : TrendingUp;
+                      const Icon = (tx.icon && PRESET_ICON_MAP[tx.icon]) || TrendingUp;
                       return (
                         <TouchableOpacity
                           key={tx.id}
@@ -673,75 +735,6 @@ export default function DepositScreen() {
                   </ScrollView>
                 </View>
               )}
-
-              {/* Presets Row: Small chips right above keyboard */}
-              <View style={styles.presetsContainer}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.presetsScrollContent}
-                >
-                  {/* Add Preset Button Chip */}
-                  <TouchableOpacity
-                    style={[
-                      styles.smallPresetChip,
-                      styles.addPresetChip,
-                      {
-                        backgroundColor: isDarkMode ? 'rgba(16,185,129,0.15)' : '#eaf8f0',
-                        borderColor: isDarkMode ? 'rgba(16,185,129,0.3)' : 'rgba(16,185,129,0.25)',
-                      },
-                    ]}
-                    onPress={() => setShowAddPreset(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Plus size={13} color={colors.primary} strokeWidth={2.5} />
-                    <Text style={[styles.smallPresetText, { color: colors.primary, fontFamily: theme.fonts.bold }]}>
-                      Add
-                    </Text>
-                  </TouchableOpacity>
-
-                  {/* Preset Items */}
-                  {effectivePresets.map(preset => {
-                    const Icon = ICON_MAP[preset.iconName] || TrendingUp;
-                    const isSelected = selectedPreset?.id === preset.id;
-                    return (
-                      <TouchableOpacity
-                        key={preset.id}
-                        style={[
-                          styles.smallPresetChip,
-                          {
-                            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#f1f5f9',
-                            borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
-                          },
-                          isSelected && {
-                            backgroundColor: colors.primary,
-                            borderColor: colors.primary,
-                          },
-                        ]}
-                        onPress={() =>
-                          setSelectedPreset((prev: any) => (prev?.id === preset.id ? null : preset))
-                        }
-                        activeOpacity={0.75}
-                      >
-                        <Icon
-                          size={13}
-                          color={isSelected ? '#ffffff' : colors.primary}
-                          strokeWidth={2}
-                        />
-                        <Text
-                          style={[
-                            styles.smallPresetText,
-                            { color: isSelected ? '#ffffff' : colors.text },
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {preset.name}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
 
               {/* 4x4 Calculator Keypad */}
               <CalculatorKeypad
@@ -908,8 +901,9 @@ const getStyles = (colors: any, isDarkMode: boolean, isLandscape?: boolean) =>
     },
     leftColLandscape: {
       flex: 1.1,
-      justifyContent: 'space-around',
-      paddingVertical: 2,
+      justifyContent: 'flex-start',
+      paddingVertical: 4,
+      gap: 10,
     },
     rightColLandscape: {
       flex: 1,
@@ -948,15 +942,14 @@ const getStyles = (colors: any, isDarkMode: boolean, isLandscape?: boolean) =>
       color: '#ffffff',
     },
     displaySection: {
-      flex: 1,
-      justifyContent: 'center',
       alignItems: 'center',
-      paddingVertical: 10,
+      paddingTop: isLandscape ? 2 : 4,
+      paddingBottom: 4,
     },
     expressionPreview: {
       fontFamily: theme.fonts.medium,
-      fontSize: rf(16),
-      marginBottom: 4,
+      fontSize: rf(15),
+      marginBottom: 2,
       letterSpacing: 0.5,
     },
     amountDisplayRow: {
@@ -966,80 +959,115 @@ const getStyles = (colors: any, isDarkMode: boolean, isLandscape?: boolean) =>
     },
     currencyPrefix: {
       fontFamily: theme.fonts.bold,
-      fontSize: rf(28),
-      marginRight: 6,
+      fontSize: rf(24),
+      marginRight: 4,
     },
     amountText: {
       fontFamily: theme.fonts.bold,
-      fontSize: rf(46),
+      fontSize: rf(36),
       letterSpacing: -0.5,
     },
     conversionHintWrapper: {
-      marginTop: 6,
-      paddingHorizontal: 12,
-      paddingVertical: 4,
-      borderRadius: 12,
+      marginTop: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+      borderRadius: 10,
       backgroundColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
     },
     conversionHintText: {
       fontFamily: theme.fonts.medium,
-      fontSize: rf(12),
+      fontSize: rf(11.5),
     },
     statusHintRow: {
-      marginTop: 8,
+      marginTop: 4,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 8,
-      minHeight: 24,
+      gap: 6,
+      minHeight: 22,
     },
     pasteBadge: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 12,
+      paddingHorizontal: 9,
+      paddingVertical: 3,
+      borderRadius: 10,
       borderWidth: 1,
     },
     pasteBadgeText: {
       fontFamily: theme.fonts.bold,
-      fontSize: rf(12),
+      fontSize: rf(11.5),
     },
     selectedPresetBadge: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 12,
+      paddingHorizontal: 9,
+      paddingVertical: 3,
+      borderRadius: 10,
       borderWidth: 1,
     },
     selectedPresetBadgeText: {
       fontFamily: theme.fonts.bold,
-      fontSize: rf(12),
+      fontSize: rf(11.5),
     },
     bottomSection: {
+      flex: isLandscape ? undefined : 1,
       justifyContent: 'flex-end',
     },
     presetsContainer: {
+      marginTop: 2,
       marginBottom: 6,
     },
-    presetsScrollContent: {
-      gap: 6,
-      paddingVertical: 2,
+    presets3RowScrollContent: {
+      paddingHorizontal: 2,
+    },
+    presets3RowColumnWrapper: {
+      flexDirection: 'column',
+      gap: 5,
+    },
+    presetSingleRow: {
+      flexDirection: 'row',
+      gap: 5,
     },
     smallPresetChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 7,
-      borderRadius: 16,
+      paddingHorizontal: 9,
+      height: 27,
+      borderRadius: 14,
       borderWidth: 1,
-      gap: 5,
+      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#f1f5f9',
+      borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
     },
-    addPresetChip: {},
+    smallPresetChipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
     smallPresetText: {
       fontFamily: theme.fonts.medium,
-      fontSize: rf(12),
+      fontSize: rf(11),
+      color: colors.text,
+    },
+    smallPresetTextActive: {
+      color: '#ffffff',
+      fontFamily: theme.fonts.bold,
+    },
+    recentSection: {
+      marginBottom: 6,
+    },
+    recentScrollContent: {
+      paddingHorizontal: 2,
+      gap: 6,
+    },
+    recentChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : '#f1f5f9',
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
     },
     emptyState: {
       flex: 1,
@@ -1068,12 +1096,13 @@ const getStyles = (colors: any, isDarkMode: boolean, isLandscape?: boolean) =>
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
-      paddingHorizontal: 13,
+      paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 20,
       borderWidth: 1,
       borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.07)',
-      maxWidth: '65%',
+      maxWidth: '56%',
+      flexShrink: 1,
     },
     walletBadgeDot: {
       width: 7,
@@ -1084,7 +1113,7 @@ const getStyles = (colors: any, isDarkMode: boolean, isLandscape?: boolean) =>
     walletBadgeName: {
       fontFamily: theme.fonts.semiBold,
       fontSize: rf(13),
-      maxWidth: 100,
+      maxWidth: 80,
     },
     walletBadgeDivider: {
       marginHorizontal: 5,
@@ -1094,23 +1123,22 @@ const getStyles = (colors: any, isDarkMode: boolean, isLandscape?: boolean) =>
       fontFamily: theme.fonts.bold,
       fontSize: rf(13.5),
     },
-    recentSection: {
-      marginBottom: 8,
-    },
-    recentScrollContent: {
-      paddingHorizontal: 2,
-      gap: 8,
-    },
-    recentChip: {
+    switchTypeBtn: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : '#f1f5f9',
+      justifyContent: 'center',
       paddingHorizontal: 11,
-      paddingVertical: 7,
-      borderRadius: 14,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.14)' : 'rgba(239, 68, 68, 0.08)',
       borderWidth: 1,
-      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-      gap: 6,
+      borderColor: isDarkMode ? 'rgba(239, 68, 68, 0.32)' : 'rgba(239, 68, 68, 0.22)',
+      gap: 5,
+    },
+    switchTypeBtnText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(12),
+      color: colors.danger,
     },
     recentChipTitle: {
       fontFamily: theme.fonts.medium,

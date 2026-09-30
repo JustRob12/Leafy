@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Modal, Image, Alert, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Modal, Image, Alert, FlatList, Animated, Easing } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme';
@@ -10,244 +10,49 @@ import { Plus, User, Settings, LogOut, Info, ChevronRight, Flame, Sprout, TreeDe
 import { rf } from '../utils/responsive';
 
 
+import { useHeaderAlerts } from '../hooks/useHeaderAlerts';
+import { ProfileMenuModal, NotificationModal, StreakModal } from './HeaderModals';
+
 export interface MainHeaderProps {
   activeRoute?: string;
 }
 
 export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderProps) {
-  const { username, userImage, streakCount, transactionDates, showConfirm, clearData, colors, isDarkMode, toggleTheme, startTutorial, goals, wallets, debts, groceryLists, subscriptions, installments, rents, recursions, totalBalance, transactions, usdToPhpRate } = useAppContext();
+  const { username, userImage, streakCount, transactionDates, showConfirm, clearData, colors, isDarkMode } = useAppContext();
 
   const navigation = useNavigation<any>();
   const [internalActiveRoute, setInternalActiveRoute] = useState('Home');
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [streakModalVisible, setStreakModalVisible] = useState(false);
   const [notificationModalVisible, setNotificationModalVisible] = useState(false);
-  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
 
-  useEffect(() => {
-    const loadDismissed = async () => {
-      try {
-        const stored = await AsyncStorage.getItem('@dismissedNotifications');
-        if (stored) setDismissedIds(JSON.parse(stored));
-      } catch (e) { }
-    };
-    loadDismissed();
-  }, []);
-
-  const markAllAsRead = async () => {
-    const currentNotifIds = notifications.map(n => n.id);
-    const newDismissed = [...new Set([...dismissedIds, ...currentNotifIds])];
-    setDismissedIds(newDismissed);
-    try {
-      await AsyncStorage.setItem('@dismissedNotifications', JSON.stringify(newDismissed));
-    } catch (e) { }
-  };
-
-  const notifications = useMemo(() => {
-    const list = [];
-    const todayStr = currentDate.toISOString().split('T')[0];
-    const todayDateNumber = currentDate.getDate();
-    const todayDayOfWeek = currentDate.getDay();
-    const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-
-    // 1. Paydays & Recurring Income Scheduled Today
-    if (recursions && recursions.length > 0) {
-      recursions.forEach(rec => {
-        let isPaydayToday = false;
-        if (rec.frequency === 'monthly' && rec.dayOfMonth === todayDateNumber) {
-          isPaydayToday = true;
-        } else if (rec.frequency === 'weekly' && rec.dayOfWeek === todayDayOfWeek) {
-          isPaydayToday = true;
-        } else if (rec.frequency === 'bi-monthly' && (todayDateNumber === 15 || todayDateNumber === lastDayOfMonth)) {
-          isPaydayToday = true;
-        }
-
-        if (isPaydayToday) {
-          list.push({
-            id: `payday-${rec.id}-${todayStr}`,
-            title: 'Payday Alert',
-            message: `Payday from ${rec.companyName}: Expecting ₱${rec.amount.toLocaleString()} today.`,
-            icon: Coins,
-            color: '#10b981',
-            screen: 'Recursion'
-          });
-        }
-      });
-    }
-
-    // 2. Subscriptions Due Today
-    if (subscriptions && subscriptions.length > 0) {
-      subscriptions.forEach(sub => {
-        if (sub.dayOfMonth === todayDateNumber) {
-          list.push({
-            id: `sub-${sub.id}-${todayStr}`,
-            title: 'Subscription Due Today',
-            message: `Your subscription "${sub.title}" (₱${sub.amount.toLocaleString()}) is due today.`,
-            icon: Calendar,
-            color: '#10b981',
-            screen: 'Subscription'
-          });
-        }
-      });
-    }
-
-    // 3. Installments Due Today
-    if (installments && installments.length > 0) {
-      installments.forEach(item => {
-        if (item.dueDate && item.dueDate === todayStr && item.paidMonths < item.monthsToPay) {
-          list.push({
-            id: `installment-${item.id}-${todayStr}`,
-            title: 'Installment Due Today',
-            message: `Payment for "${item.productName}" (${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()}) is due today.`,
-            icon: CreditCard,
-            color: '#10b981',
-            screen: 'Installment'
-          });
-        }
-      });
-    }
-
-    // 4. Rent Properties Due Today
-    if (rents && rents.length > 0) {
-      rents.forEach(rent => {
-        if (rent.dueDate && rent.dueDate === todayStr) {
-          list.push({
-            id: `rent-${rent.id}-${todayStr}`,
-            title: 'Rent Payment Due Today',
-            message: `Monthly rent for "${rent.propertyName}" (${rent.currency === 'USD' ? '$' : '₱'}${rent.monthlyAmount.toLocaleString()}) is due today.`,
-            icon: Home,
-            color: '#10b981',
-            screen: 'Rent'
-          });
-        }
-      });
-    }
-
-    // 5. Goals Reached 100% Target
-    if (goals && wallets) {
-      goals.forEach(g => {
-        const isLinkedToAll = g.walletId === 'ALL' || g.walletId === 'all';
-        const currentBal = isLinkedToAll
-          ? wallets.reduce((sum, w) => sum + getWalletTotalBalanceInPhp(w, usdToPhpRate), 0)
-          : (() => {
-              const wallet = wallets.find(w => w.id === g.walletId);
-              return wallet ? getWalletTotalBalanceInPhp(wallet, usdToPhpRate) : 0;
-            })();
-        if (g.targetAmount > 0 && currentBal >= g.targetAmount) {
-          list.push({
-            id: `goal-${g.id}-complete`,
-            title: 'Goal Target Reached',
-            message: `Congratulations! Your goal "${g.title}" has reached 100% target!`,
-            icon: Target,
-            color: '#10b981',
-            screen: 'Goals'
-          });
-        }
-      });
-    }
-
-    // 6. Active Debts (Due Today or Overdue)
-    if (debts && debts.length > 0) {
-      const dueToday = debts.filter(d => d.dueDate && d.dueDate === todayStr);
-      const overdue = debts.filter(d => d.dueDate && d.dueDate < todayStr);
-
-      dueToday.forEach(d => {
-        list.push({
-          id: `debt-due-${d.id}-${todayStr}`,
-          title: 'Debt Payment Due Today',
-          message: `Don't forget to pay ${d.personName}: ₱${d.amount.toLocaleString()} for ${d.taskName}.`,
-          icon: Receipt,
-          color: '#10b981',
-          screen: 'Debts'
-        });
-      });
-
-      if (overdue.length > 0 && dueToday.length === 0) {
-        list.push({
-          id: `debt-overdue-${todayStr}-${overdue.length}`,
-          title: 'Overdue Debt Reminder',
-          message: `You have ${overdue.length} overdue debt${overdue.length > 1 ? 's' : ''} to settle.`,
-          icon: AlertCircle,
-          color: colors.danger,
-          screen: 'Debts'
-        });
-      }
-    }
-
-    // 7. Grocery Lists Scheduled Today
-    if (groceryLists && groceryLists.length > 0) {
-      const scheduledToday = groceryLists.filter(l => l.scheduledDays?.includes(todayDayOfWeek));
-      scheduledToday.forEach(l => {
-        list.push({
-          id: `grocery-${l.id}-${todayStr}`,
-          title: 'Grocery Day',
-          message: `Scheduled grocery shopping today for: ${l.title}`,
-          icon: ShoppingCart,
-          color: '#10b981',
-          screen: 'Grocery'
-        });
-      });
-    }
-
-    return list.filter(n => !dismissedIds.includes(n.id));
-  }, [goals, wallets, debts, groceryLists, subscriptions, installments, rents, recursions, colors, dismissedIds, currentDate]);
-
-  const statusMessage = useMemo(() => {
-    const today = new Date();
-    const thisMonth = today.getMonth();
-    const thisYear = today.getFullYear();
-
-    const monthSavings = transactions
-      .filter(t => t.type === 'deposit' && new Date(t.date).getMonth() === thisMonth && new Date(t.date).getFullYear() === thisYear)
-      .reduce((acc, curr) => acc + curr.amount, 0);
-
-    const monthSpent = transactions
-      .filter(t => t.type === 'withdrawal' && new Date(t.date).getMonth() === thisMonth && new Date(t.date).getFullYear() === thisYear)
-      .reduce((acc, curr) => acc + curr.amount, 0);
-
-    // 1. Critical Debt Check
-    const overdueDebts = debts.filter(d => d.dueDate && d.dueDate < today.toISOString().split('T')[0]).length;
-    if (overdueDebts > 0) return "Hey, I noticed a few overdue debts. Shall we clear those first? ";
-
-    // 2. Low Balance Check
-    if (totalBalance < 500 && totalBalance > 0) return "Your balance is looking a bit thin! Time for some fresh seeds? ";
-    if (totalBalance <= 0 && wallets.length > 0) return "Your garden is a bit dry! Let's add some water to those wallets. ";
-
-    // 3. Spending Check
-    if (monthSpent > monthSavings && monthSpent > 0) return "Whoa, you're spending a bit fast! Let's be extra careful today, okay?";
-
-    // 4. Goal Encouragement
-    const nearGoal = goals.find(g => {
-      const isLinkedToAll = g.walletId === 'ALL' || g.walletId === 'all';
-      const currentBal = isLinkedToAll
-        ? wallets.reduce((sum, w) => sum + getWalletTotalBalanceInPhp(w, usdToPhpRate), 0)
-        : (() => {
-            const wallet = wallets.find(w => w.id === g.walletId);
-            return wallet ? getWalletTotalBalanceInPhp(wallet, usdToPhpRate) : 0;
-          })();
-      const progress = g.targetAmount > 0 ? (currentBal / g.targetAmount) : 0;
-      return progress > 0.8 && progress < 1;
-    });
-    if (nearGoal) return `You're so close! Just a little more and "${nearGoal.title}" will be fully blooming.`;
-
-    // 5. Positive Reinforcement
-    if (monthSavings > monthSpent * 1.5 && monthSavings > 0) return "Wow, your savings are booming! You're really good at this. Keep it up!";
-
-    // Default Nature Wisdom
-    const wisdom = [
-      "Every small saving is a leaf on your tree of wealth. You're doing great!",
-      "I love how you're nurturing your garden today. Keep it up!",
-      "Ready for another day of growth? Let's make it count!",
-      "Patience is the key! Just like a tree, your wealth grows slowly but surely.",
-      "Your financial forest is looking beautiful today. Any new plans?",
-      "Grow your wealth, one leaf at a time. I'm here to help!",
-      "Did you know? Consistent savings are the best fertilizer for goals!"
-    ];
-    return wisdom[today.getDay() % wisdom.length];
-  }, [totalBalance, transactions, debts, goals, wallets, colors]);
+  const { notifications, statusMessage, fullDate, markAllAsRead } = useHeaderAlerts();
 
   const activeRoute = propActiveRoute || internalActiveRoute;
+
+  // Infinite Horizontal Running Marquee for Money Behavior Quote
+  const translateX = useRef(new Animated.Value(0)).current;
+  const [itemWidth, setItemWidth] = useState(0);
+
+  useEffect(() => {
+    if (itemWidth <= 0) return;
+    translateX.setValue(0);
+    // Smooth reading velocity: ~35-40 pixels per second, minimum 7s per loop
+    const duration = Math.max(7000, (itemWidth / 35) * 1000);
+    const animation = Animated.loop(
+      Animated.timing(translateX, {
+        toValue: -itemWidth,
+        duration,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+    animation.start();
+
+    return () => {
+      animation.stop();
+    };
+  }, [itemWidth, statusMessage]);
 
   useEffect(() => {
     const unsubscribe = navigationRef.addListener('state', () => {
@@ -257,13 +62,8 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
       }
     });
 
-    const timer = setInterval(() => {
-      setCurrentDate(new Date());
-    }, 60000);
-
     return () => {
       unsubscribe();
-      clearInterval(timer);
     };
   }, []);
 
@@ -272,8 +72,6 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
       navigationRef.setParams({ openAddModal: true } as any);
     }
   };
-
-  const fullDate = currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   const styles = getStyles(colors, isDarkMode);
 
@@ -352,245 +150,65 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
           </View>
         </View>
 
-        {/* Second Row: Greeting and Calendar Date (Right) */}
+        {/* Second Row: Greeting and Calendar Date */}
         <View style={styles.bottomRow}>
           <View style={styles.greetingWrapper}>
             <Text style={styles.welcomeLabel} numberOfLines={1} adjustsFontSizeToFit>Welcome to Leon</Text>
             <Text style={styles.greetingSmall} numberOfLines={1} adjustsFontSizeToFit>{username || 'User'}</Text>
             <Text style={styles.timeText} numberOfLines={1}>{fullDate}</Text>
           </View>
-          <View style={styles.statusBubblePremium}>
-            <Text style={styles.statusBubbleText}>{statusMessage}</Text>
-          </View>
         </View>
       </View>
 
-      <Modal
+      {/* Infinite Horizontal Running Marquee Quote Under Header */}
+      {statusMessage ? (
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('StatusCard')}
+          style={styles.marqueeContainer}
+        >
+          <Animated.View style={[styles.marqueeTrack, { transform: [{ translateX }] }]}>
+            {[0, 1, 2, 3, 4, 5].map((idx) => (
+              <View
+                key={idx}
+                onLayout={idx === 0 ? (e) => {
+                  const w = e.nativeEvent.layout.width;
+                  if (w > 0 && Math.abs(w - itemWidth) > 1) {
+                    setItemWidth(w);
+                  }
+                } : undefined}
+                style={styles.marqueeItem}
+              >
+                <Sparkles size={11} color={colors.primary} style={{ marginRight: 6 }} />
+                <Text style={styles.marqueeText}>{statusMessage}</Text>
+                <Text style={styles.marqueeSeparator}>✦</Text>
+              </View>
+            ))}
+          </Animated.View>
+        </TouchableOpacity>
+      ) : null}
+
+      <ProfileMenuModal
         visible={dropdownVisible}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => setDropdownVisible(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setDropdownVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.dropdownMenu}>
-                <View style={styles.dropdownHeader}>
-                  <View style={styles.dropdownProfileCircle}>
-                    {userImage ? (
-                      <Image source={{ uri: userImage }} style={styles.dropdownProfileImage} />
-                    ) : (
-                      <User size={24} color={colors.primary} />
-                    )}
-                  </View>
-                  <View>
-                    <Text style={styles.dropdownUsername}>{username || 'User'}</Text>
-                    <Text style={styles.dropdownUserRole}>Leon Member</Text>
-                  </View>
-                </View>
+        onClose={() => setDropdownVisible(false)}
+        onSettings={handleSettings}
+        onLogout={handleLogout}
+      />
 
-                <View style={styles.dropdownDivider} />
-
-                <TouchableOpacity style={styles.dropdownItem} onPress={handleSettings}>
-                  <View style={styles.dropdownItemLeft}>
-                    <Settings size={18} color={colors.textMuted} />
-                    <Text style={styles.dropdownItemText}>Settings</Text>
-                  </View>
-                  <ChevronRight size={16} color={colors.border} />
-                </TouchableOpacity>
-
-
-
-                <View style={styles.dropdownDivider} />
-
-                <TouchableOpacity
-                  style={[styles.dropdownItem, { borderBottomWidth: 0 }]}
-                  onPress={handleLogout}
-                >
-                  <View style={styles.dropdownItemLeft}>
-                    <LogOut size={18} color={colors.danger} />
-                    <Text style={[styles.dropdownItemText, { color: colors.danger }]}>Log Out</Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
-      <Modal
+      <NotificationModal
         visible={notificationModalVisible}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => setNotificationModalVisible(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setNotificationModalVisible(false)}>
-          <View style={styles.notificationOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.notificationDropdown}>
-                <View style={styles.notifDropdownHeader}>
-                  <Text style={styles.dropdownTitle}>Notifications</Text>
-                  {notifications.length > 0 && (
-                    <TouchableOpacity onPress={markAllAsRead}>
-                      <Text style={styles.markReadText}>Mark all as read</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
+        onClose={() => setNotificationModalVisible(false)}
+        notifications={notifications}
+        onMarkAllAsRead={markAllAsRead}
+        onNavigate={(screen) => navigation.navigate(screen)}
+      />
 
-                {notifications.length > 0 ? (
-                  <FlatList
-                    data={notifications}
-                    keyExtractor={(item) => item.id}
-                    scrollEnabled={notifications.length > 4}
-                    style={{ maxHeight: 350 }}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.notifDropdownItem}
-                        onPress={() => {
-                          setNotificationModalVisible(false);
-                          navigation.navigate(item.screen);
-                        }}
-                      >
-                        <View style={[styles.notifIconCircle, { backgroundColor: item.color + '15' }]}>
-                          <item.icon size={16} color={item.color} />
-                        </View>
-                        <View style={styles.notifTextContent}>
-                          <Text style={styles.notifItemTitle} numberOfLines={1}>{item.title}</Text>
-                          <Text style={styles.notifItemMessage} numberOfLines={2}>{item.message}</Text>
-                        </View>
-                      </TouchableOpacity>
-                    )}
-                  />
-                ) : (
-                  <View style={styles.notifEmptyDropdown}>
-                    <Bell size={24} color={colors.textMuted} />
-                    <Text style={styles.notifEmptyText}>No new notifications</Text>
-                  </View>
-                )}
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
-      <Modal
+      <StreakModal
         visible={streakModalVisible}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => setStreakModalVisible(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setStreakModalVisible(false)}>
-          <View style={styles.modalOverlayCenter}>
-            <TouchableWithoutFeedback>
-              <View style={styles.streakModal}>
-                <View style={styles.streakModalHeader}>
-                  <Text style={styles.streakModalTitle}>Your Growth Journey</Text>
-                  <TouchableOpacity onPress={() => setStreakModalVisible(false)}>
-                    <X size={20} color={colors.textMuted} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.streakStatsRow}>
-                  <View style={styles.streakStatItem}>
-                    <Text style={styles.streakStatValue}>{streakCount}</Text>
-                    <Text style={styles.streakStatLabel}>Growth Days</Text>
-                  </View>
-                  <View style={styles.streakStatDivider} />
-                  <View style={styles.streakStatItem}>
-                    <Text style={styles.streakStatValue}>
-                      {streakCount >= 8 ? 'Tree' : streakCount >= 3 ? 'Sapling' : 'Seed'}
-                    </Text>
-                    <Text style={styles.streakStatLabel}>Tree Stage</Text>
-                  </View>
-                </View>
-
-                <View style={styles.stepperContainer}>
-                  <View style={styles.stepperLine} />
-                  <View style={styles.daysRow}>
-                    {(() => {
-                      const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-                      const today = new Date();
-                      const currentDayIdx = today.getDay();
-                      const startOfWeek = new Date(today);
-                      startOfWeek.setDate(today.getDate() - currentDayIdx);
-
-                      return days.map((day, idx) => {
-                        const date = new Date(startOfWeek);
-                        date.setDate(startOfWeek.getDate() + idx);
-                        const dateStr = date.toISOString().split('T')[0];
-                        const isCompleted = transactionDates.includes(dateStr);
-                        const isToday = idx === currentDayIdx;
-
-                        return (
-                          <View key={idx} style={styles.dayStep}>
-                            <View style={[
-                              styles.dayCircle,
-                              isCompleted && styles.dayCircleCompleted,
-                              isToday && styles.dayCircleToday
-                            ]}>
-                              <Text style={[
-                                styles.dayText,
-                                isCompleted && styles.dayTextCompleted,
-                                isToday && styles.dayTextToday
-                              ]}>{day}</Text>
-                            </View>
-                          </View>
-                        );
-                      });
-                    })()}
-                  </View>
-                </View>
-
-                <View style={styles.guideContainer}>
-                  <Text style={styles.guideTitle}>How Your Forest Grows</Text>
-
-                  <View style={styles.guideRow}>
-                    <View style={styles.guideItem}>
-                      <View style={[styles.guideIconCircle, { backgroundColor: isDarkMode ? 'rgba(146, 64, 14, 0.1)' : '#fffbeb' }]}>
-                        <View style={{ transform: [{ rotate: '-20deg' }] }}>
-                          <Egg size={20} color="#92400e" fill="#92400e" />
-                        </View>
-                      </View>
-                      <Text style={styles.guideStageName}>Seed</Text>
-                      <Text style={styles.guideStageDesc}>Day 1-2</Text>
-                    </View>
-
-                    <View style={styles.guideConnector} />
-
-                    <View style={styles.guideItem}>
-                      <View style={[styles.guideIconCircle, { backgroundColor: isDarkMode ? 'rgba(34, 197, 94, 0.1)' : '#f0fdf4' }]}>
-                        <Sprout size={20} color="#22c55e" fill="#22c55e" />
-                      </View>
-                      <Text style={styles.guideStageName}>Sapling</Text>
-                      <Text style={styles.guideStageDesc}>Day 3-7</Text>
-                    </View>
-
-                    <View style={styles.guideConnector} />
-
-                    <View style={styles.guideItem}>
-                      <View style={[styles.guideIconCircle, { backgroundColor: colors.primary + '15' }]}>
-                        <TreeDeciduous size={20} color={colors.primary} fill={colors.primary} />
-                      </View>
-                      <Text style={styles.guideStageName}>Tree</Text>
-                      <Text style={styles.guideStageDesc}>Day 8+</Text>
-                    </View>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.closeStreakBtn}
-                  onPress={() => setStreakModalVisible(false)}
-                >
-                  <Text style={styles.closeStreakBtnText}>Keep Growing</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+        onClose={() => setStreakModalVisible(false)}
+        streakCount={streakCount}
+        transactionDates={transactionDates}
+      />
     </SafeAreaView>
   );
 }
@@ -755,22 +373,35 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     letterSpacing: -0.5,
     lineHeight: rf(24),
   },
-  statusBubblePremium: {
-    backgroundColor: 'transparent',
-    borderColor: colors.primary,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    maxWidth: '60%',
+  marqueeContainer: {
+    height: 32,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(16, 185, 129, 0.05)',
+    borderTopWidth: 1,
+    borderTopColor: isDarkMode ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.04)',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    width: '100%',
   },
-  statusBubbleText: {
+  marqueeTrack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  marqueeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  marqueeText: {
     fontFamily: theme.fonts.medium,
-    fontSize: rf(9),
-    color: isDarkMode ? '#ffffff' : colors.text,
-    fontStyle: 'italic',
-    lineHeight: rf(13),
-    textAlign: 'right',
+    fontSize: rf(10.5),
+    color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : colors.text,
+    letterSpacing: -0.2,
+  },
+  marqueeSeparator: {
+    marginHorizontal: 18,
+    color: colors.primary,
+    fontSize: 9,
+    opacity: 0.5,
   },
   headerRightWrapper: {
     alignItems: 'flex-end',

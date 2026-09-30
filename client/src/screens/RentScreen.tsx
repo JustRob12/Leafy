@@ -21,7 +21,9 @@ import {
   CreditCard,
   Building,
   CheckCircle2,
-  Pencil
+  Pencil,
+  Eye,
+  EyeOff
 } from 'lucide-react-native';
 import { useAppContext, RentType } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
@@ -37,7 +39,9 @@ export default function RentScreen() {
     colors, 
     isDarkMode,
     usdToPhpRate,
-    wallets
+    wallets,
+    isBalanceHidden,
+    toggleBalanceVisibility
   } = useAppContext();
   
   const navigation = useNavigation<any>();
@@ -85,12 +89,21 @@ export default function RentScreen() {
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Rent Tracker</Text>
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('AddRent')} 
-          style={[styles.addHeaderBtn, { backgroundColor: colors.primary }]}
-        >
-          <Plus size={18} color="#ffffff" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity 
+            onPress={toggleBalanceVisibility} 
+            style={[styles.visibilityBtn, { backgroundColor: isBalanceHidden ? colors.primary + '20' : colors.card, borderColor: colors.border }]}
+            activeOpacity={0.7}
+          >
+            {isBalanceHidden ? <EyeOff size={18} color={colors.primary} /> : <Eye size={18} color={colors.textMuted} />}
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('AddRent')} 
+            style={[styles.addHeaderBtn, { backgroundColor: colors.primary }]}
+          >
+            <Plus size={18} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -105,7 +118,7 @@ export default function RentScreen() {
             <View>
               <Text style={styles.summaryLabel}>Total Monthly Rent</Text>
               <Text style={styles.summaryAmount}>
-                ₱{totalMonthlyRentPhp.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {isBalanceHidden ? '₱ ******' : `₱${totalMonthlyRentPhp.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               </Text>
             </View>
             <View style={styles.summaryBadge}>
@@ -150,7 +163,7 @@ export default function RentScreen() {
                     <View style={styles.cardHeaderRow}>
                       <TouchableOpacity 
                         style={styles.cardTitleBox}
-                        onPress={() => navigation.navigate('AddRent', { rent: item })}
+                        onPress={() => navigation.navigate('RentDetail', { rent: item })}
                         activeOpacity={0.7}
                       >
                         <Text style={styles.urgentBadgeText}>
@@ -185,7 +198,7 @@ export default function RentScreen() {
                           adjustsFontSizeToFit={true}
                           minimumFontScale={0.5}
                         >
-                          {item.currency === 'USD' ? '$' : '₱'}{item.monthlyAmount.toLocaleString()} / mo
+                          {isBalanceHidden ? `${item.currency === 'USD' ? '$' : '₱'} ****** / mo` : `${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()} / mo`}
                         </Text>
                       </View>
 
@@ -237,7 +250,7 @@ export default function RentScreen() {
                   <View style={styles.cardHeaderRow}>
                     <TouchableOpacity 
                       style={styles.cardTitleBox}
-                      onPress={() => navigation.navigate('AddRent', { rent: item })}
+                      onPress={() => navigation.navigate('RentDetail', { rent: item })}
                       activeOpacity={0.7}
                     >
                       <View style={styles.titleIconRow}>
@@ -277,7 +290,7 @@ export default function RentScreen() {
                         adjustsFontSizeToFit={true}
                         minimumFontScale={0.5}
                       >
-                        {item.currency === 'USD' ? '$' : '₱'}{item.monthlyAmount.toLocaleString()} / mo
+                        {isBalanceHidden ? `${item.currency === 'USD' ? '$' : '₱'} ****** / mo` : `${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()} / mo`}
                       </Text>
                     </View>
 
@@ -351,6 +364,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  visibilityBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

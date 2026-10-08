@@ -29,7 +29,7 @@ import {
 import { useAppContext, RentType } from '../context/AppContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import {
-  calculateCycleDueDate,
+  calculateRentCycleDueDate,
   formatScheduleDate,
   formatPaidTimestamp,
   getDueDateStatus
@@ -125,7 +125,7 @@ export default function RentDetailScreen() {
   const totalCyclesToShow = Math.max(paidCycles + 3, 6);
   const scheduleCycles = [];
   for (let k = 1; k <= totalCyclesToShow; k++) {
-    const cycleDueDate = calculateCycleDueDate(rent.startDate, k);
+    const cycleDueDate = calculateRentCycleDueDate(rent.startDate, k);
     const isPaid = k <= paidCycles;
     const isNextDue = k === paidCycles + 1;
     const isFuture = k > paidCycles + 1;
@@ -148,7 +148,7 @@ export default function RentDetailScreen() {
   }
 
   // Next payment info
-  const nextDueDate = calculateCycleDueDate(rent.startDate, paidCycles + 1);
+  const nextDueDate = calculateRentCycleDueDate(rent.startDate, paidCycles + 1);
   const nextDueStatus = getDueDateStatus(nextDueDate);
 
   // Segmented tenure representation (12 months cycle window)

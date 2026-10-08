@@ -5,6 +5,7 @@ import { palettes, TreeType } from '../theme';
 import { requestNotificationPermissions, syncAllNotifications, notifyGoalCompletion, updateBadgeCount } from '../services/NotificationService';
 import { saveImagePermanently, saveBase64Image } from '../services/FileService';
 import { syncWidgetBalance, saveWidgetConfig, DEFAULT_WIDGET_CONFIG } from '../services/WidgetService';
+import { MONTH_NAMES } from '../utils/paymentSchedule';
 
 export type WalletCategory = 'E-Wallet' | 'Banks' | 'Personal';
 
@@ -226,6 +227,27 @@ export const calculateNextDueDate = (startDateStr: string, paidMonths: number): 
   if (isNaN(y) || isNaN(m) || isNaN(d)) return startDateStr;
   
   const targetDate = new Date(y, (m - 1) + (paidMonths + 1), d);
+  const outY = targetDate.getFullYear();
+  const outM = targetDate.getMonth() + 1;
+  const outD = targetDate.getDate();
+  
+  const mm = outM < 10 ? `0${outM}` : `${outM}`;
+  const dd = outD < 10 ? `0${outD}` : `${outD}`;
+  return `${outY}-${mm}-${dd}`;
+};
+
+export const calculateRentDueDate = (startDateStr: string, paidCycles: number): string => {
+  if (!startDateStr) return new Date().toISOString().split('T')[0];
+  const parts = startDateStr.split('-');
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+  if (isNaN(y) || isNaN(m) || isNaN(d)) return startDateStr;
+  
+  // For rent:
+  // When paidCycles is 0 (first month due): due on startDate itself!
+  // When paidCycles is 1 (first month paid): next due is 1 month after startDate!
+  const targetDate = new Date(y, (m - 1) + paidCycles, d);
   const outY = targetDate.getFullYear();
   const outM = targetDate.getMonth() + 1;
   const outD = targetDate.getDate();
@@ -537,7 +559,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (storedInstallments) setInstallments(JSON.parse(storedInstallments));
 
       const storedRents = await AsyncStorage.getItem('@rents');
-      if (storedRents) setRents(JSON.parse(storedRents));
+      if (storedRents) {
+        const parsedRents: RentType[] = JSON.parse(storedRents);
+        const normalizedRents = parsedRents.map(r => {
+          if (r.startDate) {
+            const correctDue = calculateRentDueDate(r.startDate, r.paidCycles || 0);
+            return { ...r, dueDate: correctDue };
+          }
+          return r;
+        });
+        setRents(normalizedRents);
+      }
       const storedSplits = await AsyncStorage.getItem('@money_splits');
       if (storedSplits) setSplits(JSON.parse(storedSplits));
       const storedBalanceHidden = await AsyncStorage.getItem('@isBalanceHidden');
@@ -634,21 +666,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (isNotificationsEnabled) {
           const hasPermission = await requestNotificationPermissions();
           if (hasPermission) {
-            syncAllNotifications(debts, groceryLists, installments, subscriptions, rents, recursions, goals, true);
+            syncAllNotifications(debts, groceryLists, installments, subscriptions, rents, recursions, goals, splits, true);
           }
         } else {
-          syncAllNotifications(debts, groceryLists, installments, subscriptions, rents, recursions, goals, false);
+          syncAllNotifications(debts, groceryLists, installments, subscriptions, rents, recursions, goals, splits, false);
         }
       };
       setupNotifications();
     }
-  }, [isLoaded, recursions.length, debts, groceryLists, installments, subscriptions, rents, goals, isNotificationsEnabled]);
+  }, [isLoaded, recursions.length, debts, groceryLists, installments, subscriptions, rents, goals, splits, isNotificationsEnabled]);
 
   useEffect(() => {
     if (isLoaded) {
-      syncAllNotifications(debts, groceryLists, installments, subscriptions, rents, recursions, goals, isNotificationsEnabled);
+      syncAllNotifications(debts, groceryLists, installments, subscriptions, rents, recursions, goals, splits, isNotificationsEnabled);
     }
-  }, [debts, groceryLists, installments, subscriptions, rents, recursions, goals, isNotificationsEnabled]);
+  }, [debts, groceryLists, installments, subscriptions, rents, recursions, goals, splits, isNotificationsEnabled]);
 
   useEffect(() => {
     if (isLoaded) {
@@ -879,6 +911,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setUsername = async (name: string) => {
     await AsyncStorage.setItem('@username', name);
     setUserNameState(name);
+    syncWidgetBalance(totalBalance, wallets.length, undefined, totalExpense, expenseCount, wallets, name || undefined);
   };
 
   const addWallet = async (walletData: Omit<WalletType, 'id' | 'balance'>) => {
@@ -1571,47 +1604,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const data = JSON.parse(jsonString);
 
-      if (typeof data !== 'object') throw new Error('Invalid data format');
+      if (typeof data !== 'object' || data === null) throw new Error('Invalid data format');
 
       const importedUserImage = await saveBase64Image(data.userImage);
       const importedStatusCardBg = await saveBase64Image(data.statusCardBg);
 
-      const importedWallets = data.wallets ? await Promise.all(data.wallets.map(async (w: WalletType) => ({
+      const importedWallets = Array.isArray(data.wallets) ? await Promise.all(data.wallets.map(async (w: WalletType) => ({
         ...w,
         qrCodeImage: await saveBase64Image(w.qrCodeImage) || undefined,
         customIcon: await saveBase64Image(w.customIcon) || undefined,
       }))) : [];
 
-      const importedGoals = data.goals ? await Promise.all(data.goals.map(async (g: GoalType) => ({
+      const importedGoals = Array.isArray(data.goals) ? await Promise.all(data.goals.map(async (g: GoalType) => ({
         ...g,
         imageUrl: await saveBase64Image(g.imageUrl) || undefined,
       }))) : [];
 
-      const importedTravels = data.travels ? await Promise.all(data.travels.map(async (t: TravelType) => ({
+      const importedTravels = Array.isArray(data.travels) ? await Promise.all(data.travels.map(async (t: TravelType) => ({
         ...t,
         images: t.images ? await Promise.all(t.images.map(img => saveBase64Image(img)))
           .then(res => res.filter((img): img is string => img !== null)) : [],
       }))) : [];
 
+      const importedSubscriptions = Array.isArray(data.subscriptions) ? await Promise.all(data.subscriptions.map(async (s: SubscriptionType) => ({
+        ...s,
+        icon: (s.icon && s.icon.startsWith('data:')) ? (await saveBase64Image(s.icon) || s.icon) : s.icon,
+      }))) : [];
+
       const importedInstallments = Array.isArray(data.installments) ? data.installments : [];
       const importedRents = Array.isArray(data.rents) ? data.rents : [];
+      const importedSplits = Array.isArray(data.moneySplits) ? data.moneySplits : (Array.isArray(data.splits) ? data.splits : []);
+      const importedTransactions = Array.isArray(data.transactions) ? data.transactions : [];
+      const importedReceivables = Array.isArray(data.receivables) ? data.receivables : [];
+      const importedDebts = Array.isArray(data.debts) ? data.debts : [];
+      const importedGroceryLists = Array.isArray(data.groceryLists) ? data.groceryLists : [];
+      const importedRecursions = Array.isArray(data.recursions) ? data.recursions : [];
+      const importedWithdrawPresets = Array.isArray(data.withdrawPresets) ? data.withdrawPresets : [];
+      const importedIncomePresets = Array.isArray(data.incomePresets) ? data.incomePresets : [];
 
       const keysToSave: [string, string | null][] = [
         ['@username', data.username || null],
-        ['@wallets', importedWallets ? JSON.stringify(importedWallets) : '[]'],
-        ['@transactions', data.transactions ? JSON.stringify(data.transactions) : '[]'],
-        ['@goals', importedGoals ? JSON.stringify(importedGoals) : '[]'],
-        ['@receivables', data.receivables ? JSON.stringify(data.receivables) : '[]'],
-        ['@debts', data.debts ? JSON.stringify(data.debts) : '[]'],
-        ['@groceryLists', data.groceryLists ? JSON.stringify(data.groceryLists) : '[]'],
-        ['@travels', importedTravels ? JSON.stringify(importedTravels) : '[]'],
-        ['@withdrawPresets', data.withdrawPresets ? JSON.stringify(data.withdrawPresets) : '[]'],
-        ['@incomePresets', data.incomePresets ? JSON.stringify(data.incomePresets) : '[]'],
-        ['@recursions', data.recursions ? JSON.stringify(data.recursions) : '[]'],
-        ['@subscriptions', data.subscriptions ? JSON.stringify(data.subscriptions) : '[]'],
+        ['@wallets', JSON.stringify(importedWallets)],
+        ['@transactions', JSON.stringify(importedTransactions)],
+        ['@goals', JSON.stringify(importedGoals)],
+        ['@receivables', JSON.stringify(importedReceivables)],
+        ['@debts', JSON.stringify(importedDebts)],
+        ['@groceryLists', JSON.stringify(importedGroceryLists)],
+        ['@travels', JSON.stringify(importedTravels)],
+        ['@withdrawPresets', JSON.stringify(importedWithdrawPresets.length ? importedWithdrawPresets : DEFAULT_WITHDRAW_PRESETS)],
+        ['@incomePresets', JSON.stringify(importedIncomePresets.length ? importedIncomePresets : DEFAULT_INCOME_PRESETS)],
+        ['@recursions', JSON.stringify(importedRecursions)],
+        ['@subscriptions', JSON.stringify(importedSubscriptions)],
         ['@installments', JSON.stringify(importedInstallments)],
         ['@rents', JSON.stringify(importedRents)],
-        ['@money_splits', data.moneySplits ? JSON.stringify(data.moneySplits) : '[]'],
+        ['@money_splits', JSON.stringify(importedSplits)],
         ['@appPin', data.appPin || null],
         ['@isSecurityEnabled', data.isSecurityEnabled !== undefined ? String(data.isSecurityEnabled) : null],
         ['@isBiometricsEnabled', data.isBiometricsEnabled !== undefined ? String(data.isBiometricsEnabled) : null],
@@ -1621,6 +1667,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ['@treeType', data.treeType || null],
         ['@isNotificationsEnabled', data.isNotificationsEnabled !== undefined ? String(data.isNotificationsEnabled) : null],
       ];
+
+      if (data.isBalanceHidden !== undefined) {
+        keysToSave.push(['@isBalanceHidden', String(data.isBalanceHidden)]);
+      }
+      if (data.usdToPhpRate !== undefined && typeof data.usdToPhpRate === 'number') {
+        keysToSave.push(['@usdToPhpRate', String(data.usdToPhpRate)]);
+      }
+      if (data.usdToPhpRateDate) {
+        keysToSave.push(['@usdToPhpRateDate', String(data.usdToPhpRateDate)]);
+      }
 
       for (const [key, value] of keysToSave) {
         if (value !== null) {
@@ -1632,19 +1688,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       setUserNameState(data.username || null);
       setWallets(importedWallets);
-      setTransactions(data.transactions || []);
+      setTransactions(importedTransactions);
       setGoals(importedGoals);
-      setReceivables(data.receivables || []);
-      setDebts(data.debts || []);
-      setGroceryLists(data.groceryLists || []);
+      setReceivables(importedReceivables);
+      setDebts(importedDebts);
+      setGroceryLists(importedGroceryLists);
       setTravels(importedTravels);
-      setWithdrawPresets(data.withdrawPresets || []);
-      setIncomePresets(data.incomePresets || []);
-      setRecursions(data.recursions || []);
+      setWithdrawPresets(importedWithdrawPresets.length ? importedWithdrawPresets : DEFAULT_WITHDRAW_PRESETS);
+      setIncomePresets(importedIncomePresets.length ? importedIncomePresets : DEFAULT_INCOME_PRESETS);
+      setRecursions(importedRecursions);
+      setSubscriptions(importedSubscriptions);
       setInstallments(importedInstallments);
       setRents(importedRents);
-      setSplits(data.moneySplits || []);
+      setSplits(importedSplits);
       setAppPinState(data.appPin || null);
+
+      if (data.isBalanceHidden !== undefined) {
+        setIsBalanceHiddenState(!!data.isBalanceHidden);
+      }
+      if (data.usdToPhpRate !== undefined && typeof data.usdToPhpRate === 'number') {
+        setUsdToPhpRate(data.usdToPhpRate);
+      }
+      if (data.usdToPhpRateDate) {
+        setUsdToPhpRateDate(String(data.usdToPhpRateDate));
+      }
 
       if (data.isSecurityEnabled !== undefined) {
         setIsSecurityEnabled(!!data.isSecurityEnabled);
@@ -1664,23 +1731,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.statusCardBg !== undefined) setStatusCardBgState(importedStatusCardBg);
       if (data.treeType) setTreeTypeState(data.treeType);
       if (data.isNotificationsEnabled !== undefined) setIsNotificationsEnabled(!!data.isNotificationsEnabled);
-      if (data.subscriptions) setSubscriptions(data.subscriptions);
 
       if (data.widgetConfig) {
         await saveWidgetConfig(data.widgetConfig);
       }
 
-      const newTotalPhp = importedWallets.reduce((acc, w) => acc + (w.balance || 0) + ((w.usdBalance || 0) * (usdToPhpRate || 58.5)), 0);
-      await syncWidgetBalance(newTotalPhp, importedWallets.length, data.widgetConfig);
+      const activeRate = (data.usdToPhpRate && typeof data.usdToPhpRate === 'number') ? data.usdToPhpRate : (usdToPhpRate || 58.5);
+      const newTotalPhp = importedWallets.reduce((acc, w) => acc + (w.balance || 0) + ((w.usdBalance || 0) * activeRate), 0);
+      await syncWidgetBalance(newTotalPhp, importedWallets.length, data.widgetConfig, undefined, undefined, importedWallets, data.username || undefined);
 
       await syncAllNotifications(
-        data.debts || [],
-        data.groceryLists || [],
+        importedDebts,
+        importedGroceryLists,
         importedInstallments,
-        data.subscriptions || [],
+        importedSubscriptions,
         importedRents,
-        data.recursions || [],
+        importedRecursions,
         importedGoals,
+        importedSplits,
         data.isNotificationsEnabled !== undefined ? !!data.isNotificationsEnabled : true
       );
 
@@ -1965,9 +2033,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Sync Total Balance & Total Expense widgets for phone home screen
   useEffect(() => {
     if (isLoaded) {
-      syncWidgetBalance(totalBalance, wallets.length, undefined, totalExpense, expenseCount);
+      syncWidgetBalance(totalBalance, wallets.length, undefined, totalExpense, expenseCount, wallets, username || undefined);
     }
-  }, [isLoaded, totalBalance, wallets.length, totalExpense, expenseCount]);
+  }, [isLoaded, totalBalance, wallets, totalExpense, expenseCount, username]);
 
   const calculateStreak = () => {
     if (transactions.length === 0) return 0;
@@ -2157,8 +2225,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (w) targetWalletName = w.name;
     }
 
+    let instCycleKey: string | undefined = undefined;
+    if (item.dueDate) {
+      const parts = item.dueDate.split('-');
+      if (parts.length >= 2) {
+        const mIdx = parseInt(parts[1], 10) - 1;
+        const yNum = parseInt(parts[0], 10);
+        if (!isNaN(mIdx) && !isNaN(yNum) && mIdx >= 0 && mIdx < 12) {
+          instCycleKey = `${MONTH_NAMES[mIdx]} ${yNum}`;
+        }
+      }
+    }
+    if (!instCycleKey) {
+      const now = new Date();
+      instCycleKey = `${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`;
+    }
+
     const historyRecord: PaymentHistoryRecord = {
       cycle: nextPaidMonths,
+      cycleKey: instCycleKey,
       amount: item.monthlyAmount,
       paidDate: new Date().toISOString(),
       walletId: targetWalletId,
@@ -2210,7 +2295,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addRent = async (data: Omit<RentType, 'id' | 'dueDate' | 'paidCycles' | 'date'> & { startDate: string; paidCycles?: number }) => {
     const initialPaid = data.paidCycles || 0;
-    const initialDueDate = calculateNextDueDate(data.startDate, initialPaid);
+    const initialDueDate = calculateRentDueDate(data.startDate, initialPaid);
     const newRent: RentType = {
       ...data,
       id: Date.now().toString(),
@@ -2229,7 +2314,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (r.id === id) {
         const nextUpdates = { ...r, ...updates };
         if (updates.startDate || updates.paidCycles !== undefined) {
-          nextUpdates.dueDate = calculateNextDueDate(nextUpdates.startDate, nextUpdates.paidCycles || 0);
+          nextUpdates.dueDate = calculateRentDueDate(nextUpdates.startDate, nextUpdates.paidCycles || 0);
         }
         return nextUpdates;
       }
@@ -2274,7 +2359,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const nextPaidCycles = item.paidCycles + 1;
-    const nextDue = calculateNextDueDate(item.startDate, nextPaidCycles);
+    const nextDue = calculateRentDueDate(item.startDate, nextPaidCycles);
 
     let targetWalletName: string | undefined = undefined;
     if (targetWalletId) {
@@ -2282,8 +2367,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (w) targetWalletName = w.name;
     }
 
+    let rentCycleKey: string | undefined = undefined;
+    if (item.startDate) {
+      const parts = item.startDate.split('-');
+      if (parts.length >= 3) {
+        const yNum = parseInt(parts[0], 10);
+        const mIdx = parseInt(parts[1], 10) - 1;
+        const dNum = parseInt(parts[2], 10);
+        if (!isNaN(yNum) && !isNaN(mIdx) && !isNaN(dNum)) {
+          const cycleDate = new Date(yNum, mIdx + item.paidCycles, dNum);
+          rentCycleKey = `${MONTH_NAMES[cycleDate.getMonth()]} ${cycleDate.getFullYear()}`;
+        }
+      }
+    }
+    if (!rentCycleKey && item.dueDate) {
+      const parts = item.dueDate.split('-');
+      if (parts.length >= 2) {
+        const mIdx = parseInt(parts[1], 10) - 1;
+        const yNum = parseInt(parts[0], 10);
+        if (!isNaN(mIdx) && !isNaN(yNum) && mIdx >= 0 && mIdx < 12) {
+          rentCycleKey = `${MONTH_NAMES[mIdx]} ${yNum}`;
+        }
+      }
+    }
+    if (!rentCycleKey) {
+      const now = new Date();
+      rentCycleKey = `${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`;
+    }
+
     const historyRecord: PaymentHistoryRecord = {
       cycle: nextPaidCycles,
+      cycleKey: rentCycleKey,
       amount: item.monthlyAmount,
       paidDate: new Date().toISOString(),
       walletId: targetWalletId,
@@ -2312,7 +2426,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!item || item.paidCycles <= 0) return;
 
     const prevPaidCycles = item.paidCycles - 1;
-    const prevDue = calculateNextDueDate(item.startDate, prevPaidCycles);
+    const prevDue = calculateRentDueDate(item.startDate, prevPaidCycles);
     const existingHistory = item.paymentHistory || [];
     const updatedHistory = existingHistory.slice(0, -1);
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -29,6 +29,7 @@ import { useAppContext, RentType } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { rf } from '../utils/responsive';
+import { sortRentsByClosestDate } from '../utils/paymentSchedule';
 
 export default function RentScreen() {
   const { 
@@ -45,6 +46,10 @@ export default function RentScreen() {
   } = useAppContext();
   
   const navigation = useNavigation<any>();
+
+  const sortedRents = useMemo(() => {
+    return sortRentsByClosestDate(rents);
+  }, [rents]);
 
   const getDaysRemaining = (dueDateStr: string) => {
     if (!dueDateStr) return 999;
@@ -146,7 +151,7 @@ export default function RentScreen() {
           </View>
         ) : (
           <View style={styles.listContainer}>
-            {rents.map((item) => {
+            {sortedRents.map((item) => {
               const daysRemaining = getDaysRemaining(item.dueDate);
               const isUrgent = daysRemaining <= 3;
               const linkedWallet = wallets.find(w => w.id === item.walletId);

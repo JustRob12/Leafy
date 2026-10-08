@@ -150,7 +150,7 @@ export default function OnboardingScreen() {
                     placeholderTextColor={colors.textMuted}
                     value={name}
                     onChangeText={setName}
-                    maxLength={12}
+                    maxLength={16}
                     autoFocus
                     returnKeyType="done"
                     onSubmitEditing={handleNameContinue}

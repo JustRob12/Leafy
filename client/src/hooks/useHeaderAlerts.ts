@@ -1,7 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppContext, getWalletTotalBalanceInPhp } from '../context/AppContext';
-import { Coins, Calendar, CreditCard, Home, Target, Receipt, AlertCircle, ShoppingCart } from 'lucide-react-native';
+import { Coins, Calendar, CreditCard, Home, Target, Receipt, AlertCircle, ShoppingCart, GitFork } from 'lucide-react-native';
+import {
+  getSubscriptionNextDeadline,
+  getRentNextDeadline,
+  getInstallmentNextDeadline,
+  getRecursionNextDeadline,
+  getGroceryNextOccurrence,
+  getSplitNextDeadline,
+} from '../utils/paymentSchedule';
 
 export interface HeaderAlertItem {
   id: string;
@@ -22,6 +30,7 @@ export function useHeaderAlerts() {
     installments,
     rents,
     recursions,
+    splits,
     totalBalance,
     transactions,
     usdToPhpRate,
@@ -59,85 +68,334 @@ export function useHeaderAlerts() {
 
   const notifications = useMemo(() => {
     const list: HeaderAlertItem[] = [];
-    const todayStr = currentDate.toISOString().split('T')[0];
-    const todayDateNumber = currentDate.getDate();
-    const todayDayOfWeek = currentDate.getDay();
-    const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
 
-    // 1. Paydays & Recurring Income Scheduled Today
+    const getDaysDiff = (target: Date) => {
+      const t = new Date(target);
+      t.setHours(0, 0, 0, 0);
+      const today = new Date(currentDate);
+      today.setHours(0, 0, 0, 0);
+      return Math.ceil((t.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    };
+
+    // 1. Subscriptions (3, 2, 1 Days Before, Day-of & Overdue)
+    if (subscriptions && subscriptions.length > 0) {
+      subscriptions.forEach(sub => {
+        const deadline = getSubscriptionNextDeadline(sub, currentDate);
+        if (!deadline || !deadline.nextDueDate) return;
+        const sym = sub.currency === 'USD' ? '$' : '₱';
+        const d = deadline.daysRemaining;
+
+        if (!deadline.isCurrentMonthPaid) {
+          if (d === 0) {
+            list.push({
+              id: `sub-${sub.id}-${deadline.nextDueDateStr}-0`,
+              title: 'Subscription Due Today',
+              message: `Your subscription "${sub.title}" (${sym}${sub.amount.toLocaleString()}) is due today.`,
+              icon: Calendar,
+              color: '#10b981',
+              screen: 'Subscription',
+            });
+          } else if (d === 1) {
+            list.push({
+              id: `sub-${sub.id}-${deadline.nextDueDateStr}-1`,
+              title: 'Subscription Due Tomorrow',
+              message: `Reminder: "${sub.title}" (${sym}${sub.amount.toLocaleString()}) is due tomorrow.`,
+              icon: Calendar,
+              color: '#10b981',
+              screen: 'Subscription',
+            });
+          } else if (d === 2 || d === 3) {
+            list.push({
+              id: `sub-${sub.id}-${deadline.nextDueDateStr}-${d}`,
+              title: `Subscription Due in ${d} Days`,
+              message: `Your subscription "${sub.title}" (${sym}${sub.amount.toLocaleString()}) is due in ${d} days.`,
+              icon: Calendar,
+              color: '#10b981',
+              screen: 'Subscription',
+            });
+          } else if (d < 0) {
+            list.push({
+              id: `sub-${sub.id}-${deadline.nextDueDateStr}-overdue`,
+              title: 'Subscription Overdue',
+              message: `Your subscription "${sub.title}" (${sym}${sub.amount.toLocaleString()}) is overdue for payment.`,
+              icon: AlertCircle,
+              color: colors.danger,
+              screen: 'Subscription',
+            });
+          }
+        }
+      });
+    }
+
+    // 2. Rent Properties (3, 2, 1 Days Before, Day-of & Overdue)
+    if (rents && rents.length > 0) {
+      rents.forEach(rent => {
+        const rentDeadline = getRentNextDeadline(rent, currentDate);
+        if (!rentDeadline) return;
+        const d = getDaysDiff(rentDeadline);
+        const sym = rent.currency === 'USD' ? '$' : '₱';
+        const dateKey = rentDeadline.toISOString().split('T')[0];
+
+        if (d === 0) {
+          list.push({
+            id: `rent-${rent.id}-${dateKey}-0`,
+            title: 'Rent Payment Due Today',
+            message: `Monthly rent for "${rent.propertyName}" (${sym}${rent.monthlyAmount.toLocaleString()}) is due today.`,
+            icon: Home,
+            color: '#10b981',
+            screen: 'Rent',
+          });
+        } else if (d === 1) {
+          list.push({
+            id: `rent-${rent.id}-${dateKey}-1`,
+            title: 'Rent Due Tomorrow',
+            message: `Reminder: Monthly rent for "${rent.propertyName}" (${sym}${rent.monthlyAmount.toLocaleString()}) is due tomorrow.`,
+            icon: Home,
+            color: '#10b981',
+            screen: 'Rent',
+          });
+        } else if (d === 2 || d === 3) {
+          list.push({
+            id: `rent-${rent.id}-${dateKey}-${d}`,
+            title: `Rent Due in ${d} Days`,
+            message: `Monthly rent for "${rent.propertyName}" (${sym}${rent.monthlyAmount.toLocaleString()}) is due in ${d} days.`,
+            icon: Home,
+            color: '#10b981',
+            screen: 'Rent',
+          });
+        } else if (d < 0) {
+          list.push({
+            id: `rent-${rent.id}-${dateKey}-overdue`,
+            title: 'Rent Payment Overdue',
+            message: `Monthly rent for "${rent.propertyName}" (${sym}${rent.monthlyAmount.toLocaleString()}) is overdue.`,
+            icon: AlertCircle,
+            color: colors.danger,
+            screen: 'Rent',
+          });
+        }
+      });
+    }
+
+    // 3. Installments (3, 2, 1 Days Before, Day-of & Overdue)
+    if (installments && installments.length > 0) {
+      installments.forEach(item => {
+        const instDeadline = getInstallmentNextDeadline(item, currentDate);
+        if (!instDeadline) return;
+        const d = getDaysDiff(instDeadline);
+        const sym = item.currency === 'USD' ? '$' : '₱';
+        const dateKey = instDeadline.toISOString().split('T')[0];
+
+        if (d === 0) {
+          list.push({
+            id: `installment-${item.id}-${dateKey}-0`,
+            title: 'Installment Due Today',
+            message: `Payment for "${item.productName}" (${sym}${item.monthlyAmount.toLocaleString()}) is due today.`,
+            icon: CreditCard,
+            color: '#10b981',
+            screen: 'Installment',
+          });
+        } else if (d === 1) {
+          list.push({
+            id: `installment-${item.id}-${dateKey}-1`,
+            title: 'Installment Due Tomorrow',
+            message: `Reminder: Payment for "${item.productName}" (${sym}${item.monthlyAmount.toLocaleString()}) is due tomorrow.`,
+            icon: CreditCard,
+            color: '#10b981',
+            screen: 'Installment',
+          });
+        } else if (d === 2 || d === 3) {
+          list.push({
+            id: `installment-${item.id}-${dateKey}-${d}`,
+            title: `Installment Due in ${d} Days`,
+            message: `Payment for "${item.productName}" (${sym}${item.monthlyAmount.toLocaleString()}) is due in ${d} days.`,
+            icon: CreditCard,
+            color: '#10b981',
+            screen: 'Installment',
+          });
+        } else if (d < 0) {
+          list.push({
+            id: `installment-${item.id}-${dateKey}-overdue`,
+            title: 'Installment Overdue',
+            message: `Payment for "${item.productName}" (${sym}${item.monthlyAmount.toLocaleString()}) is overdue.`,
+            icon: AlertCircle,
+            color: colors.danger,
+            screen: 'Installment',
+          });
+        }
+      });
+    }
+
+    // 4. Grocery Lists (3, 2, 1 Days Before & Grocery Day)
+    if (groceryLists && groceryLists.length > 0) {
+      groceryLists.forEach(list_item => {
+        if (!list_item.scheduledDays || list_item.scheduledDays.length === 0) return;
+        list_item.scheduledDays.forEach(dayIndex => {
+          const nextDate = getGroceryNextOccurrence(dayIndex, currentDate);
+          const d = getDaysDiff(nextDate);
+          const dateKey = nextDate.toISOString().split('T')[0];
+
+          if (d === 0) {
+            list.push({
+              id: `grocery-${list_item.id}-${dateKey}-0`,
+              title: 'Grocery Day',
+              message: `Scheduled grocery shopping today for: ${list_item.title}`,
+              icon: ShoppingCart,
+              color: '#10b981',
+              screen: 'Grocery',
+            });
+          } else if (d === 1) {
+            list.push({
+              id: `grocery-${list_item.id}-${dateKey}-1`,
+              title: 'Grocery Scheduled Tomorrow',
+              message: `Reminder: Grocery shopping for "${list_item.title}" is scheduled for tomorrow.`,
+              icon: ShoppingCart,
+              color: '#10b981',
+              screen: 'Grocery',
+            });
+          } else if (d === 2 || d === 3) {
+            list.push({
+              id: `grocery-${list_item.id}-${dateKey}-${d}`,
+              title: `Grocery in ${d} Days`,
+              message: `Upcoming grocery shopping in ${d} days for: ${list_item.title}`,
+              icon: ShoppingCart,
+              color: '#10b981',
+              screen: 'Grocery',
+            });
+          }
+        });
+      });
+    }
+
+    // 5. Recursion (Paydays - 3, 2, 1 Days Before & Day-of)
     if (recursions && recursions.length > 0) {
       recursions.forEach(rec => {
-        let isPaydayToday = false;
-        if (rec.frequency === 'monthly' && rec.dayOfMonth === todayDateNumber) {
-          isPaydayToday = true;
-        } else if (rec.frequency === 'weekly' && rec.dayOfWeek === todayDayOfWeek) {
-          isPaydayToday = true;
-        } else if (rec.frequency === 'bi-monthly' && (todayDateNumber === 15 || todayDateNumber === lastDayOfMonth)) {
-          isPaydayToday = true;
-        }
+        const paydayDate = getRecursionNextDeadline(rec, currentDate);
+        if (!paydayDate) return;
+        const d = getDaysDiff(paydayDate);
+        const dateKey = paydayDate.toISOString().split('T')[0];
 
-        if (isPaydayToday) {
+        if (d === 0) {
           list.push({
-            id: `payday-${rec.id}-${todayStr}`,
+            id: `payday-${rec.id}-${dateKey}-0`,
             title: 'Payday Alert',
             message: `Payday from ${rec.companyName}: Expecting ₱${rec.amount.toLocaleString()} today.`,
             icon: Coins,
             color: '#10b981',
-            screen: 'Recursion'
+            screen: 'Recursion',
           });
-        }
-      });
-    }
-
-    // 2. Subscriptions Due Today
-    if (subscriptions && subscriptions.length > 0) {
-      subscriptions.forEach(sub => {
-        if (sub.dayOfMonth === todayDateNumber) {
+        } else if (d === 1) {
           list.push({
-            id: `sub-${sub.id}-${todayStr}`,
-            title: 'Subscription Due Today',
-            message: `Your subscription "${sub.title}" (₱${sub.amount.toLocaleString()}) is due today.`,
-            icon: Calendar,
+            id: `payday-${rec.id}-${dateKey}-1`,
+            title: 'Payday Tomorrow',
+            message: `Reminder: Payday from ${rec.companyName} (₱${rec.amount.toLocaleString()}) is tomorrow!`,
+            icon: Coins,
             color: '#10b981',
-            screen: 'Subscription'
+            screen: 'Recursion',
           });
-        }
-      });
-    }
-
-    // 3. Installments Due Today
-    if (installments && installments.length > 0) {
-      installments.forEach(item => {
-        if (item.dueDate && item.dueDate === todayStr && item.paidMonths < item.monthsToPay) {
+        } else if (d === 2 || d === 3) {
           list.push({
-            id: `installment-${item.id}-${todayStr}`,
-            title: 'Installment Due Today',
-            message: `Payment for "${item.productName}" (${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()}) is due today.`,
-            icon: CreditCard,
+            id: `payday-${rec.id}-${dateKey}-${d}`,
+            title: `Payday in ${d} Days`,
+            message: `Upcoming payday from ${rec.companyName}: Expecting ₱${rec.amount.toLocaleString()} in ${d} days.`,
+            icon: Coins,
             color: '#10b981',
-            screen: 'Installment'
+            screen: 'Recursion',
           });
         }
       });
     }
 
-    // 4. Rent Properties Due Today
-    if (rents && rents.length > 0) {
-      rents.forEach(rent => {
-        if (rent.dueDate && rent.dueDate === todayStr) {
+    // 6. Money Split Plans (3, 2, 1 Days Before & Day-of)
+    if (splits && splits.length > 0) {
+      splits.forEach(plan => {
+        const splitDate = getSplitNextDeadline(plan, currentDate);
+        if (!splitDate) return;
+        const d = getDaysDiff(splitDate);
+        const sym = plan.currency === 'USD' ? '$' : '₱';
+        const dateKey = splitDate.toISOString().split('T')[0];
+
+        if (d === 0) {
           list.push({
-            id: `rent-${rent.id}-${todayStr}`,
-            title: 'Rent Payment Due Today',
-            message: `Monthly rent for "${rent.propertyName}" (${rent.currency === 'USD' ? '$' : '₱'}${rent.monthlyAmount.toLocaleString()}) is due today.`,
-            icon: Home,
+            id: `split-${plan.id}-${dateKey}-0`,
+            title: 'Money Split Due Today',
+            message: `Money Split "${plan.title}" (${sym}${plan.totalAmount.toLocaleString()}) is scheduled for distribution today.`,
+            icon: GitFork,
             color: '#10b981',
-            screen: 'Rent'
+            screen: 'Split',
+          });
+        } else if (d === 1) {
+          list.push({
+            id: `split-${plan.id}-${dateKey}-1`,
+            title: 'Money Split Tomorrow',
+            message: `Reminder: Money Split "${plan.title}" (${sym}${plan.totalAmount.toLocaleString()}) is scheduled for tomorrow.`,
+            icon: GitFork,
+            color: '#10b981',
+            screen: 'Split',
+          });
+        } else if (d === 2 || d === 3) {
+          list.push({
+            id: `split-${plan.id}-${dateKey}-${d}`,
+            title: `Money Split in ${d} Days`,
+            message: `Money Split "${plan.title}" (${sym}${plan.totalAmount.toLocaleString()}) is scheduled in ${d} days.`,
+            icon: GitFork,
+            color: '#10b981',
+            screen: 'Split',
           });
         }
       });
     }
 
-    // 5. Goals Reached 100% Target
+    // 7. Active Debts (3, 2, 1 Days Before, Day-of & Overdue)
+    if (debts && debts.length > 0) {
+      debts.forEach(d => {
+        if (!d.dueDate) return;
+        const parts = d.dueDate.split('-');
+        const debtDate = parts.length === 3
+          ? new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10))
+          : new Date(d.dueDate);
+        const diff = getDaysDiff(debtDate);
+
+        if (diff === 0) {
+          list.push({
+            id: `debt-due-${d.id}-${d.dueDate}-0`,
+            title: 'Debt Payment Due Today',
+            message: `Don't forget to pay ${d.personName}: ₱${d.amount.toLocaleString()} for ${d.taskName}.`,
+            icon: Receipt,
+            color: '#10b981',
+            screen: 'Debts',
+          });
+        } else if (diff === 1) {
+          list.push({
+            id: `debt-due-${d.id}-${d.dueDate}-1`,
+            title: 'Debt Due Tomorrow',
+            message: `Reminder: Debt payment to ${d.personName} (₱${d.amount.toLocaleString()}) is due tomorrow.`,
+            icon: Receipt,
+            color: '#10b981',
+            screen: 'Debts',
+          });
+        } else if (diff === 2 || diff === 3) {
+          list.push({
+            id: `debt-due-${d.id}-${d.dueDate}-${diff}`,
+            title: `Debt Due in ${diff} Days`,
+            message: `Reminder: Debt payment to ${d.personName} (₱${d.amount.toLocaleString()}) is due in ${diff} days.`,
+            icon: Receipt,
+            color: '#10b981',
+            screen: 'Debts',
+          });
+        } else if (diff < 0) {
+          list.push({
+            id: `debt-overdue-${d.id}-${d.dueDate}`,
+            title: 'Overdue Debt Reminder',
+            message: `Debt payment to ${d.personName} (₱${d.amount.toLocaleString()}) is overdue!`,
+            icon: AlertCircle,
+            color: colors.danger,
+            screen: 'Debts',
+          });
+        }
+      });
+    }
+
+    // 8. Goals Reached 100% Target
     if (goals && wallets) {
       goals.forEach(g => {
         const isLinkedToAll = g.walletId === 'ALL' || g.walletId === 'all';
@@ -160,51 +418,8 @@ export function useHeaderAlerts() {
       });
     }
 
-    // 6. Active Debts (Due Today or Overdue)
-    if (debts && debts.length > 0) {
-      const dueToday = debts.filter(d => d.dueDate && d.dueDate === todayStr);
-      const overdue = debts.filter(d => d.dueDate && d.dueDate < todayStr);
-
-      dueToday.forEach(d => {
-        list.push({
-          id: `debt-due-${d.id}-${todayStr}`,
-          title: 'Debt Payment Due Today',
-          message: `Don't forget to pay ${d.personName}: ₱${d.amount.toLocaleString()} for ${d.taskName}.`,
-          icon: Receipt,
-          color: '#10b981',
-          screen: 'Debts'
-        });
-      });
-
-      if (overdue.length > 0 && dueToday.length === 0) {
-        list.push({
-          id: `debt-overdue-${todayStr}-${overdue.length}`,
-          title: 'Overdue Debt Reminder',
-          message: `You have ${overdue.length} overdue debt${overdue.length > 1 ? 's' : ''} to settle.`,
-          icon: AlertCircle,
-          color: colors.danger,
-          screen: 'Debts'
-        });
-      }
-    }
-
-    // 7. Grocery Lists Scheduled Today
-    if (groceryLists && groceryLists.length > 0) {
-      const scheduledToday = groceryLists.filter(l => l.scheduledDays?.includes(todayDayOfWeek));
-      scheduledToday.forEach(l => {
-        list.push({
-          id: `grocery-${l.id}-${todayStr}`,
-          title: 'Grocery Day',
-          message: `Scheduled grocery shopping today for: ${l.title}`,
-          icon: ShoppingCart,
-          color: '#10b981',
-          screen: 'Grocery'
-        });
-      });
-    }
-
     return list.filter(n => !dismissedIds.includes(n.id));
-  }, [goals, wallets, debts, groceryLists, subscriptions, installments, rents, recursions, colors, dismissedIds, currentDate]);
+  }, [goals, wallets, debts, groceryLists, subscriptions, installments, rents, recursions, splits, colors, dismissedIds, currentDate]);
 
   const statusMessage = useMemo(() => {
     const today = new Date();
@@ -260,7 +475,7 @@ export function useHeaderAlerts() {
     return wisdom[today.getDay() % wisdom.length];
   }, [totalBalance, transactions, debts, goals, wallets, colors]);
 
-  const fullDate = currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const fullDate = currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
   return {
     notifications,

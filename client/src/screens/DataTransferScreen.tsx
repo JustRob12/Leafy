@@ -16,7 +16,8 @@ export default function DataTransferScreen() {
   const {
     username, wallets, transactions, goals, userImage,
     receivables, debts, groceryLists, travels, appPin, isSecurityEnabled, isBiometricsEnabled, isDarkMode,
-    recursions, subscriptions, installments, rents, statusCardBg, treeType, isNotificationsEnabled, withdrawPresets, incomePresets,
+    recursions, subscriptions, installments, rents, splits, statusCardBg, treeType, isNotificationsEnabled,
+    withdrawPresets, incomePresets, isBalanceHidden, usdToPhpRate, usdToPhpRateDate,
     importData, clearData, showConfirm, colors
   } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
@@ -28,21 +29,28 @@ export default function DataTransferScreen() {
       const processedUserImage = await readImageAsBase64(userImage);
       const processedStatusCardBg = await readImageAsBase64(statusCardBg);
       
-      const processedWallets = await Promise.all(wallets.map(async w => ({
+      const processedWallets = await Promise.all((wallets || []).map(async w => ({
         ...w,
         qrCodeImage: await readImageAsBase64(w.qrCodeImage) || undefined,
         customIcon: await readImageAsBase64(w.customIcon) || undefined,
       })));
 
-      const processedGoals = await Promise.all(goals.map(async g => ({
+      const processedGoals = await Promise.all((goals || []).map(async g => ({
         ...g,
         imageUrl: await readImageAsBase64(g.imageUrl) || undefined,
       })));
 
-      const processedTravels = await Promise.all(travels.map(async t => ({
+      const processedTravels = await Promise.all((travels || []).map(async t => ({
         ...t,
         images: t.images ? await Promise.all(t.images.map(img => readImageAsBase64(img)))
           .then(res => res.filter((img): img is string => img !== null)) : [],
+      })));
+
+      const processedSubscriptions = await Promise.all((subscriptions || []).map(async s => ({
+        ...s,
+        icon: (s.icon && (s.icon.startsWith('file:') || s.icon.startsWith('/') || s.icon.startsWith('data:')))
+          ? (await readImageAsBase64(s.icon) || s.icon)
+          : s.icon,
       })));
 
       const currentWidgetConfig = await getWidgetConfig();
@@ -50,40 +58,45 @@ export default function DataTransferScreen() {
       const backupData = {
         username,
         wallets: processedWallets,
-        transactions,
+        transactions: transactions || [],
         goals: processedGoals,
-        receivables,
-        debts,
-        groceryLists,
+        receivables: receivables || [],
+        debts: debts || [],
+        groceryLists: groceryLists || [],
         travels: processedTravels,
         appPin,
         isSecurityEnabled,
         isBiometricsEnabled,
         isDarkMode,
         userImage: processedUserImage,
-        recursions,
-        subscriptions,
+        recursions: recursions || [],
+        subscriptions: processedSubscriptions,
         installments: installments || [],
         rents: rents || [],
+        moneySplits: splits || [],
+        splits: splits || [],
+        isBalanceHidden: !!isBalanceHidden,
+        usdToPhpRate: usdToPhpRate || 58.50,
+        usdToPhpRateDate: usdToPhpRateDate || null,
         widgetConfig: currentWidgetConfig,
         statusCardBg: processedStatusCardBg,
         treeType,
         isNotificationsEnabled,
-        withdrawPresets,
-        incomePresets,
+        withdrawPresets: withdrawPresets || [],
+        incomePresets: incomePresets || [],
         exportDate: new Date().toISOString(),
-        version: '1.3.0'
+        version: '1.4.0'
       };
 
       const jsonString = JSON.stringify(backupData);
-      const fileUri = cacheDirectory + 'leon_backup.json';
+      const fileUri = cacheDirectory + 'leafy_backup.json';
 
       await writeAsStringAsync(fileUri, jsonString, { encoding: 'utf8' });
 
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri, {
           mimeType: 'application/json',
-          dialogTitle: 'Export Leon Data',
+          dialogTitle: 'Export Leafy Data',
           UTI: 'public.json'
         });
       } else {
@@ -98,7 +111,7 @@ export default function DataTransferScreen() {
   const handleImport = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/json',
+        type: ['application/json', 'text/*', '*/*'],
         copyToCacheDirectory: true
       });
 
@@ -164,7 +177,7 @@ export default function DataTransferScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Backup Data</Text>
           <Text style={styles.sectionDesc}>
-            Save your wallets, goals, transactions, installments, rent properties, subscriptions, and widget settings to a file. You can share this file to your new phone via Email, Drive, or Messaging.
+            Save all app data to a file: expense & income history, money splits & execution history, goals, subscriptions, installments, rent properties, pending debts, grocery lists, travel stories/memories, recursions, story background, and settings.
           </Text>
           <TouchableOpacity style={styles.actionCard} onPress={handleExport}>
             <View style={[styles.iconWrapper, { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5' }]}>
@@ -172,7 +185,7 @@ export default function DataTransferScreen() {
             </View>
             <View style={styles.cardContent}>
               <Text style={styles.cardTitle}>Export Data File</Text>
-              <Text style={styles.cardSubtitle}>Generate leon_backup.json</Text>
+              <Text style={styles.cardSubtitle}>Generate leafy_backup.json</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -180,7 +193,7 @@ export default function DataTransferScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Restore Data</Text>
           <Text style={styles.sectionDesc}>
-            Import a previously saved backup file. This will replace all current data in your app.
+            Import a previously saved backup file. This will restore all your wallets, transaction history, splits, goals, and settings on this device.
           </Text>
           <TouchableOpacity style={styles.actionCard} onPress={handleImport}>
             <View style={[styles.iconWrapper, { backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.1)' : '#eff6ff' }]}>
@@ -212,7 +225,7 @@ export default function DataTransferScreen() {
         <View style={styles.warningBox}>
           <Info size={18} color={colors.textMuted} />
           <Text style={styles.warningText}>
-            Note: Your images (receipts, profile, goal covers) are now included in the backup file as encrypted data.
+            Note: All transaction history, money splits, payment histories, story backgrounds, travel memories, and photos are bundled directly into this backup file.
           </Text>
         </View>
       </ScrollView>

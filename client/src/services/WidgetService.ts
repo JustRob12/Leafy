@@ -142,6 +142,21 @@ const STORAGE_KEY_EXPENSE = '@leon_widget_total_expense';
 const STORAGE_KEY_EXPENSE_COUNT = '@leon_widget_expense_count';
 const STORAGE_KEY_LAST_UPDATED = '@leon_widget_last_updated';
 const STORAGE_KEY_CONFIG = '@leon_widget_config';
+const STORAGE_KEY_WALLETS = '@leon_widget_wallets';
+const STORAGE_KEY_ACTIVE_CARD_INDEX = '@leon_widget_active_card_index';
+const STORAGE_KEY_USERNAME = '@leon_widget_username';
+
+export interface WidgetWalletItem {
+  id: string;
+  name: string;
+  balance: number;
+  usdBalance?: number;
+  currency?: string;
+  category?: string;
+  color?: string;
+  purpose?: string;
+  qrCodeImage?: string;
+}
 
 export interface WidgetData {
   balance: number;
@@ -150,6 +165,9 @@ export interface WidgetData {
   expenseCount: number;
   lastUpdated: string;
   config: WidgetConfig;
+  wallets: WidgetWalletItem[];
+  activeCardIndex: number;
+  username?: string;
 }
 
 /**
@@ -168,13 +186,25 @@ export async function getWidgetConfig(): Promise<WidgetConfig> {
 }
 
 /**
+ * Saves the active card index for the widget card carousel.
+ */
+export async function saveWidgetActiveCardIndex(index: number): Promise<boolean> {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY_ACTIVE_CARD_INDEX, index.toString());
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
  * Saves the widget configuration to persistent storage and triggers an update.
  */
 export async function saveWidgetConfig(config: WidgetConfig): Promise<boolean> {
   try {
     await AsyncStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
     const cachedData = await getCachedWidgetData();
-    await syncWidgetBalance(cachedData.balance, cachedData.walletCount, config, cachedData.expense, cachedData.expenseCount);
+    await syncWidgetBalance(cachedData.balance, cachedData.walletCount, config, cachedData.expense, cachedData.expenseCount, cachedData.wallets);
     return true;
   } catch (e) {
     console.warn('[WidgetService] Failed to save widget config:', e);
@@ -183,17 +213,20 @@ export async function saveWidgetConfig(config: WidgetConfig): Promise<boolean> {
 }
 
 /**
- * Retrieves the cached widget data from storage including config.
+ * Retrieves the cached widget data from storage including config, wallets, and activeCardIndex.
  */
 export async function getCachedWidgetData(): Promise<WidgetData> {
   try {
-    const [balanceStr, countStr, expenseStr, expCountStr, updatedStr, config] = await Promise.all([
+    const [balanceStr, countStr, expenseStr, expCountStr, updatedStr, config, walletsStr, activeCardIndexStr, usernameStr] = await Promise.all([
       AsyncStorage.getItem(STORAGE_KEY_BALANCE),
       AsyncStorage.getItem(STORAGE_KEY_WALLET_COUNT),
       AsyncStorage.getItem(STORAGE_KEY_EXPENSE),
       AsyncStorage.getItem(STORAGE_KEY_EXPENSE_COUNT),
       AsyncStorage.getItem(STORAGE_KEY_LAST_UPDATED),
       getWidgetConfig(),
+      AsyncStorage.getItem(STORAGE_KEY_WALLETS),
+      AsyncStorage.getItem(STORAGE_KEY_ACTIVE_CARD_INDEX),
+      AsyncStorage.getItem(STORAGE_KEY_USERNAME),
     ]);
 
     const balance = balanceStr ? parseFloat(balanceStr) : 0;
@@ -202,6 +235,15 @@ export async function getCachedWidgetData(): Promise<WidgetData> {
     const expenseCount = expCountStr ? parseInt(expCountStr, 10) : 0;
     const lastUpdated = updatedStr || new Date().toISOString();
 
+    let wallets: WidgetWalletItem[] = [];
+    if (walletsStr) {
+      try {
+        wallets = JSON.parse(walletsStr);
+      } catch (e) {}
+    }
+
+    const activeCardIndex = activeCardIndexStr ? parseInt(activeCardIndexStr, 10) : 0;
+
     return {
       balance: isNaN(balance) ? 0 : balance,
       walletCount: isNaN(walletCount) ? 1 : walletCount,
@@ -209,6 +251,9 @@ export async function getCachedWidgetData(): Promise<WidgetData> {
       expenseCount: isNaN(expenseCount) ? 0 : expenseCount,
       lastUpdated,
       config,
+      wallets: Array.isArray(wallets) ? wallets : [],
+      activeCardIndex: isNaN(activeCardIndex) ? 0 : activeCardIndex,
+      username: usernameStr || undefined,
     };
   } catch (error) {
     console.warn('[WidgetService] Failed to load cached widget data:', error);
@@ -219,12 +264,23 @@ export async function getCachedWidgetData(): Promise<WidgetData> {
       expenseCount: 0,
       lastUpdated: new Date().toISOString(),
       config: { ...DEFAULT_WIDGET_CONFIG },
+      wallets: [],
+      activeCardIndex: 0,
     };
   }
 }
 
 /**
- * Synchronizes the total balance, total expense, wallet count and config to persistent storage
+ * Filters wallets that have a QR code image uploaded, or falls back to all wallets.
+ */
+export function getDisplayWallets(wallets?: WidgetWalletItem[] | any[]): WidgetWalletItem[] {
+  const safe = (wallets && Array.isArray(wallets)) ? wallets : [];
+  const qrOnly = safe.filter(w => !!w.qrCodeImage && typeof w.qrCodeImage === 'string' && w.qrCodeImage.trim().length > 0);
+  return qrOnly.length > 0 ? qrOnly : safe;
+}
+
+/**
+ * Synchronizes the total balance, total expense, wallet count, wallets list and config to persistent storage
  * and requests an immediate update to all active home screen widgets on Android.
  */
 export async function syncWidgetBalance(
@@ -232,7 +288,9 @@ export async function syncWidgetBalance(
   walletCount?: number,
   customConfig?: WidgetConfig,
   expense?: number,
-  expenseCount?: number
+  expenseCount?: number,
+  wallets?: WidgetWalletItem[] | any[],
+  username?: string
 ): Promise<boolean> {
   try {
     const now = new Date().toISOString();
@@ -243,27 +301,61 @@ export async function syncWidgetBalance(
     let currentWalletCount = walletCount;
     let currentExpense = expense;
     let currentExpenseCount = expenseCount;
+    let currentWallets = wallets;
 
-    if (currentBalance === undefined || currentWalletCount === undefined || currentExpense === undefined || currentExpenseCount === undefined) {
+    if (currentBalance === undefined || currentWalletCount === undefined || currentExpense === undefined || currentExpenseCount === undefined || currentWallets === undefined) {
       const cached = await getCachedWidgetData();
       if (currentBalance === undefined) currentBalance = cached.balance;
       if (currentWalletCount === undefined) currentWalletCount = cached.walletCount;
       if (currentExpense === undefined) currentExpense = cached.expense;
       if (currentExpenseCount === undefined) currentExpenseCount = cached.expenseCount;
+      if (currentWallets === undefined) currentWallets = cached.wallets;
     }
 
-    // 1. Cache to AsyncStorage
-    await Promise.all([
+    const asyncStorageCalls: Promise<any>[] = [
       AsyncStorage.setItem(STORAGE_KEY_BALANCE, currentBalance.toString()),
       AsyncStorage.setItem(STORAGE_KEY_WALLET_COUNT, currentWalletCount.toString()),
       AsyncStorage.setItem(STORAGE_KEY_EXPENSE, currentExpense.toString()),
       AsyncStorage.setItem(STORAGE_KEY_EXPENSE_COUNT, currentExpenseCount.toString()),
       AsyncStorage.setItem(STORAGE_KEY_LAST_UPDATED, now),
-    ]);
+    ];
+
+    if (username !== undefined) {
+      asyncStorageCalls.push(AsyncStorage.setItem(STORAGE_KEY_USERNAME, username));
+    }
+
+    let cleanWallets: WidgetWalletItem[] = [];
+    if (currentWallets && Array.isArray(currentWallets)) {
+      cleanWallets = currentWallets.map(w => {
+        let qrImg = w.qrCodeImage || '';
+        if (qrImg && typeof qrImg === 'string') {
+          qrImg = qrImg.trim();
+          if (qrImg.startsWith('/') && !qrImg.startsWith('file://')) {
+            qrImg = `file://${qrImg}`;
+          }
+        }
+        return {
+          id: w.id || '',
+          name: w.name || 'Main Wallet',
+          balance: typeof w.balance === 'number' ? w.balance : 0,
+          usdBalance: typeof w.usdBalance === 'number' ? w.usdBalance : 0,
+          currency: w.usdBalance && w.usdBalance > 0 ? 'USD' : 'PHP',
+          category: w.category || 'wallet',
+          color: w.color || '#10b981',
+          purpose: w.purpose || '',
+          qrCodeImage: qrImg,
+        };
+      });
+      asyncStorageCalls.push(AsyncStorage.setItem(STORAGE_KEY_WALLETS, JSON.stringify(cleanWallets)));
+    }
+
+    // 1. Cache to AsyncStorage
+    await Promise.all(asyncStorageCalls);
 
     // 2. Request Android Native Widget Update if on Android
     if (Platform.OS === 'android') {
       try {
+        const cached = await getCachedWidgetData();
         const { requestWidgetUpdate } = require('react-native-android-widget');
         await Promise.all([
           requestWidgetUpdate({

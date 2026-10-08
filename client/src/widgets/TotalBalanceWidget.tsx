@@ -48,7 +48,7 @@ export function TotalBalanceWidget({
         width: 'match_parent',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        padding: 14,
+        padding: 13,
         borderRadius: 22,
         backgroundGradient: {
           from: theme.gradientFrom,
@@ -79,7 +79,7 @@ export function TotalBalanceWidget({
           <TextWidget
             text={cleanTitle}
             style={{
-              fontSize: 12,
+              fontSize: 12.5,
               fontWeight: 'bold',
               color: theme.accentColor,
               letterSpacing: 1,
@@ -160,7 +160,7 @@ export function TotalBalanceWidget({
           style={{
             width: 'match_parent',
             backgroundColor: theme.pillBgColor,
-            borderRadius: 12,
+            borderRadius: 11,
             paddingHorizontal: 10,
             paddingVertical: 6,
             flexDirection: 'row',
@@ -168,7 +168,7 @@ export function TotalBalanceWidget({
             justifyContent: 'space-between',
             borderColor: theme.borderColor,
             borderWidth: 0.8,
-            marginTop: 3,
+            marginTop: 2,
           }}
         >
           <TextWidget

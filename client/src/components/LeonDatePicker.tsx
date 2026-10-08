@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, Dimensions, Animated, TouchableWithoutFeedback } from 'react-native';
 import { theme } from '../theme';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react-native';
@@ -12,10 +12,7 @@ interface LeonDatePickerProps {
   title?: string;
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_MAX_WIDTH = 380;
-const effectiveWidth = Math.min(SCREEN_WIDTH - 40, CARD_MAX_WIDTH);
-const COLUMN_WIDTH = Math.floor((effectiveWidth - 40) / 7);
 
 export default function LeonDatePicker({ visible, onClose, onSelect, initialDate, title = "Select Date" }: LeonDatePickerProps) {
   const { colors, isDarkMode } = useAppContext();
@@ -37,54 +34,36 @@ export default function LeonDatePicker({ visible, onClose, onSelect, initialDate
     "July", "August", "September", "October", "November", "December"
   ];
 
-  const renderDays = () => {
+  const weeks = useMemo(() => {
     const totalDays = daysInMonth(month, year);
     const startDay = firstDayOfMonth(month, year);
-    const days = [];
+    const cells: { key: string; day?: number; date?: Date }[] = [];
 
     // Empty spots for previous month
     for (let i = 0; i < startDay; i++) {
-      days.push(<View key={`empty-${i}`} style={styles.dayCell} />);
+      cells.push({ key: `empty-${i}` });
     }
 
     // Actual days
     for (let d = 1; d <= totalDays; d++) {
-      const isToday = d === new Date().getDate() && 
-                      month === new Date().getMonth() && 
-                      year === new Date().getFullYear();
-      
-      const isSelected = initialDate && 
-                         d === initialDate.getDate() && 
-                         month === initialDate.getMonth() && 
-                         year === initialDate.getFullYear();
-
-      days.push(
-        <TouchableOpacity 
-          key={d} 
-          style={styles.dayCell}
-          onPress={() => {
-            const selectedDate = new Date(year, month, d);
-            onSelect(selectedDate);
-            onClose();
-          }}
-        >
-          <View style={[
-            styles.dayCircle,
-            isToday && styles.todayCircle,
-            isSelected && styles.selectedCircle,
-          ]}>
-            <Text style={[
-              styles.dayText,
-              isToday && styles.todayText,
-              isSelected && styles.selectedText
-            ]}>{d}</Text>
-          </View>
-        </TouchableOpacity>
-      );
+      cells.push({ key: `day-${d}`, day: d, date: new Date(year, month, d) });
     }
 
-    return days;
-  };
+    // Fill remaining in week
+    const remaining = cells.length % 7;
+    if (remaining > 0) {
+      const needed = 7 - remaining;
+      for (let i = 0; i < needed; i++) {
+        cells.push({ key: `empty-next-${i}` });
+      }
+    }
+
+    const result = [];
+    for (let i = 0; i < cells.length; i += 7) {
+      result.push(cells.slice(i, i + 7));
+    }
+    return result;
+  }, [year, month]);
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -121,7 +100,46 @@ export default function LeonDatePicker({ visible, onClose, onSelect, initialDate
               </View>
 
               <View style={styles.daysGrid}>
-                {renderDays()}
+                {weeks.map((week, weekIdx) => (
+                  <View key={`week-${weekIdx}`} style={styles.gridWeekRow}>
+                    {week.map(cell => {
+                      if (!cell.day || !cell.date) {
+                        return <View key={cell.key} style={styles.dayCell} />;
+                      }
+                      const isToday = cell.day === new Date().getDate() && 
+                                      month === new Date().getMonth() && 
+                                      year === new Date().getFullYear();
+                      
+                      const isSelected = initialDate && 
+                                         cell.day === initialDate.getDate() && 
+                                         month === initialDate.getMonth() && 
+                                         year === initialDate.getFullYear();
+
+                      return (
+                        <TouchableOpacity 
+                          key={cell.key} 
+                          style={styles.dayCell}
+                          onPress={() => {
+                            onSelect(cell.date!);
+                            onClose();
+                          }}
+                        >
+                          <View style={[
+                            styles.dayCircle,
+                            isToday && styles.todayCircle,
+                            isSelected && styles.selectedCircle,
+                          ]}>
+                            <Text style={[
+                              styles.dayText,
+                              isToday && styles.todayText,
+                              isSelected && styles.selectedText
+                            ]}>{cell.day}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                ))}
               </View>
             </View>
           </TouchableWithoutFeedback>
@@ -204,10 +222,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    width: '100%',
   },
   dayHeader: {
-    width: COLUMN_WIDTH,
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   dayHeaderText: {
     fontFamily: theme.fonts.bold,
@@ -215,12 +235,19 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     color: colors.textMuted,
   },
   daysGrid: {
+    flexDirection: 'column',
+    width: '100%',
+  },
+  gridWeekRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 4,
   },
   dayCell: {
-    width: COLUMN_WIDTH,
-    height: COLUMN_WIDTH * 1.2,
+    flex: 1,
+    height: 42,
     alignItems: 'center',
     justifyContent: 'center',
   },

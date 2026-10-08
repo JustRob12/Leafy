@@ -1,6 +1,14 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { DebtType, GroceryListType, InstallmentType, SubscriptionType, RentType, RecursionType, GoalType, WalletType } from '../context/AppContext';
+import { DebtType, GroceryListType, InstallmentType, SubscriptionType, RentType, RecursionType, GoalType, WalletType, MoneySplitPlan } from '../context/AppContext';
+import {
+  getSubscriptionNextDeadline,
+  getRentNextDeadline,
+  getInstallmentNextDeadline,
+  getRecursionNextDeadline,
+  getGroceryNextOccurrence,
+  getSplitNextDeadline,
+} from '../utils/paymentSchedule';
 
 export const requestNotificationPermissions = async () => {
   try {
@@ -57,7 +65,7 @@ export const sendTestNotification = async (): Promise<boolean> => {
     await Notifications.scheduleNotificationAsync({
       content: {
         title: "Leon Alerts",
-        body: "Notifications are working! You'll receive alerts for Paydays, Goals, Subscriptions, Installments & Rent.",
+        body: "Notifications are working! You'll receive alerts 3, 2, 1 days before & on due dates for Rent, Subscriptions, Grocery, Paydays, Installments & Split plans.",
         data: { path: 'Main', screen: 'Home' },
         sound: true,
       },
@@ -70,6 +78,82 @@ export const sendTestNotification = async (): Promise<boolean> => {
   }
 };
 
+interface MilestoneAlertConfig {
+  deadline: Date;
+  milestones?: number[];
+  getTitle: (daysBefore: number) => string;
+  getBody: (daysBefore: number) => string;
+  data: Record<string, any>;
+  hour?: number;
+  minute?: number;
+}
+
+/**
+ * Helper to schedule milestone alerts:
+ * 3 days before, 2 days before, 1 day before, and on the day (0 days).
+ * If a milestone falls on today and the scheduled hour has passed, it triggers within 1 minute.
+ */
+const scheduleMilestoneNotifications = async ({
+  deadline,
+  milestones = [3, 2, 1, 0],
+  getTitle,
+  getBody,
+  data,
+  hour = 9,
+  minute = 0,
+}: MilestoneAlertConfig) => {
+  const now = Date.now();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const cleanDeadline = new Date(deadline);
+  cleanDeadline.setHours(0, 0, 0, 0);
+
+  for (const daysBefore of milestones) {
+    const targetDate = new Date(cleanDeadline);
+    targetDate.setDate(targetDate.getDate() - daysBefore);
+    targetDate.setHours(hour, minute, 0, 0);
+
+    const targetDayStart = new Date(targetDate);
+    targetDayStart.setHours(0, 0, 0, 0);
+
+    if (targetDayStart.getTime() === today.getTime()) {
+      // Milestone is today!
+      let triggerDate = targetDate;
+      if (triggerDate.getTime() <= now) {
+        // Morning time already passed, fire in 60s
+        triggerDate = new Date(now + 60 * 1000);
+      }
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: getTitle(daysBefore),
+          body: getBody(daysBefore),
+          data,
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: triggerDate,
+        },
+      });
+    } else if (targetDate.getTime() > now) {
+      // Future milestone day
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: getTitle(daysBefore),
+          body: getBody(daysBefore),
+          data,
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: targetDate,
+        },
+      });
+    }
+  }
+};
+
 export const syncAllNotifications = async (
   debts: DebtType[] = [],
   groceryLists: GroceryListType[] = [],
@@ -78,266 +162,295 @@ export const syncAllNotifications = async (
   rents: RentType[] = [],
   recursions: RecursionType[] = [],
   goals: GoalType[] = [],
-  isEnabled: boolean = true
+  splitsOrIsEnabled: MoneySplitPlan[] | boolean = true,
+  isEnabledParam?: boolean
 ) => {
   try {
     // 1. Cancel existing scheduled notifications to avoid duplicates
     await Notifications.cancelAllScheduledNotificationsAsync();
     
+    // Resolve flexible parameters (supporting legacy 8-arg and 9-arg calls)
+    let splits: MoneySplitPlan[] = [];
+    let isEnabled = true;
+    if (Array.isArray(splitsOrIsEnabled)) {
+      splits = splitsOrIsEnabled;
+      isEnabled = isEnabledParam !== undefined ? isEnabledParam : true;
+    } else if (typeof splitsOrIsEnabled === 'boolean') {
+      isEnabled = splitsOrIsEnabled;
+      splits = [];
+    }
+
     // 2. If notifications disabled, return immediately
     if (!isEnabled) return;
     
-    const now = Date.now();
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    const todayDateNumber = today.getDate(); // 1 - 31
-    const todayDayOfWeek = today.getDay(); // 0 (Sun) - 6 (Sat)
+    today.setHours(0, 0, 0, 0);
 
     // ==========================================
-    // 3. SUBSCRIPTIONS (Day of Payment Reminder)
+    // 3. SUBSCRIPTIONS (3, 2, 1 Days Before & Day of Deadline)
     // ==========================================
     for (const sub of subscriptions) {
-      if (!sub.dayOfMonth) continue;
+      const deadlineInfo = getSubscriptionNextDeadline(sub, today);
+      if (!deadlineInfo || !deadlineInfo.nextDueDate) continue;
 
-      // Scheduled for the next occurrence of dayOfMonth at 9:00 AM
-      let subTarget = new Date();
-      subTarget.setDate(sub.dayOfMonth);
-      subTarget.setHours(9, 0, 0, 0);
-
-      // If already past today, schedule for next month
-      if (subTarget.getTime() <= now) {
-        if (todayDateNumber === sub.dayOfMonth) {
-          // It's today! Schedule reminder in 1 minute if not past evening
-          subTarget = new Date(now + 60 * 1000);
-        } else {
-          subTarget.setMonth(subTarget.getMonth() + 1);
-        }
-      }
-
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Subscription Due Today",
-          body: `Your subscription "${sub.title}" (₱${sub.amount.toLocaleString()}) is due for payment today.`,
-          data: { path: 'Subscription' },
-          sound: true,
+      const sym = sub.currency === 'USD' ? '$' : '₱';
+      await scheduleMilestoneNotifications({
+        deadline: deadlineInfo.nextDueDate,
+        milestones: [3, 2, 1, 0],
+        getTitle: (daysBefore) => {
+          if (daysBefore === 3) return "Subscription Due in 3 Days";
+          if (daysBefore === 2) return "Subscription Due in 2 Days";
+          if (daysBefore === 1) return "Subscription Due Tomorrow";
+          return "Subscription Due Today";
         },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: subTarget,
+        getBody: (daysBefore) => {
+          if (daysBefore === 3) return `Your subscription "${sub.title}" (${sym}${sub.amount.toLocaleString()}) is due in 3 days.`;
+          if (daysBefore === 2) return `Your subscription "${sub.title}" (${sym}${sub.amount.toLocaleString()}) is due in 2 days.`;
+          if (daysBefore === 1) return `Reminder: "${sub.title}" (${sym}${sub.amount.toLocaleString()}) is due tomorrow.`;
+          return `Your subscription "${sub.title}" (${sym}${sub.amount.toLocaleString()}) is due for payment today.`;
         },
+        data: { path: 'Subscription' },
+        hour: 9,
+        minute: 0,
       });
     }
 
     // ==========================================
-    // 4. INSTALLMENTS (Day of Payment / Due Date)
-    // ==========================================
-    for (const item of installments) {
-      if (!item.dueDate || item.paidMonths >= item.monthsToPay) continue;
-
-      let due = new Date(item.dueDate);
-      due.setHours(9, 0, 0, 0);
-
-      if (due.getTime() <= now) {
-        if (item.dueDate === todayStr) {
-          due = new Date(now + 60 * 1000); // 1 minute from now
-        } else {
-          continue; // Past due date
-        }
-      }
-
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Installment Payment Due Today",
-          body: `Payment for "${item.productName}" (${item.currency === 'USD' ? '$' : '₱'}${item.monthlyAmount.toLocaleString()}) is due today.`,
-          data: { path: 'Installment' },
-          sound: true,
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: due,
-        },
-      });
-    }
-
-    // ==========================================
-    // 5. RENT PROPERTIES (Day of Rent Payment)
+    // 4. RENT PROPERTIES (3, 2, 1 Days Before & Day of Deadline)
     // ==========================================
     for (const rent of rents) {
-      if (!rent.dueDate) continue;
+      const rentDeadline = getRentNextDeadline(rent, today);
+      if (!rentDeadline) continue;
 
-      let rentDue = new Date(rent.dueDate);
-      rentDue.setHours(9, 0, 0, 0);
-
-      if (rentDue.getTime() <= now) {
-        if (rent.dueDate === todayStr) {
-          rentDue = new Date(now + 60 * 1000);
-        } else {
-          continue;
-        }
-      }
-
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Rent Payment Due Today",
-          body: `Monthly rent for "${rent.propertyName}" (${rent.currency === 'USD' ? '$' : '₱'}${rent.monthlyAmount.toLocaleString()}) is due today.`,
-          data: { path: 'Rent' },
-          sound: true,
+      const sym = rent.currency === 'USD' ? '$' : '₱';
+      await scheduleMilestoneNotifications({
+        deadline: rentDeadline,
+        milestones: [3, 2, 1, 0],
+        getTitle: (daysBefore) => {
+          if (daysBefore === 3) return "Rent Due in 3 Days";
+          if (daysBefore === 2) return "Rent Due in 2 Days";
+          if (daysBefore === 1) return "Rent Due Tomorrow";
+          return "Rent Payment Due Today";
         },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: rentDue,
+        getBody: (daysBefore) => {
+          if (daysBefore === 3) return `Rent for "${rent.propertyName}" (${sym}${rent.monthlyAmount.toLocaleString()}) is due in 3 days.`;
+          if (daysBefore === 2) return `Rent for "${rent.propertyName}" (${sym}${rent.monthlyAmount.toLocaleString()}) is due in 2 days.`;
+          if (daysBefore === 1) return `Reminder: Rent for "${rent.propertyName}" (${sym}${rent.monthlyAmount.toLocaleString()}) is due tomorrow.`;
+          return `Monthly rent for "${rent.propertyName}" (${sym}${rent.monthlyAmount.toLocaleString()}) is due today.`;
         },
+        data: { path: 'Rent' },
+        hour: 9,
+        minute: 0,
       });
     }
 
     // ==========================================
-    // 6. PAYDAY NOTIFICATIONS (Recurring Incomes)
+    // 5. INSTALLMENTS (3, 2, 1 Days Before & Day of Deadline)
     // ==========================================
-    for (const rec of recursions) {
-      if (rec.frequency === 'monthly' && rec.dayOfMonth) {
-        let payday = new Date();
-        payday.setDate(rec.dayOfMonth);
-        payday.setHours(8, 0, 0, 0);
+    for (const item of installments) {
+      const instDeadline = getInstallmentNextDeadline(item, today);
+      if (!instDeadline) continue;
 
-        if (payday.getTime() <= now) {
-          if (todayDateNumber === rec.dayOfMonth) {
-            payday = new Date(now + 60 * 1000);
-          } else {
-            payday.setMonth(payday.getMonth() + 1);
-          }
-        }
+      const sym = item.currency === 'USD' ? '$' : '₱';
+      await scheduleMilestoneNotifications({
+        deadline: instDeadline,
+        milestones: [3, 2, 1, 0],
+        getTitle: (daysBefore) => {
+          if (daysBefore === 3) return "Installment Due in 3 Days";
+          if (daysBefore === 2) return "Installment Due in 2 Days";
+          if (daysBefore === 1) return "Installment Due Tomorrow";
+          return "Installment Payment Due Today";
+        },
+        getBody: (daysBefore) => {
+          if (daysBefore === 3) return `Payment for "${item.productName}" (${sym}${item.monthlyAmount.toLocaleString()}) is due in 3 days.`;
+          if (daysBefore === 2) return `Payment for "${item.productName}" (${sym}${item.monthlyAmount.toLocaleString()}) is due in 2 days.`;
+          if (daysBefore === 1) return `Reminder: Installment for "${item.productName}" (${sym}${item.monthlyAmount.toLocaleString()}) is due tomorrow.`;
+          return `Payment for "${item.productName}" (${sym}${item.monthlyAmount.toLocaleString()}) is due today.`;
+        },
+        data: { path: 'Installment' },
+        hour: 9,
+        minute: 0,
+      });
+    }
 
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "Payday Alert",
-            body: `Payday from ${rec.companyName}: Expecting ₱${rec.amount.toLocaleString()} today.`,
-            data: { path: 'Recursion' },
-            sound: true,
+    // ==========================================
+    // 6. GROCERY LISTS (3, 2, 1 Days Before & Grocery Day)
+    // ==========================================
+    for (const list of groceryLists) {
+      if (!list.scheduledDays || list.scheduledDays.length === 0) continue;
+
+      for (const dayIndex of list.scheduledDays) {
+        const nextOccurrence = getGroceryNextOccurrence(dayIndex, today);
+
+        await scheduleMilestoneNotifications({
+          deadline: nextOccurrence,
+          milestones: [3, 2, 1, 0],
+          getTitle: (daysBefore) => {
+            if (daysBefore === 3) return "Grocery Scheduled in 3 Days";
+            if (daysBefore === 2) return "Grocery Scheduled in 2 Days";
+            if (daysBefore === 1) return "Grocery Scheduled Tomorrow";
+            return "Grocery Day";
           },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: payday,
+          getBody: (daysBefore) => {
+            if (daysBefore === 3) return `Upcoming grocery shopping in 3 days for: ${list.title}`;
+            if (daysBefore === 2) return `Upcoming grocery shopping in 2 days for: ${list.title}`;
+            if (daysBefore === 1) return `Reminder: Grocery shopping for "${list.title}" is scheduled for tomorrow.`;
+            return `Scheduled grocery shopping today for: ${list.title}`;
           },
+          data: { path: 'GroceryDetail', listId: list.id },
+          hour: 8,
+          minute: 30,
         });
-      } else if (rec.frequency === 'weekly' && rec.dayOfWeek !== undefined) {
-        const expoWeekday = rec.dayOfWeek + 1;
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "Weekly Payday Alert",
-            body: `Payday from ${rec.companyName}: ₱${rec.amount.toLocaleString()} scheduled today.`,
-            data: { path: 'Recursion' },
-            sound: true,
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-            weekday: expoWeekday,
+
+        // If today is the grocery day, also pre-schedule next week's occurrence milestones
+        if (nextOccurrence.getTime() === today.getTime()) {
+          const nextWeekDate = new Date(nextOccurrence);
+          nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+          await scheduleMilestoneNotifications({
+            deadline: nextWeekDate,
+            milestones: [3, 2, 1, 0],
+            getTitle: (daysBefore) => {
+              if (daysBefore === 3) return "Grocery Scheduled in 3 Days";
+              if (daysBefore === 2) return "Grocery Scheduled in 2 Days";
+              if (daysBefore === 1) return "Grocery Scheduled Tomorrow";
+              return "Grocery Day";
+            },
+            getBody: (daysBefore) => {
+              if (daysBefore === 3) return `Upcoming grocery shopping in 3 days for: ${list.title}`;
+              if (daysBefore === 2) return `Upcoming grocery shopping in 2 days for: ${list.title}`;
+              if (daysBefore === 1) return `Reminder: Grocery shopping for "${list.title}" is scheduled for tomorrow.`;
+              return `Scheduled grocery shopping today for: ${list.title}`;
+            },
+            data: { path: 'GroceryDetail', listId: list.id },
             hour: 8,
-            minute: 0,
-          },
-        });
-      } else if (rec.frequency === 'bi-monthly') {
-        // 15th & Last day of month
-        const isToday15 = todayDateNumber === 15;
-        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-        const isTodayLast = todayDateNumber === lastDayOfMonth;
-
-        if (isToday15 || isTodayLast) {
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: "Payday Alert",
-              body: `Payday from ${rec.companyName}: Expecting ₱${rec.amount.toLocaleString()} today.`,
-              data: { path: 'Recursion' },
-              sound: true,
-            },
-            trigger: {
-              type: Notifications.SchedulableTriggerInputTypes.DATE,
-              date: new Date(now + 60 * 1000),
-            },
+            minute: 30,
           });
         }
       }
     }
 
     // ==========================================
-    // 7. DEBTS (Due Date Reminder)
+    // 7. RECURSION (Paydays - 3, 2, 1 Days Before & Payday)
+    // ==========================================
+    for (const rec of recursions) {
+      const paydayDeadline = getRecursionNextDeadline(rec, today);
+      if (!paydayDeadline) continue;
+
+      await scheduleMilestoneNotifications({
+        deadline: paydayDeadline,
+        milestones: [3, 2, 1, 0],
+        getTitle: (daysBefore) => {
+          if (daysBefore === 3) return "Payday in 3 Days";
+          if (daysBefore === 2) return "Payday in 2 Days";
+          if (daysBefore === 1) return "Payday Tomorrow";
+          return "Payday Alert";
+        },
+        getBody: (daysBefore) => {
+          if (daysBefore === 3) return `Upcoming payday from ${rec.companyName}: Expecting ₱${rec.amount.toLocaleString()} in 3 days.`;
+          if (daysBefore === 2) return `Upcoming payday from ${rec.companyName}: Expecting ₱${rec.amount.toLocaleString()} in 2 days.`;
+          if (daysBefore === 1) return `Reminder: Payday from ${rec.companyName} (₱${rec.amount.toLocaleString()}) is tomorrow!`;
+          return `Payday from ${rec.companyName}: Expecting ₱${rec.amount.toLocaleString()} today.`;
+        },
+        data: { path: 'Recursion' },
+        hour: 8,
+        minute: 0,
+      });
+
+      // If payday is today, also pre-schedule the next occurrence milestones
+      if (paydayDeadline.getTime() === today.getTime()) {
+        const followingBase = new Date(today);
+        followingBase.setDate(followingBase.getDate() + 1);
+        const nextPayday = getRecursionNextDeadline(rec, followingBase);
+        if (nextPayday) {
+          await scheduleMilestoneNotifications({
+            deadline: nextPayday,
+            milestones: [3, 2, 1, 0],
+            getTitle: (daysBefore) => {
+              if (daysBefore === 3) return "Payday in 3 Days";
+              if (daysBefore === 2) return "Payday in 2 Days";
+              if (daysBefore === 1) return "Payday Tomorrow";
+              return "Payday Alert";
+            },
+            getBody: (daysBefore) => {
+              if (daysBefore === 3) return `Upcoming payday from ${rec.companyName}: Expecting ₱${rec.amount.toLocaleString()} in 3 days.`;
+              if (daysBefore === 2) return `Upcoming payday from ${rec.companyName}: Expecting ₱${rec.amount.toLocaleString()} in 2 days.`;
+              if (daysBefore === 1) return `Reminder: Payday from ${rec.companyName} (₱${rec.amount.toLocaleString()}) is tomorrow!`;
+              return `Payday from ${rec.companyName}: Expecting ₱${rec.amount.toLocaleString()} today.`;
+            },
+            data: { path: 'Recursion' },
+            hour: 8,
+            minute: 0,
+          });
+        }
+      }
+    }
+
+    // ==========================================
+    // 8. MONEY SPLIT PLANS (3, 2, 1 Days Before & Day of Distribution)
+    // ==========================================
+    for (const plan of splits) {
+      const splitDeadline = getSplitNextDeadline(plan, today);
+      if (!splitDeadline) continue;
+
+      const sym = plan.currency === 'USD' ? '$' : '₱';
+      await scheduleMilestoneNotifications({
+        deadline: splitDeadline,
+        milestones: [3, 2, 1, 0],
+        getTitle: (daysBefore) => {
+          if (daysBefore === 3) return "Money Split in 3 Days";
+          if (daysBefore === 2) return "Money Split in 2 Days";
+          if (daysBefore === 1) return "Money Split Tomorrow";
+          return "Money Split Due Today";
+        },
+        getBody: (daysBefore) => {
+          if (daysBefore === 3) return `Money Split "${plan.title}" (${sym}${plan.totalAmount.toLocaleString()}) is scheduled in 3 days.`;
+          if (daysBefore === 2) return `Money Split "${plan.title}" (${sym}${plan.totalAmount.toLocaleString()}) is scheduled in 2 days.`;
+          if (daysBefore === 1) return `Reminder: Money Split "${plan.title}" (${sym}${plan.totalAmount.toLocaleString()}) is scheduled for tomorrow.`;
+          return `Money Split "${plan.title}" (${sym}${plan.totalAmount.toLocaleString()}) is scheduled for distribution today.`;
+        },
+        data: { path: 'Split', planId: plan.id },
+        hour: 9,
+        minute: 0,
+      });
+    }
+
+    // ==========================================
+    // 9. DEBTS (3, 2, 1 Days Before & Due Date)
     // ==========================================
     for (const debt of debts) {
       if (!debt.dueDate) continue;
-      
-      let dueDate = new Date(debt.dueDate);
-      dueDate.setHours(9, 0, 0, 0); // 9:00 AM
-      
-      if (dueDate.getTime() <= now) {
-        if (debt.dueDate === todayStr) {
-          dueDate = new Date(now + 60 * 1000);
-        } else {
-          continue;
-        }
-      }
-      
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Debt Payment Reminder",
-          body: `Reminder to pay ${debt.personName}: ₱${debt.amount.toLocaleString()} for ${debt.taskName}.`,
-          data: { path: 'Debts' },
-          sound: true,
+
+      const parts = debt.dueDate.split('-');
+      const debtDueDate = parts.length === 3
+        ? new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10))
+        : new Date(debt.dueDate);
+      debtDueDate.setHours(0, 0, 0, 0);
+
+      await scheduleMilestoneNotifications({
+        deadline: debtDueDate,
+        milestones: [3, 2, 1, 0],
+        getTitle: (daysBefore) => {
+          if (daysBefore === 3) return "Debt Due in 3 Days";
+          if (daysBefore === 2) return "Debt Due in 2 Days";
+          if (daysBefore === 1) return "Debt Due Tomorrow";
+          return "Debt Payment Due Today";
         },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: dueDate,
+        getBody: (daysBefore) => {
+          if (daysBefore === 3) return `Reminder: Debt payment to ${debt.personName} (₱${debt.amount.toLocaleString()}) is due in 3 days.`;
+          if (daysBefore === 2) return `Reminder: Debt payment to ${debt.personName} (₱${debt.amount.toLocaleString()}) is due in 2 days.`;
+          if (daysBefore === 1) return `Reminder: Debt payment to ${debt.personName} (₱${debt.amount.toLocaleString()}) is due tomorrow.`;
+          return `Reminder to pay ${debt.personName}: ₱${debt.amount.toLocaleString()} for ${debt.taskName}.`;
         },
+        data: { path: 'Debts' },
+        hour: 9,
+        minute: 0,
       });
-    }
-    
-    // ==========================================
-    // 8. GROCERY LISTS (Weekly / Day Schedule)
-    // ==========================================
-    const todayIndex = new Date().getDay();
-    for (const list of groceryLists) {
-      if (!list.scheduledDays || list.scheduledDays.length === 0) continue;
-      
-      for (const dayIndex of list.scheduledDays) {
-        const expoWeekday = dayIndex + 1; 
-
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "Grocery Day",
-            body: `Scheduled grocery shopping for: ${list.title}`,
-            data: { path: 'GroceryDetail', listId: list.id },
-            sound: true,
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-            weekday: expoWeekday,
-            hour: 8,
-            minute: 30,
-          },
-        });
-
-        if (dayIndex === todayIndex) {
-          const checkTime = new Date();
-          checkTime.setHours(8, 30, 0, 0);
-          if (now >= checkTime.getTime()) {
-            await Notifications.scheduleNotificationAsync({
-              content: {
-                title: "Grocery Day Reminder",
-                body: `Don't forget your grocery items for: ${list.title}`,
-                data: { path: 'GroceryDetail', listId: list.id },
-                sound: true,
-              },
-              trigger: {
-                type: Notifications.SchedulableTriggerInputTypes.DATE,
-                date: new Date(now + 60 * 1000),
-              },
-            });
-          }
-        }
-      }
     }
   } catch (error) {
     console.log('Skipping notification sync (environment not supported):', error);
   }
 };
+
 
 export const notifyGoalCompletion = async (goalTitle: string) => {
   try {

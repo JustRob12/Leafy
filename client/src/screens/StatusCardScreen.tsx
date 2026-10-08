@@ -150,16 +150,22 @@ export default function StatusCardScreen() {
   const handleSave = async () => {
     if (!viewShotRef.current) return;
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        showFeedback('error', 'Permission needed to save to gallery');
-        return;
-      }
+      try {
+        await MediaLibrary.requestPermissionsAsync(true, ['photo']);
+      } catch (_) {}
       const uri = await captureRef(viewShotRef, { format: 'png', quality: 1 });
       await MediaLibrary.saveToLibraryAsync(uri);
       showFeedback('success', 'Saved to Gallery');
     } catch (e) {
       console.error(e);
+      // Fallback: offer sharing if direct save fails
+      try {
+        const uri = await captureRef(viewShotRef, { format: 'png', quality: 1 });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri);
+          return;
+        }
+      } catch (_) {}
       showFeedback('error', 'Failed to save image');
     }
   };

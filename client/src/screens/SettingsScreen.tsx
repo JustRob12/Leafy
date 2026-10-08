@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Animated, Easing, TextInput, Vibration, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Animated, Easing, TextInput, Vibration, Linking, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { theme } from '../theme';
@@ -38,6 +38,7 @@ export default function SettingsScreen() {
   const [widgetModalVisible, setWidgetModalVisible] = React.useState(false);
   const [widgetConfig, setWidgetConfig] = React.useState<WidgetConfig>(DEFAULT_WIDGET_CONFIG);
   const [isApplyingWidget, setIsApplyingWidget] = React.useState(false);
+  const [previewCardIndex, setPreviewCardIndex] = React.useState(0);
   const [pinSetupVisible, setPinSetupVisible] = React.useState(false);
   const [editName, setEditName] = React.useState(username || '');
   const [newPin, setNewPin] = React.useState('');
@@ -782,8 +783,8 @@ export default function SettingsScreen() {
               style={{ padding: 16, fontFamily: theme.fonts.medium, fontSize: 16, color: colors.text }}
               value={editName}
               onChangeText={setEditName}
-              maxLength={12}
-              placeholder="Your Name"
+              maxLength={16}
+              placeholder="Your Name (up to 16 characters)"
               placeholderTextColor={colors.textMuted}
             />
           </View>
@@ -1011,7 +1012,7 @@ export default function SettingsScreen() {
                 <View style={styles.widgetPreviewBadge}>
                   <Sparkles size={12} color="#10b981" />
                   <Text style={styles.widgetPreviewBadgeText}>
-                    LIVE PREVIEW • TOTAL BALANCE & EXPENSE
+                    LIVE PREVIEW • TOTAL BALANCE & EXPENSES
                   </Text>
                 </View>
 
@@ -1073,16 +1074,16 @@ export default function SettingsScreen() {
                           flexDirection: 'row',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          paddingHorizontal: 10,
-                          paddingVertical: 6,
+                          paddingHorizontal: 12,
+                          paddingVertical: 7,
                           marginTop: 4,
                         },
                       ]}
                     >
-                      <Text style={[styles.widgetQuoteText, { color: subTextColor, fontSize: 10.5, fontStyle: 'normal', fontWeight: '600' }]}>
+                      <Text style={[styles.widgetQuoteText, { color: subTextColor, fontSize: 11, fontStyle: 'normal', fontWeight: '600' }]}>
                         Total Expense
                       </Text>
-                      <Text style={[styles.widgetQuoteText, { color: '#ffffff', fontSize: 11.5, fontStyle: 'normal', fontWeight: 'bold' }]}>
+                      <Text style={[styles.widgetQuoteText, { color: '#ffffff', fontSize: 12, fontStyle: 'normal', fontWeight: 'bold' }]}>
                         {widgetConfig.hideBalance ? `${curr} ••••••` : `${curr} ${totalExpense.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       </Text>
                     </View>
@@ -1103,7 +1104,7 @@ export default function SettingsScreen() {
               const success = await saveWidgetConfig(widgetConfig);
               const expenseTransactions = (transactions || []).filter(t => t.type === 'withdrawal');
               const totalExpense = expenseTransactions.reduce((acc, t) => acc + (t.currency === 'USD' ? t.amount * (usdToPhpRate || 58.5) : t.amount), 0);
-              await syncWidgetBalance(totalBalance, wallets.length, widgetConfig, totalExpense, expenseTransactions.length);
+              await syncWidgetBalance(totalBalance, wallets.length, widgetConfig, totalExpense, expenseTransactions.length, wallets, username || undefined);
               setIsApplyingWidget(false);
               if (success) {
                 showFeedback('success', 'Widget Settings Applied & Synced!');
@@ -1271,13 +1272,13 @@ export default function SettingsScreen() {
                 const success = await requestPinTotalBalanceWidget();
                 if (success) {
                   Alert.alert(
-                    "Widget Pin Requested",
-                    "Please check your phone's home screen or approve the launcher prompt to place the widget."
+                    "Balance Widget Pin Requested",
+                    "Please check your phone's home screen or approve the launcher prompt to place the Total Balance widget."
                   );
                 } else {
                   Alert.alert(
-                    "Add Widget Manually",
-                    "To place this widget on your home screen:\n\n1. Go to your phone's Home Screen.\n2. Touch and hold any empty area.\n3. Tap 'Widgets' and select 'Leon'.\n4. Choose 'Total Balance (Horizontal)' and place it on your screen."
+                    "Add Balance Widget Manually",
+                    "To place this widget on your home screen:\n\n1. Go to your phone's Home Screen.\n2. Touch and hold any empty area.\n3. Tap 'Widgets' and select 'Leon'.\n4. Choose 'Total Balance & Expenses' and place it on your screen."
                   );
                 }
               }}
@@ -1294,11 +1295,11 @@ export default function SettingsScreen() {
               onPress={async () => {
                 const expenseTransactions = (transactions || []).filter(t => t.type === 'withdrawal');
                 const totalExpense = expenseTransactions.reduce((acc, t) => acc + (t.currency === 'USD' ? t.amount * (usdToPhpRate || 58.5) : t.amount), 0);
-                await syncWidgetBalance(totalBalance, wallets.length, widgetConfig, totalExpense, expenseTransactions.length);
+                await syncWidgetBalance(totalBalance, wallets.length, widgetConfig, totalExpense, expenseTransactions.length, wallets, username || undefined);
                 showFeedback('success', 'Home Widget Synchronized');
                 Alert.alert(
                   "Widget Synchronized",
-                  `Updated home screen widget (Total Balance: ${widgetConfig.currencySymbol || '₱'} ${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, Total Expense: ${widgetConfig.currencySymbol || '₱'} ${totalExpense.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).`
+                  `Updated home screen widget (Total Balance: ${widgetConfig.currencySymbol || '₱'} ${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, Active Wallets: ${wallets.length}).`
                 );
               }}
             >
@@ -1314,9 +1315,9 @@ export default function SettingsScreen() {
               <Text style={styles.infoDescription}>
                 1. Go to your phone's Home Screen.{"\n"}
                 2. Touch and hold any empty area.{"\n"}
-                3. Tap <Text style={{ fontWeight: 'bold' }}>Widgets</Text> and scroll or search for <Text style={{ fontWeight: 'bold' }}>Leon</Text>.{"\n"}
-                4. Select <Text style={{ fontWeight: 'bold' }}>Total Balance (Horizontal)</Text> and drag it to your screen.{"\n"}
-                5. Long-press the widget on your screen and drag its side handles to expand it horizontally as big as you like!
+                3. Tap <Text style={{ fontWeight: 'bold' }}>Widgets</Text> and search for <Text style={{ fontWeight: 'bold' }}>Leon</Text>.{"\n"}
+                4. Select <Text style={{ fontWeight: 'bold' }}>Total Balance & Expenses</Text> and place it on your screen.{"\n"}
+                5. Long-press the widget on your screen and drag its handles to expand it horizontally or vertically!
               </Text>
             </View>
           </View>

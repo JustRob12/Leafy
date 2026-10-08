@@ -646,7 +646,6 @@ export default function AddSplitScreen() {
             ) : (
               splits.map((item, index) => {
                 const destWallet = wallets.find(w => w.id === item.walletId);
-                const destBal = destWallet ? getWalletTotalBalanceInPhp(destWallet, usdToPhpRate) : 0;
 
                 return (
                   <View key={item.id} style={styles.splitItemCard}>
@@ -687,10 +686,7 @@ export default function AddSplitScreen() {
                         </View>
                       </View>
                       <View style={styles.destWalletTriggerRight}>
-                        {destWallet ? (
-                          <Text style={styles.destWalletBal}>₱{Math.floor(destBal).toLocaleString()}</Text>
-                        ) : null}
-                        <ChevronsUpDown size={14} color={colors.textMuted} strokeWidth={2.2} style={{ marginLeft: 6 }} />
+                        <ChevronsUpDown size={14} color={colors.textMuted} strokeWidth={2.2} />
                       </View>
                     </TouchableOpacity>
 
@@ -851,6 +847,7 @@ export default function AddSplitScreen() {
         onClose={() => setActiveModalSplitId(null)}
         wallets={availableDestWallets.length > 0 ? availableDestWallets : wallets}
         selectedWalletId={activeSplitItem?.walletId || null}
+        showBalance={false}
         onSelectWallet={(selectedId) => {
           if (activeModalSplitId) {
             handleUpdateSplitItem(activeModalSplitId, { walletId: selectedId });

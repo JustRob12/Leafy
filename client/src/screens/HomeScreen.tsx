@@ -18,6 +18,13 @@ import * as LucideIcons from 'lucide-react-native';
 import WalletBrandLogo from '../components/WalletBrandLogo';
 import { resolveSubscriptionLogo } from '../services/SubscriptionCatalogService';
 import { rf, useResponsive } from '../utils/responsive';
+import { 
+  getSubscriptionNextDeadline, 
+  sortSubscriptionsByClosestDeadline, 
+  sortInstallmentsByClosestDate, 
+  sortRentsByClosestDate 
+} from '../utils/paymentSchedule';
+import WalletQrStack from '../components/WalletQrStack';
 
 const SUBS_ICONS: { [key: string]: any } = {
   'capcut.png': require('../../public/subs/capcut.png'),
@@ -187,21 +194,7 @@ export default function HomeScreen() {
   };
 
   const topSubscriptions = useMemo(() => {
-    const getRemaining = (day: number) => {
-      const today = new Date();
-      const currentYear = today.getFullYear();
-      const currentMonth = today.getMonth();
-      let targetDate = new Date(currentYear, currentMonth, day);
-      if (targetDate < today) {
-        targetDate = new Date(currentYear, currentMonth + 1, day);
-      }
-      const diffTime = targetDate.getTime() - today.getTime();
-      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    };
-
-    return [...subscriptions]
-      .sort((a, b) => getRemaining(a.dayOfMonth) - getRemaining(b.dayOfMonth))
-      .slice(0, 3);
+    return sortSubscriptionsByClosestDeadline(subscriptions).slice(0, 3);
   }, [subscriptions]);
 
   const paydayInfo = useMemo(() => {
@@ -486,30 +479,31 @@ export default function HomeScreen() {
   const pendingGroceries = groceryLists.filter(list => list.scheduledDays && list.scheduledDays.includes(todayIndex)).length;
 
   // Subscription due soon count (due within 3 days or today, excluding already paid for current cycle)
-  const pendingSubscriptions = subscriptions.filter(sub => {
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth();
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const currentCycleKey = `${monthNames[currentMonth]} ${currentYear}`;
-    const isPaidThisMonth = (sub.paymentHistory || []).some(h => h.cycleKey === currentCycleKey);
-    if (isPaidThisMonth) return false;
+  const pendingSubscriptions = useMemo(() => {
+    return (subscriptions || []).filter(sub => {
+      const deadline = getSubscriptionNextDeadline(sub, today);
+      return !deadline.isCurrentMonthPaid && (deadline.isOverdue || deadline.isDueSoon);
+    }).length;
+  }, [subscriptions, today]);
 
-    let targetDate = new Date(currentYear, currentMonth, sub.dayOfMonth);
-    if (targetDate < today) {
-      targetDate = new Date(currentYear, currentMonth + 1, sub.dayOfMonth);
-    }
-    const diffTime = targetDate.getTime() - today.getTime();
-    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return daysRemaining <= 3;
-  }).length;
+  // Active installments sorted by closest due date first
+  const activeInstallmentsList = useMemo(() => {
+    const list = (installments || []).filter(i => i.paidMonths < i.monthsToPay);
+    return sortInstallmentsByClosestDate(list);
+  }, [installments]);
 
-  // Active installments due today or overdue
-  const activeInstallmentsList = (installments || []).filter(i => i.paidMonths < i.monthsToPay);
-  const dueInstallmentsCount = activeInstallmentsList.filter(item => isDueTodayOrOverdue(item.dueDate)).length;
+  const dueInstallmentsCount = useMemo(() => {
+    return activeInstallmentsList.filter(item => isDueTodayOrOverdue(item.dueDate)).length;
+  }, [activeInstallmentsList]);
 
-  // Rents due today or overdue
-  const activeRentsList = (rents || []);
-  const dueRentsCount = activeRentsList.filter(item => isDueTodayOrOverdue(item.dueDate)).length;
+  // Rents sorted by closest due date first
+  const activeRentsList = useMemo(() => {
+    return sortRentsByClosestDate(rents || []);
+  }, [rents]);
+
+  const dueRentsCount = useMemo(() => {
+    return activeRentsList.filter(item => isDueTodayOrOverdue(item.dueDate)).length;
+  }, [activeRentsList]);
 
   // Total badge for "More" container button = sum of all badges inside More modal
   const totalMoreBadge = pendingDebts + pendingGroceries + pendingSubscriptions + dueInstallmentsCount + dueRentsCount;
@@ -1080,8 +1074,8 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-
-
+        {/* QUICK PAY QR WALLET CARDS STACK */}
+        <WalletQrStack />
 
         {/* MONEY SPLIT */}
         <View style={styles.sectionHeader}>
@@ -1197,7 +1191,7 @@ export default function HomeScreen() {
                             <View key={sp.id} style={styles.homeSplitDestPill}>
                               <View style={[styles.destPillDot, { backgroundColor: sliceColors[idx % sliceColors.length] }]} />
                               <Text style={styles.homeSplitDestPillText} numberOfLines={1}>
-                                {dw?.name || 'Account'}: {sym}{sp.amount.toLocaleString()}
+                                {dw?.name || 'Account'}
                               </Text>
                             </View>
                           );
@@ -1393,54 +1387,54 @@ export default function HomeScreen() {
             </View>
             <View style={{ gap: 12 }}>
               {topSubscriptions.map((sub) => {
-                const today = new Date();
-                const currentYear = today.getFullYear();
-                const currentMonth = today.getMonth();
-                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                const currentCycleKey = `${monthNames[currentMonth]} ${currentYear}`;
+                const deadline = getSubscriptionNextDeadline(sub, today);
+                const {
+                  formattedDueDate,
+                  isCurrentMonthPaid,
+                  isOverdue,
+                  isDueSoon,
+                  daysRemaining,
+                } = deadline;
+                const isHighlightDue = !isCurrentMonthPaid && (isOverdue || isDueSoon);
+
                 const sortedHistory = [...(sub.paymentHistory || [])].sort(
                   (a: any, b: any) => new Date(b.paidDate).getTime() - new Date(a.paidDate).getTime()
                 );
                 const latestPayment = sortedHistory[0];
-                const isPaidThisMonth = (sub.paymentHistory || []).some(h => h.cycleKey === currentCycleKey);
-
-                let targetDate = new Date(currentYear, currentMonth, sub.dayOfMonth);
-                if (targetDate < today) {
-                  targetDate = new Date(currentYear, currentMonth + 1, sub.dayOfMonth);
-                }
-                const diffTime = targetDate.getTime() - today.getTime();
-                const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                const isDueSoon = !isPaidThisMonth && daysRemaining <= 3;
                 const logo = resolveSubscriptionLogo(sub.title, sub.icon);
 
                 return (
                   <TouchableOpacity
                     key={sub.id}
-                    style={[styles.homeSubCard, isDueSoon && styles.homeSubCardDueSoon]}
+                    style={[styles.homeSubCard, isHighlightDue && styles.homeSubCardDueSoon]}
                     onPress={() => navigation.navigate('Subscription')}
                   >
-                    <View style={[styles.homeSubIconWrapper, isDueSoon && styles.homeSubIconWrapperDueSoon, logo && { backgroundColor: 'transparent', borderWidth: 0 }]}>
+                    <View style={[styles.homeSubIconWrapper, isHighlightDue && styles.homeSubIconWrapperDueSoon, logo && { backgroundColor: 'transparent', borderWidth: 0 }]}>
                       {logo && SUBS_ICONS[logo] ? (
                         <Image source={SUBS_ICONS[logo]} style={styles.homeSubIcon} />
                       ) : logo && (logo.startsWith('http://') || logo.startsWith('https://')) ? (
                         <Image source={{ uri: logo }} style={styles.homeSubIcon} />
                       ) : (
-                        <CreditCard size={18} color={isDueSoon ? '#ffffff' : colors.primary} />
+                        <CreditCard size={18} color={isHighlightDue ? '#ffffff' : colors.primary} />
                       )}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.homeSubTitle, isDueSoon && styles.homeSubTitleDueSoon]} numberOfLines={1}>{sub.title}</Text>
-                      {isPaidThisMonth && latestPayment ? (
+                      <Text style={[styles.homeSubTitle, isHighlightDue && styles.homeSubTitleDueSoon]} numberOfLines={1}>{sub.title}</Text>
+                      {isCurrentMonthPaid ? (
                         <Text style={[styles.homeSubDays, { color: '#10b981', fontFamily: theme.fonts.bold }]}>
-                          ✓ Paid on {new Date(latestPayment.paidDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
+                          ✓ Paid • Next: {formattedDueDate}
+                        </Text>
+                      ) : isOverdue ? (
+                        <Text style={[styles.homeSubDays, styles.homeSubDaysDueSoon]}>
+                          {daysRemaining === 0 ? 'Due Today' : `${Math.abs(daysRemaining)}d overdue`}
                         </Text>
                       ) : (
                         <Text style={[styles.homeSubDays, isDueSoon && styles.homeSubDaysDueSoon]}>
-                          {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
+                          {daysRemaining === 0 ? 'Due Today' : `${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'} left`}
                         </Text>
                       )}
                     </View>
-                    <Text style={[styles.homeSubAmount, isDueSoon && styles.homeSubAmountDueSoon]}>
+                    <Text style={[styles.homeSubAmount, isHighlightDue && styles.homeSubAmountDueSoon]}>
                       {isBalanceHidden ? "₱ ******" : `₱${sub.amount.toLocaleString()}`}
                     </Text>
                   </TouchableOpacity>
@@ -2604,7 +2598,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.medium,
     fontSize: rf(10.5),
     color: colors.text,
-    maxWidth: 120,
+    maxWidth: 135,
   },
   homeSplitMoreDestText: {
     fontFamily: theme.fonts.semiBold,

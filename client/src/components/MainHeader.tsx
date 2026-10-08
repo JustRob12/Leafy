@@ -26,7 +26,16 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
   const [streakModalVisible, setStreakModalVisible] = useState(false);
   const [notificationModalVisible, setNotificationModalVisible] = useState(false);
 
-  const { notifications, statusMessage, fullDate, markAllAsRead } = useHeaderAlerts();
+  const { notifications, statusMessage, fullDate, currentDate, markAllAsRead } = useHeaderAlerts();
+
+  const dateInfo = useMemo(() => {
+    const d = currentDate || new Date();
+    const weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
+    const month = d.toLocaleDateString('en-US', { month: 'short' });
+    const day = d.getDate();
+    const year = d.getFullYear();
+    return { weekday, month, day, year };
+  }, [currentDate]);
 
   const activeRoute = propActiveRoute || internalActiveRoute;
 
@@ -150,12 +159,30 @@ export default function MainHeader({ activeRoute: propActiveRoute }: MainHeaderP
           </View>
         </View>
 
-        {/* Second Row: Greeting and Calendar Date */}
+        {/* Second Row: Greeting (Left) and Date Badge (Right, below profile) */}
         <View style={styles.bottomRow}>
           <View style={styles.greetingWrapper}>
             <Text style={styles.welcomeLabel} numberOfLines={1} adjustsFontSizeToFit>Welcome to Leon</Text>
             <Text style={styles.greetingSmall} numberOfLines={1} adjustsFontSizeToFit>{username || 'User'}</Text>
-            <Text style={styles.timeText} numberOfLines={1}>{fullDate}</Text>
+          </View>
+          <View style={styles.dateWrapper}>
+            <TouchableOpacity 
+              style={styles.dateBadge}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('Calendar')}
+            >
+              <View style={styles.dateIconBubble}>
+                <Calendar size={13} color={colors.primary} strokeWidth={2.2} />
+              </View>
+              <View style={styles.dateTextGroup}>
+                <Text style={styles.dateWeekdayLabel} numberOfLines={1}>
+                  {dateInfo.weekday.toUpperCase()}
+                </Text>
+                <Text style={styles.dateValueText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                  {dateInfo.month} {dateInfo.day} <Text style={styles.dateDot}>•</Text> {dateInfo.year}
+                </Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -237,58 +264,67 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     alignItems: 'center',
   },
   bottomRow: {
-    marginTop: 0,
+    marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-  },
-  calendarDateBox: {
-    width: 44,
-    height: 48,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  calendarMonthBox: {
-    width: '100%',
-    backgroundColor: colors.primary,
-    paddingVertical: 2,
-    alignItems: 'center',
-  },
-  calendarMonthText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 9,
-    color: '#ffffff',
-  },
-  calendarDayBox: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  calendarDayText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 18,
-    color: colors.text,
-    marginTop: -2,
+    justifyContent: 'space-between',
+    gap: 12,
   },
   greetingWrapper: {
     flex: 1,
     justifyContent: 'center',
+    minWidth: 0,
   },
-  timeText: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 10,
-    color: colors.textMuted,
-    marginTop: 1,
+  dateWrapper: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    flexShrink: 0,
+    maxWidth: '58%',
+  },
+  dateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+  },
+  dateIconBubble: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: colors.primary + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.primary + '28',
+  },
+  dateTextGroup: {
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  dateWeekdayLabel: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(8.5),
+    color: colors.primary,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    lineHeight: rf(11),
+  },
+  dateValueText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(11.5),
+    color: colors.text,
+    letterSpacing: -0.2,
+    lineHeight: rf(15),
+  },
+  dateDot: {
+    color: colors.primary,
+    fontSize: rf(10),
+    fontWeight: '900',
   },
   welcomeLabel: {
     fontFamily: theme.fonts.semiBold,

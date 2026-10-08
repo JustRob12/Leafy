@@ -2,6 +2,306 @@
 
 This file tracks all modifications, UI/UX updates, bug fixes, and feature additions across the Leafy project. Every update is documented with exact timestamps (Date & Time), affected files, and detailed descriptions.
 
+## [2026-10-09 05:07:00 +08:00] Fixed Rent Calendar Connection & Removed Artificial Card Side Bars
+### Summary of Changes:
+1. **Removed Left Accent Border Bars on Calendar Cards (`CalendarScreen.tsx`)**:
+   - Removed `borderLeftWidth: 3.5` and `borderLeftColor` from `upcomingItemCardUnpaid`.
+   - Removed `borderLeftWidth: 4` and `borderLeftColor` from both `agendaCardUnpaid` and `agendaCardPaid`.
+   - Replaced artificial side stripe bars with clean, subtle border and background highlighting that preserves consistent card geometry and looks natural.
+2. **Fixed Rent Payment Status Calculation in Calendar (`CalendarScreen.tsx`)**:
+   - Corrected rent cycle mapping: Month 1 is the lease start month (`startDate`), Month 2 is +1 month, etc.
+   - Tied payment status directly to whether `paidCycles` covers the viewed month's cycle number (`cycleNumber <= paidCycles`).
+   - Eliminated the buggy `paidDate` timestamp check that falsely marked October as paid if any payment had been recorded during October.
+   - Eliminated the buggy `isBeforeDueMonth` assumption that incorrectly marked months as paid.
+   - Prevented phantom rent events from appearing for months prior to the tenancy start date (`monthsSinceStart < 0`).
+3. **Dedicated Rent Due Date Calculation (`AppContext.tsx`, `paymentSchedule.ts`)**:
+   - Introduced and exported `calculateRentDueDate(startDateStr, paidCycles)`:
+     - With 0 cycles paid, the first rent payment is due on `startDate` itself (not shifted into next month).
+     - With 1 cycle paid, the next rent payment is due 1 month after `startDate`.
+   - Updated `addRent`, `editRent`, `payRentMonth`, and `revertRentMonth` in `AppContext.tsx` to use `calculateRentDueDate`.
+   - Added automatic due date normalization on app startup in `AppContext.tsx` for stored rents.
+   - Updated `AddRentScreen.tsx` and `RentDetailScreen.tsx` to use the accurate rent cycle helpers.
+
+### Affected Files:
+- `client/src/screens/CalendarScreen.tsx` (Modified)
+- `client/src/context/AppContext.tsx` (Modified)
+- `client/src/utils/paymentSchedule.ts` (Modified)
+- `client/src/screens/AddRentScreen.tsx` (Modified)
+- `client/src/screens/RentDetailScreen.tsx` (Modified)
+- `CHANGELOG.md` (Modified)
+
+---
+
+## [2026-10-09 04:36:00 +08:00] Removed QR Code Widget (QuickCardsWidget)
+### Summary of Changes:
+1. **Removed Android Native Widget Configuration (`app.json`)**:
+   - Removed `QuickCardsWidget` from the Android native widgets array in `app.json`.
+   - Maintained `TotalBalanceWidget` (4x2 home screen balance & expense widget) and `TotalExpenseWidget` (2x1 compact expense widget).
+2. **Cleaned Up Widget Task Handler (`widget-task-handler.tsx`)**:
+   - Removed `QuickCardsWidget` import and background click handler logic for card cycling.
+3. **Streamlined Widget Service (`WidgetService.ts`)**:
+   - Removed `QuickCardsWidget` import and update requests from `syncWidgetBalance`.
+   - Removed `requestPinQuickCardsWidget()` helper function.
+4. **Updated Settings Screen UI (`SettingsScreen.tsx`)**:
+   - Removed the Quick Cards widget live preview and the "Add Cards Widget to Phone Screen" pinning button.
+   - Retained the live preview and launcher pinning for the Total Balance & Expenses widget.
+5. **Deleted Unused Widget Component (`QuickCardsWidget.tsx`)**:
+   - Removed `src/widgets/QuickCardsWidget.tsx` from the codebase.
+
+### Affected Files:
+- `client/app.json` (Modified)
+- `client/src/widgets/widget-task-handler.tsx` (Modified)
+- `client/src/services/WidgetService.ts` (Modified)
+- `client/src/screens/SettingsScreen.tsx` (Modified)
+- `client/src/widgets/QuickCardsWidget.tsx` (Deleted)
+- `CHANGELOG.md` (Modified)
+
+---
+
+## [2026-10-09 04:06:00 +08:00] Fixed Widget Card Layout, Typography Wrapping & Horizontal Credit Card Proportions
+### Summary of Changes:
+1. **Resolved Category Badge & Title Text Wrapping Bug (`QuickCardsWidget.tsx`)**:
+   - Fixed the issue visible in phone testing where `"E-WALLET"` wrapped into two lines (`E-WALL \n ET`) and `"Maya (PayMaya)"` was truncated as `"Maya \n (PayMa"`.
+   - Category Badge: Scaled to `fontSize: 8.5dp` with `maxLines={1}` and compact padding, preventing text wrap.
+   - Card Counter: Simplified counter to compact format (e.g., `1/3 ❯`), preventing it from pushing the category badge off-screen.
+   - Dynamic Responsive Title Sizing: Added intelligent title sizing based on name length (`>22 chars: 11.5dp`, `>12 chars: 13.5dp`, `<=12 chars: 16dp`), allowing long titles like `"Maya (PayMaya)"` to gracefully fit on two lines without truncation.
+   - Cardholder & Flip Pill: Constrained cardholder name (`maxLines={1}`) and formatted flip hint (`TAP TO FLIP`, 7.5dp), ensuring both elements stay properly aligned without overflow.
+2. **Balanced QR Code Dimensions (`QuickCardsWidget.tsx`)**:
+   - Balanced QR code container to **102x102dp** with **90x90dp** image, maintaining instant camera scannability while freeing up **24dp of extra horizontal width** for the text details on the right.
+3. **Optimized Launcher Dimensions (`app.json`)**:
+   - Configured `QuickCardsWidget` to `targetCellHeight: 2`, `targetCellWidth: 4`, `minHeight: 120dp`, and `minWidth: 280dp` so Android launchers place it as an authentic 4x2 horizontal credit card rather than a squished square.
+4. **Settings Screen Live Preview Synchronization (`SettingsScreen.tsx`)**:
+   - Updated the live preview in Settings to match the 102x102dp QR container, dynamic typography sizing, and compact header layout.
+
+### Affected Files:
+- `client/src/widgets/QuickCardsWidget.tsx` (Modified)
+- `client/src/screens/SettingsScreen.tsx` (Modified)
+- `client/app.json` (Modified)
+- `CHANGELOG.md` (Modified)
+
+---
+
+## [2026-10-09 03:35:00 +08:00] Fixed Widget QR Code Image Fetching & Enlarged to Home Page Proportions
+### Summary of Changes:
+1. **Integrated Native `ImageWidget` for Wallet QR Codes (`QuickCardsWidget.tsx`)**:
+   - Fixed the issue where the widget only showed fallback mockup finder squares instead of fetching the wallet's actual uploaded QR code.
+   - Imported `ImageWidget` from `react-native-android-widget` and wired it to render `activeWallet?.qrCodeImage` directly inside the white QR container.
+   - Normalized local filesystem paths (ensured `file://` scheme prefix) so Android's native `BitmapFactory.decodeFile` seamlessly loads images from the app's document directory.
+   - Retained the high-resolution vector QR matrix as a clean fallback when a wallet does not have an uploaded QR code.
+2. **Enlarged Widget Dimensions to Match Home Page Display (`QuickCardsWidget.tsx`, `app.json`)**:
+   - Updated `app.json` for `QuickCardsWidget` to `minHeight: "180dp"` with `targetCellHeight: 3` and `targetCellWidth: 4` (standard 4x3 Android home screen cell grid), giving it the spacious, authentic card proportions of the home page stack.
+   - Enlarged the white QR code container from 82dp to **124x124dp** with an inner image size of **108x108dp**, making the QR code crystal clear and immediately scannable right from the phone's home screen.
+   - Scaled typography and card layout:
+     - Wallet name: bold **19dp** font with `-0.4` letter spacing supporting up to 2 lines.
+     - Category badge: styled pill with 9.5dp bold text.
+     - Card counter: 10dp with prominent ` ❯` arrow.
+     - Cardholder information: 7.5dp `CARDHOLDER` label + 11.5dp bold embossed uppercase cardholder name.
+3. **Synchronized QR Filtering and Next-Card Cycling (`WidgetService.ts`, `widget-task-handler.tsx`)**:
+   - Added `getDisplayWallets()` to prioritize and cycle wallets that have QR code images (matching `WalletQrStack.tsx` on the home page) with graceful fallback to all wallets.
+   - Ensured `widget-task-handler.tsx` computes `nextCardIndex` using `displayWallets.length` so tapping anywhere on the card cycles through all available QR cards seamlessly.
+4. **Enhanced Settings Live Preview (`SettingsScreen.tsx`)**:
+   - Updated the live preview in Settings to use `getDisplayWallets` and enlarged dimensions (108x108dp QR box, 18dp title, 16dp padding) matching the updated widget layout.
+
+### Affected Files:
+- `client/src/widgets/QuickCardsWidget.tsx` (Modified)
+- `client/src/services/WidgetService.ts` (Modified)
+- `client/src/widgets/widget-task-handler.tsx` (Modified)
+- `client/src/screens/SettingsScreen.tsx` (Modified)
+- `client/app.json` (Modified)
+- `CHANGELOG.md` (Modified)
+
+---
+
+## [2026-10-09 03:08:00 +08:00] Separated into 2 Distinct Widgets: Total Balance & Quick Cards
+### Summary of Changes:
+1. **Created Dedicated Quick Cards Widget (`QuickCardsWidget.tsx`)**:
+   - Built a standalone Android widget strictly dedicated to payment cards with full card canvas proportions (minHeight 130dp, 4x2 cell grid).
+   - Features authentic ATM / Visa card aesthetic: brand gradient to crisp white, authentic 82x82dp white QR code box with high-resolution corner finder squares and data matrix clusters, category badge, card counter (`Card 1/3 ❯`), bold 16.5dp wallet name, monospaced uppercase cardholder name, and `TAP TO FLIP` pill.
+   - Interactive full-card tap-to-cycle action (`clickAction="NEXT_CARD"`) with automatic index cycling across all user wallets.
+2. **Streamlined Total Balance & Expenses Widget (`TotalBalanceWidget.tsx`)**:
+   - Refactored `TotalBalanceWidget` to focus purely on balance and expense overview (minHeight 110dp, 4x2 cell grid) without card clutter.
+   - Retained custom title, `TOTAL BALANCE`, Show/Hide privacy toggle button (`clickAction="TOGGLE_PRIVACY"`), active wallet count, and bottom total expense pill.
+3. **Registered Both Widgets in Android System (`app.json`)**:
+   - `TotalBalanceWidget`: Target 4x2 cell grid, label *"Total Balance & Expenses"*.
+   - `QuickCardsWidget`: Target 4x2 cell grid, label *"Quick Cards (Wallet Stack)"*.
+4. **Unified Widget Task Handler & Service Sync (`widget-task-handler.tsx`, `WidgetService.ts`)**:
+   - Updated background widget task handler with dedicated branches for both widgets.
+   - Added `requestPinQuickCardsWidget()` alongside `requestPinTotalBalanceWidget()`.
+   - Updated `syncWidgetBalance` to synchronously update all widgets (`TotalBalanceWidget`, `QuickCardsWidget`, and `TotalExpenseWidget`).
+5. **Enhanced Settings Previews & Pinning (`SettingsScreen.tsx`)**:
+   - Separated the in-app previews into two live displays:
+     - *Live Preview 1: Total Balance & Expenses*
+     - *Live Preview 2: Quick Cards (Tap to Cycle)*
+   - Added dedicated pin buttons: **"Add Balance Widget to Phone Screen"** and **"Add Cards Widget to Phone Screen"**.
+   - Updated onboarding instructions detailing how both widgets can be placed and used independently on Android home screens.
+
+### Affected Files:
+- `client/src/widgets/QuickCardsWidget.tsx` (Created)
+- `client/src/widgets/TotalBalanceWidget.tsx` (Modified)
+- `client/src/widgets/widget-task-handler.tsx` (Modified)
+- `client/src/services/WidgetService.ts` (Modified)
+- `client/src/screens/SettingsScreen.tsx` (Modified)
+- `client/app.json` (Modified)
+- `CHANGELOG.md` (Modified)
+
+---
+
+## [2026-10-09 02:56:00 +08:00] Extended Widget Height & Scaled Actual-Card Proportions
+### Summary of Changes:
+1. **Extended Widget Dimensions (`app.json`)**:
+   - Increased `minHeight` from `180dp` to `230dp` and `targetCellHeight` from `3` to `4` (4x4 standard cell grid), providing generous vertical space for the widget on the phone home screen without feeling oversized.
+2. **Scaled Actual-Card Proportions (`TotalBalanceWidget.tsx`)**:
+   - Transformed the bottom payment card from a thin ribbon into a well-proportioned, authentic credit-card format (~96dp height).
+   - **QR Code Container**: Scaled from 48x48dp to **72x72dp** with precision-scaled corner finder squares (21x21dp with 7x7dp inner dots), timing dots, and data matrix cluster.
+   - **Card Details & Typography**: Scaled height to **72dp** with 12dp spacing:
+     - Category badge pill: Scaled padding and bold 8.5dp typography.
+     - Card counter: Scaled font (8.5dp) with prominent arrow indicator (` ❯`).
+     - Wallet Name: Increased to bold **15dp** font (`letterSpacing: -0.3`) for high visibility.
+     - Cardholder Information: Monospaced `CARDHOLDER` label (6.5dp) + uppercase cardholder name (**9.5dp** bold).
+     - Action pill: `TAP TO FLIP` pill with 7.5dp bold text.
+3. **Settings Live Preview Alignment (`SettingsScreen.tsx`)**:
+   - Matched the in-app live preview in Settings to the new 72dp card proportions, typography, and layout.
+
+### Affected Files:
+- `client/app.json` (Modified)
+- `client/src/widgets/TotalBalanceWidget.tsx` (Modified)
+- `client/src/screens/SettingsScreen.tsx` (Modified)
+- `CHANGELOG.md` (Modified)
+
+---
+
+## [2026-10-09 02:42:00 +08:00] Fixed Calendar Grid Alignment and 7-Column Layout
+### Summary of Changes:
+1. **Resolved 6-Column Wrap & Empty Saturday Bug (`CalendarScreen.tsx`, `LeonDatePicker.tsx`)**:
+   - Fixed the calculation bug where fixed-width columns in a `flexWrap: 'wrap'` container caused rows to wrap at 6 days instead of 7 days on standard mobile viewport widths, leaving the Saturday column empty and shifting every subsequent row by 1 weekday.
+   - Refactored the month grid layout to structured **7-Day Week Rows** (`gridWeekRow`), where both the weekday headers (`dayHeader`) and the day cells (`dayCell`) utilize `flex: 1` inside row containers (`flexDirection: 'row'`).
+   - Mathematically guarantees that every week row contains exactly 7 columns that align 100% under Sunday through Saturday without subpixel wrapping bugs across any screen dimension.
+2. **Google Calendar Style Trailing & Leading Days**:
+   - Trailing days from the previous month and leading days from the next month are now rendered in subtle, elegant muted typography (`otherMonthDayText`).
+   - Tapping trailing or leading days smoothly transitions the calendar to that month and selects the respective date.
+3. **Year Boundary & Navigation Safety**:
+   - Upgraded `prevMonth()` and `nextMonth()` to compute dates and maximum days directly from Date objects, eliminating month-offset edge cases across year boundaries.
+   - Preserved all financial status badges (paid = green, unpaid = light red, overdue = red) and event dots.
+
+### Affected Files:
+- `client/src/screens/CalendarScreen.tsx` (Modified)
+- `client/src/components/LeonDatePicker.tsx` (Modified)
+- `CHANGELOG.md` (Modified)
+
+---
+
+## [2026-10-09 02:30:00 +08:00] Authentic Home Screen Card Design on Widget Matching Home Page Display
+### Summary of Changes:
+1. **Authentic Home Page ATM / Payment Card Design on Widget (`TotalBalanceWidget.tsx`)**:
+   - Replicated the authentic ATM / Visa card design from `WalletQrStack.tsx` directly inside the Android Home Screen Widget.
+   - **Gradient Background**: Smooth transition from the active wallet's brand color (`activeWallet.color` or theme preview color) fading down to pure white (`#ffffff`).
+   - **Crisp QR Code Box (Left)**: Dedicated white square box with 3 precision QR finder squares (top-left, top-right, bottom-left with inner dots) and data matrix timing tracks rendered natively via RemoteViews.
+   - **Card Details (Right)**:
+     - Top row: Category badge pill (e.g. `E-WALLET`, `BANK`, `CRYPTO`, `WALLET`) with subtle slate background and uppercase typography, plus live card indicator (`Card 1/4 ❯`).
+     - Middle row: Bold high-contrast wallet name (`#0f172a`).
+     - Bottom row: Monospaced `CARDHOLDER` label + uppercase cardholder name (`username.toUpperCase()` or `'VALUED CLIENT'`) matching the embossed ATM look, paired with a `TAP TO FLIP` action pill.
+   - **Clean Payment Card Aesthetic**: Excludes balance amounts from the card face (matching home screen `WalletQrStack` design and preserving financial confidentiality).
+   - **Tap to Cycle (`clickAction="NEXT_CARD"`)**: Tapping anywhere on the card cycles to the next card in the stack seamlessly.
+2. **Widget Synchronization with User Data (`WidgetService.ts`, `AppContext.tsx`, `widget-task-handler.tsx`)**:
+   - Added caching for `@leon_widget_username` and forwarded `username` across all background tasks and widget lifecycle events (`WIDGET_ADDED`, `WIDGET_UPDATE`, `WIDGET_RESIZED`, `TOGGLE_PRIVACY`, and `NEXT_CARD`).
+   - Connected `AppContext.tsx` (`setUsername`, data import, and live balance/wallet effect) to ensure instant synchronization of user profile name and card order to the widget.
+3. **Settings Screen Live Preview Update (`SettingsScreen.tsx`)**:
+   - Updated the in-app interactive widget live preview in Settings to reflect the authentic payment card design (gradient fade to white, white QR box with actual image preview, category badge, cardholder name, and tap-to-cycle preview).
+
+### Affected Files:
+- `client/src/widgets/TotalBalanceWidget.tsx` (Modified)
+- `client/src/services/WidgetService.ts` (Modified)
+- `client/src/widgets/widget-task-handler.tsx` (Modified)
+- `client/src/context/AppContext.tsx` (Modified)
+- `client/src/screens/SettingsScreen.tsx` (Modified)
+- `CHANGELOG.md` (Modified)
+
+---
+
+## [2026-10-09 02:20:00 +08:00] Financial Calendar Paid / Not Paid Connection with Light Red Styling
+### Summary of Changes:
+1. **Dynamic Paid / Not Paid Status Connection (`CalendarScreen.tsx`)**:
+   - **Subscriptions**: Connected to cycle tracking (`lastPaidCycle === currentCycleKey` or `paymentHistory.cycleKey === currentCycleKey`). Paid cycles show `Paid ✓` with green accents; unpaid cycles are marked as `Not Paid` (with overdue/due today contextual tags).
+   - **Installments**: Connected to installment cycle index (`k <= paidMonths`). Installment months within `paidMonths` show `Month k/N Paid ✓` (green); unpaid months (`k > paidMonths`) show `Month k/N • Not Paid` (light red).
+   - **Rent**: Connected to rent cycle tracking (`paymentHistory.cycleKey`, `paidCycles`, and `dueDate`). Fulfilled rent months show `Rent Paid ✓` (green); unfulfilled or pending rent months show `Rent Not Paid` (light red).
+2. **Light Red Visual Display on Calendar for Unpaid Obligations (`CalendarScreen.tsx`)**:
+   - **Month Grid Day Cells**: Days containing unpaid obligations display with a light red circular badge (`rgba(239, 68, 68, 0.16)` in dark mode, `#fee2e2` in light mode) and high-contrast red day numbers. Days with unpaid obligations also include a light red top-right corner indicator.
+   - **Calendar Grid Event Dots**: Event dots on the calendar grid dynamically render in light red (`#f87171` / `#ef4444`) for all unpaid items, and emerald green (`#10b981`) for paid items.
+   - **Agenda Section**: Unpaid agenda cards feature a distinct light red 4px left accent border (`#f87171`), light red category pills, and light red status chips (`rgba(239, 68, 68, 0.16)` badge with Clock icon and red text). Paid cards feature emerald green borders, badges, and `CheckCircle2` icons.
+   - **Immediate Pay Now Action**: The "Pay Now" action button on unpaid agenda items immediately executes payments, deducts the chosen wallet balance, writes the cycle payment record, and instantly flips the calendar display from light red to green.
+   - **Monthly Obligation Progress Bar**: Displays dual live metrics: `Paid: ₱X,XXX` (green) and `Not Paid: ₱X,XXX` (light red) with a reactive progress bar.
+   - **Calendar Legend**: Updated to clearly denote `Paid` (green dot) and `Not Paid` (light red dot) alongside item types.
+3. **Cycle Key Persistence on Rent & Installments (`AppContext.tsx`)**:
+   - Updated `payRentMonth` and `payInstallmentMonth` to automatically derive and attach `cycleKey` (e.g., `"May 2026"`) to each `PaymentHistoryRecord`, ensuring instant bidirectional matching across both calendar views and detail screens.
+
+### Affected Files:
+- `client/src/screens/CalendarScreen.tsx` (Modified)
+- `client/src/context/AppContext.tsx` (Modified)
+- `CHANGELOG.md` (Modified)
+
+---
+
+## [2026-10-09 02:04:00 +08:00] Expanded Home Screen Widget with Interactive Card Carousel Below Total Expense
+### Summary of Changes:
+1. **Expanded Widget Dimensions (`app.json`)**:
+   - Expanded `TotalBalanceWidget` height from `110dp` to `180dp` with `targetCellHeight: 3` (4x3 home screen grid cell size) and horizontal|vertical resizing support.
+   - Updated label to `"Total Balance & Quick Cards"` with rich description.
+2. **Interactive Quick Card at Bottom of Total Expense (`TotalBalanceWidget.tsx`)**:
+   - Added an interactive card directly underneath the Total Expense section displaying the active wallet's Category badge (`E-WALLET`, `BANK`, etc.), Card counter & cycle indicator (`Card 1/4 ❯`), Wallet Name (e.g. `GCash`, `Maya`, `BDO`), and Card Balance.
+   - Respects the privacy toggle state (`••••••` when hidden).
+   - Configured `clickAction="NEXT_CARD"` so tapping anywhere on the card cycles to the next card.
+3. **Widget Click Action & State Cycling Handler (`widget-task-handler.tsx`)**:
+   - Added `NEXT_CARD` click action handler that reads cached widget data and active card index, calculates `(activeCardIndex + 1) % wallets.length`, persists the new index via `saveWidgetActiveCardIndex`, and re-renders the widget with the next card.
+4. **Widget Service & Wallet Cache Engine (`WidgetService.ts`)**:
+   - Added `WidgetWalletItem` interface and caching for `STORAGE_KEY_WALLETS` and `STORAGE_KEY_ACTIVE_CARD_INDEX`.
+   - Updated `syncWidgetBalance` to store wallets and trigger native widget updates with active card index.
+5. **App Sync & Settings Preview (`AppContext.tsx`, `SettingsScreen.tsx`)**:
+   - In `AppContext.tsx`, automatically synchronizes wallet card data to the widget engine upon wallet additions, edits, reordering, and balance updates.
+   - In `SettingsScreen.tsx`, updated the live widget preview to render the interactive bottom card, allowing in-app tap-to-cycle preview testing.
+
+### Affected Files:
+- `client/app.json` (Modified)
+- `client/src/widgets/TotalBalanceWidget.tsx` (Modified)
+- `client/src/widgets/widget-task-handler.tsx` (Modified)
+- `client/src/services/WidgetService.ts` (Modified)
+- `client/src/context/AppContext.tsx` (Modified)
+- `client/src/screens/SettingsScreen.tsx` (Modified)
+- `CHANGELOG.md` (Modified)
+
+---
+
+## [2026-10-09 00:57:00 +08:00] Multi-Milestone Phone Notifications & In-App Alerts (3, 2, 1 Days Before & Day-Of)
+### Summary of Changes:
+1. **Multi-Milestone Phone Notifications (`NotificationService.ts`)**:
+   - Implemented automated multi-milestone scheduling using `expo-notifications` for **3 days before, 2 days before, 1 day before, and day-of (0 days / when the date is hit)**.
+   - Fully covers all requested categories:
+     - **Subscriptions**: Next billing deadline at 3d, 2d, 1d, and 0d (morning 9:00 AM).
+     - **Rent**: Rent due date at 3d, 2d, 1d, and 0d (morning 9:00 AM).
+     - **Grocery**: Next scheduled shopping days at 3d, 2d, 1d, and 0d (morning 8:30 AM), plus rolling ahead to the next cycle.
+     - **Recursion (Paydays)**: Upcoming paydays (monthly, weekly, bi-monthly 15th/end of month) at 3d, 2d, 1d, and 0d (morning 8:00 AM).
+     - **Installments**: Next installment due date at 3d, 2d, 1d, and 0d (morning 9:00 AM).
+     - **Split (Money Split Plans)**: Next split execution date (once, monthly, weekly, semi-monthly, yearly) at 3d, 2d, 1d, and 0d (morning 9:00 AM).
+     - **Debts**: Retained and upgraded to 3d, 2d, 1d, and 0d deadline reminders.
+   - If a milestone falls on the current day and the morning time has already passed, it automatically triggers within 60 seconds so the user is immediately notified on their phone.
+2. **Context Synchronization (`AppContext.tsx`)**:
+   - Updated `syncAllNotifications` calls in `setupNotifications` and `useEffect` to pass `splits` alongside `debts`, `groceryLists`, `installments`, `subscriptions`, `rents`, `recursions`, and `goals`.
+   - Included `splits` in effect dependency arrays for automatic rescheduling whenever split plans are created, updated, or deleted.
+   - Passed `importedSplits` to `syncAllNotifications` on backup data restore.
+3. **In-App Notification Center Sync (`useHeaderAlerts.ts`)**:
+   - Expanded the notification dropdown bell alerts to display badges and messages 3 days, 2 days, 1 day before deadlines, and on the day for Subscriptions, Rent, Installments, Grocery, Paydays, Money Split plans, and Debts.
+   - Added `GitFork` icon and routing for Money Split plans.
+4. **Centralized Payment Schedule Engine (`paymentSchedule.ts`)**:
+   - Added robust deadline calculators: `getRentNextDeadline`, `getInstallmentNextDeadline`, `getRecursionNextDeadline`, `getGroceryNextOccurrence`, and `getSplitNextDeadline`.
+
+### Affected Files:
+- `client/src/services/NotificationService.ts` (Modified)
+- `client/src/context/AppContext.tsx` (Modified)
+- `client/src/hooks/useHeaderAlerts.ts` (Modified)
+- `client/src/utils/paymentSchedule.ts` (Modified)
+- `CHANGELOG.md` (Modified)
+
+---
+
 ## [2026-10-01 03:52:00 +08:00] Removed Calculator from More Actions Modal on Home Screen
 ### Summary of Changes:
 1. **Removed Calculator Action (`HomeScreen.tsx`)**:

@@ -25,6 +25,7 @@ interface WalletPickerModalProps {
   onSelectWallet: (id: string) => void;
   allowAll?: boolean;
   allLabel?: string;
+  showBalance?: boolean;
 }
 
 export default function WalletPickerModal({
@@ -35,6 +36,7 @@ export default function WalletPickerModal({
   onSelectWallet,
   allowAll = false,
   allLabel = 'All Wallets',
+  showBalance = true,
 }: WalletPickerModalProps) {
   const { colors, isDarkMode, usdToPhpRate } = useAppContext();
   const styles = getStyles(colors, isDarkMode);
@@ -129,9 +131,11 @@ export default function WalletPickerModal({
                       >
                         {item.name}
                       </Text>
-                      <Text style={styles.walletBalanceText} numberOfLines={1}>
-                        ₱{Math.floor(totalBalance).toLocaleString('en-PH')}
-                      </Text>
+                      {showBalance && (
+                        <Text style={styles.walletBalanceText} numberOfLines={1}>
+                          ₱{Math.floor(totalBalance).toLocaleString('en-PH')}
+                        </Text>
+                      )}
                     </View>
 
                     {/* Right: Minimalist Indicator */}

@@ -20,7 +20,7 @@ import {
   CheckCircle2,
   FileText
 } from 'lucide-react-native';
-import { useAppContext, calculateNextDueDate } from '../context/AppContext';
+import { useAppContext, calculateRentDueDate } from '../context/AppContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { rf } from '../utils/responsive';
 
@@ -53,7 +53,7 @@ export default function AddRentScreen() {
 
   const parsedMonthly = parseFloat(monthlyAmount) || 0;
   const parsedAlreadyPaid = Math.max(0, parseInt(alreadyPaidMonths, 10) || 0);
-  const computedNextDueDate = calculateNextDueDate(startDateStr, parsedAlreadyPaid);
+  const computedNextDueDate = calculateRentDueDate(startDateStr, parsedAlreadyPaid);
 
   const handleSave = async () => {
     if (!propertyName.trim()) {

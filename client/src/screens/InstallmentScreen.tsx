@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -30,6 +30,7 @@ import { useAppContext, InstallmentType } from '../context/AppContext';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { rf } from '../utils/responsive';
+import { sortInstallmentsByClosestDate } from '../utils/paymentSchedule';
 
 export default function InstallmentScreen() {
   const { 
@@ -58,14 +59,19 @@ export default function InstallmentScreen() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  const filteredInstallments = installments.filter(item => {
-    const isCompleted = item.paidMonths >= item.monthsToPay;
-    if (filter === 'active') return !isCompleted;
-    if (filter === 'completed') return isCompleted;
-    return true;
-  });
+  const filteredInstallments = useMemo(() => {
+    const list = installments.filter(item => {
+      const isCompleted = item.paidMonths >= item.monthsToPay;
+      if (filter === 'active') return !isCompleted;
+      if (filter === 'completed') return isCompleted;
+      return true;
+    });
+    return sortInstallmentsByClosestDate(list);
+  }, [installments, filter]);
 
-  const activeInstallments = installments.filter(i => i.paidMonths < i.monthsToPay);
+  const activeInstallments = useMemo(() => {
+    return installments.filter(i => i.paidMonths < i.monthsToPay);
+  }, [installments]);
   
   const totalMonthlyPhp = activeInstallments.reduce((sum, item) => {
     const amountInPhp = item.currency === 'USD' ? item.monthlyAmount * usdToPhpRate : item.monthlyAmount;

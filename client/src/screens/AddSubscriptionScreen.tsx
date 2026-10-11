@@ -185,7 +185,7 @@ export default function AddSubscriptionScreen() {
             <Search size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search app for logo (e.g. Netflix, ChatGPT, Spotify...)"
+              placeholder="Search app for logo"
               placeholderTextColor={colors.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -205,8 +205,8 @@ export default function AddSubscriptionScreen() {
                 {isSearchingApi
                   ? 'Searching app logos...'
                   : searchResults.length > 0
-                  ? `Found ${searchResults.length} Apps with Logos`
-                  : 'No apps found with logos'}
+                    ? `Found ${searchResults.length} Apps with Logos`
+                    : 'No apps found with logos'}
               </Text>
 
               {searchResults.length > 0 && (

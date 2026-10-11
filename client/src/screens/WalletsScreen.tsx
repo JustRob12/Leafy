@@ -136,33 +136,33 @@ export default function WalletsScreen() {
 
         {wallets.length === 0 ? (
           <View style={styles.emptyState}>
-            <View style={styles.emptyIconWrapper}>
-              <WalletIcon size={32} color={colors.textMuted} />
-            </View>
-            <Text style={styles.emptyTitle}>No wallets yet</Text>
-            <Text style={styles.emptySubtitle}>Create your first wallet to start tracking your finances.</Text>
+            <Text style={styles.emptyTitle}>No Wallets Added Yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Create your first wallet to organize your cash, bank accounts, and e-wallets in one place.
+            </Text>
             <TouchableOpacity 
               style={styles.emptyBtn}
               onPress={() => navigation.navigate('AddWallet')}
+              activeOpacity={0.85}
+              delayPressIn={0}
             >
-              <Plus size={20} color="#ffffff" />
+              <Plus size={18} color="#ffffff" strokeWidth={2.5} />
               <Text style={styles.emptyBtnText}>Create Wallet</Text>
             </TouchableOpacity>
           </View>
         ) : groupedWallets.length === 0 ? (
-          <View style={styles.emptyFilteredState}>
-            <View style={styles.emptyIconWrapper}>
-              <WalletIcon size={28} color={colors.textMuted} />
-            </View>
+          <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>No {categoryFilter} Wallets</Text>
-            <Text style={styles.emptySubtitle}>You don't have any wallets under this category yet.</Text>
+            <Text style={styles.emptySubtitle}>
+              You don't have any wallets organized under this category yet.
+            </Text>
             <TouchableOpacity 
               style={styles.emptyBtn}
               onPress={() => navigation.navigate('AddWallet')}
-              activeOpacity={0.7}
+              activeOpacity={0.85}
               delayPressIn={0}
             >
-              <Plus size={18} color="#ffffff" />
+              <Plus size={18} color="#ffffff" strokeWidth={2.5} />
               <Text style={styles.emptyBtnText}>Add {categoryFilter} Wallet</Text>
             </TouchableOpacity>
           </View>
@@ -295,44 +295,45 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
     emptyState: {
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: theme.spacing.xxl,
-    },
-    emptyIconWrapper: {
-      width: 64,
-      height: 64,
-      borderRadius: theme.borderRadius.full,
-      backgroundColor: colors.card,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: theme.spacing.lg,
+      paddingVertical: 60,
+      paddingHorizontal: 20,
+      width: '100%',
     },
     emptyTitle: {
-      fontFamily: theme.fonts.semiBold,
-      fontSize: rf(20),
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(21),
       color: colors.text,
+      textAlign: 'center',
+      alignSelf: 'center',
+      letterSpacing: -0.4,
       marginBottom: 8,
+      maxWidth: 320,
     },
     emptySubtitle: {
       fontFamily: theme.fonts.regular,
       fontSize: rf(14),
       color: colors.textMuted,
       textAlign: 'center',
-      paddingHorizontal: 40,
-      marginBottom: theme.spacing.xl,
+      alignSelf: 'center',
+      lineHeight: rf(21),
+      maxWidth: 300,
+      marginBottom: 24,
     },
     emptyBtn: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       backgroundColor: colors.primary,
-      paddingHorizontal: 24,
-      paddingVertical: 12,
-      borderRadius: theme.borderRadius.full,
+      paddingHorizontal: 26,
+      paddingVertical: 13,
+      borderRadius: 24,
       gap: 8,
     },
     emptyBtnText: {
-      fontFamily: theme.fonts.semiBold,
-      fontSize: rf(16),
+      fontFamily: theme.fonts.bold,
+      fontSize: rf(15),
       color: '#ffffff',
+      letterSpacing: 0.2,
     },
     gridContainer: {
       flexDirection: 'row',
@@ -704,16 +705,6 @@ const getStyles = (colors: any, isDarkMode: boolean) => {
   visibilityToggleActive: {
     borderColor: colors.primary + '33',
     backgroundColor: colors.primary + '15',
-  },
-  emptyFilteredState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.xxl,
-    backgroundColor: colors.card,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginTop: 8,
   },
     inputLabel: {
       fontFamily: theme.fonts.medium,

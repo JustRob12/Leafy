@@ -101,6 +101,29 @@ export default function HomeScreen() {
   const carouselRef = useRef<ScrollView>(null);
   const [activeCardIndex, setActiveCardIndex] = useState(1); // 1 = Total Balance (Main)
 
+  // Distribution Card State (Slide 0: Expense vs Income)
+  const [distributionType, setDistributionType] = useState<'expense' | 'income'>('expense');
+  const distributionFadeAnim = useRef(new Animated.Value(1)).current;
+
+  const toggleDistributionType = () => {
+    Animated.sequence([
+      Animated.timing(distributionFadeAnim, {
+        toValue: 0.15,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+      Animated.timing(distributionFadeAnim, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    setTimeout(() => {
+      setDistributionType(prev => (prev === 'expense' ? 'income' : 'expense'));
+    }, 120);
+  };
+
   // Start on Total Balance (slide 1)
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -555,6 +578,55 @@ export default function HomeScreen() {
     return { items, total };
   }, [transactions, usdToPhpRate]);
 
+  // INCOME DISTRIBUTION (FOR PIE GRAPH CARD)
+  const incomeDistributionData = useMemo(() => {
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+
+    const incomeGroups: { [key: string]: { name: string; icon: string; amount: number } } = {};
+    
+    (transactions || [])
+      .filter(t => {
+        if (t.type !== 'deposit' || t.category === 'transfer') return false;
+        const d = new Date(t.date);
+        return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+      })
+      .forEach(tx => {
+        const name = tx.title || 'Income';
+        const icon = tx.icon || 'TrendingUp';
+        const amt = getTransactionAmountInPhp(tx, usdToPhpRate);
+        if (!incomeGroups[name]) {
+          incomeGroups[name] = { name, icon, amount: 0 };
+        }
+        incomeGroups[name].amount += amt;
+      });
+
+    const total = Object.values(incomeGroups).reduce((acc, curr) => acc + curr.amount, 0);
+    const sorted = Object.values(incomeGroups).sort((a, b) => b.amount - a.amount);
+    
+    const sliceColors = [
+      '#10b981', // Emerald
+      '#38bdf8', // Sky Blue
+      '#fbbf24', // Amber
+      '#a78bfa', // Lavender
+      '#34d399', // Mint
+      '#fb923c', // Orange
+      '#f472b6', // Pink
+      '#818cf8', // Indigo
+    ];
+
+    const items = sorted.map((item, idx) => ({
+      ...item,
+      color: sliceColors[idx % sliceColors.length],
+      percentage: total > 0 ? (item.amount / total) * 100 : 0,
+    }));
+
+    return { items, total };
+  }, [transactions, usdToPhpRate]);
+
+  const currentDistributionData = distributionType === 'expense' ? expenseDistributionData : incomeDistributionData;
+
   // ANALYTICS DATA (FOR LINE GRAPH CARD)
   const analyticsData = useMemo(() => {
     const now = new Date();
@@ -693,122 +765,174 @@ export default function HomeScreen() {
             style={styles.carouselScrollView}
             contentContainerStyle={[styles.carouselScrollContent, { paddingHorizontal: CARD_SIDE_INSET }]}
           >
-            {/* SLIDE 0: EXPENSE DISTRIBUTION PIE GRAPH (White Background, No Leaves) */}
+            {/* SLIDE 0: EXPENSE / INCOME DISTRIBUTION PIE GRAPH (White Background, No Leaves) */}
             <View style={[styles.carouselCardWhite, { width: CARD_WIDTH, marginRight: CARD_GAP }]}>
               <View style={styles.premiumCardTop}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <PieChart size={18} color={colors.primary} />
-                  <Text style={styles.cardTitleDark}>Expense Distribution</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
+                  <PieChart
+                    size={18}
+                    color={distributionType === 'expense' ? (isDarkMode ? '#38bdf8' : colors.primary) : '#10b981'}
+                  />
+                  <Text style={styles.cardTitleDark} numberOfLines={1}>
+                    {distributionType === 'expense' ? 'Expense Distribution' : 'Income Distribution'}
+                  </Text>
                 </View>
-                <View style={styles.cardHeaderBadgeWhite}>
-                  <Text style={styles.cardHeaderBadgeTextDark}>This Month</Text>
-                </View>
+
+                {/* Switch button between Expense & Income Distribution */}
+                <TouchableOpacity
+                  style={[
+                    styles.distributionSwitchBtn,
+                    {
+                      backgroundColor: distributionType === 'expense' 
+                        ? (isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5') 
+                        : (isDarkMode ? 'rgba(56, 189, 248, 0.15)' : '#f0f9ff'),
+                      borderColor: distributionType === 'expense'
+                        ? (isDarkMode ? 'rgba(16, 185, 129, 0.35)' : '#a7f3d0')
+                        : (isDarkMode ? 'rgba(56, 189, 248, 0.35)' : '#bae6fd'),
+                    }
+                  ]}
+                  onPress={toggleDistributionType}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <ArrowRightLeft
+                    size={11}
+                    color={distributionType === 'expense' ? '#10b981' : (isDarkMode ? '#38bdf8' : colors.primary)}
+                  />
+                  <Text
+                    style={[
+                      styles.distributionSwitchText,
+                      {
+                        color: distributionType === 'expense' ? '#10b981' : (isDarkMode ? '#38bdf8' : colors.primary),
+                      }
+                    ]}
+                  >
+                    {distributionType === 'expense' ? 'Income' : 'Expense'}
+                  </Text>
+                </TouchableOpacity>
               </View>
 
-              {expenseDistributionData.items.length === 0 ? (
-                <View style={styles.pieEmptyContainer}>
-                  <View style={[styles.pieEmptyRing, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }]}>
-                    <ShoppingBag size={24} color={colors.textMuted} />
-                  </View>
-                  <Text style={[styles.pieEmptyText, { color: colors.textMuted }]}>No expenses recorded this month</Text>
-                  <TouchableOpacity
-                    style={[styles.pieAddExpenseBtn, { backgroundColor: colors.primary }]}
-                    onPress={() => navigation.navigate('Withdraw')}
-                    activeOpacity={0.7}
-                  >
-                    <Plus size={14} color="#ffffff" />
-                    <Text style={[styles.pieAddExpenseBtnText, { color: '#ffffff' }]}>Record Expense</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.pieContentRow}>
-                  {/* DONUT PIE CHART */}
-                  <View style={styles.donutContainer}>
-                    <Svg width={96} height={96} viewBox="0 0 100 100">
-                      {/* Base background circle */}
-                      <Circle
-                        cx="50"
-                        cy="50"
-                        r="36"
-                        stroke={isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#f1f5f9'}
-                        strokeWidth="14"
-                        fill="none"
-                      />
-                      {/* Slices */}
-                      {(() => {
-                        const C = 2 * Math.PI * 36;
-                        let cumulativePct = 0;
-                        return expenseDistributionData.items.map((item, idx) => {
-                          const strokeDasharray = `${(item.percentage / 100) * C} ${C}`;
-                          const strokeDashoffset = -cumulativePct * C;
-                          cumulativePct += item.percentage / 100;
-                          return (
-                            <Circle
-                              key={`slice-${idx}`}
-                              cx="50"
-                              cy="50"
-                              r="36"
-                              stroke={item.color}
-                              strokeWidth="14"
-                              strokeDasharray={strokeDasharray}
-                              strokeDashoffset={strokeDashoffset}
-                              fill="none"
-                              strokeLinecap="butt"
-                              transform="rotate(-90 50 50)"
-                            />
-                          );
-                        });
-                      })()}
-                    </Svg>
-                    {/* Donut Center Label */}
-                    <View style={styles.donutCenter}>
-                      <Text style={styles.donutCenterLabelDark}>Spent</Text>
-                      <Text style={styles.donutCenterValueDark} numberOfLines={1}>
-                        {isBalanceHidden
-                          ? '₱***'
-                          : `₱${expenseDistributionData.total >= 1000000 
-                              ? (expenseDistributionData.total / 1000000).toFixed(1) + 'M' 
-                              : expenseDistributionData.total >= 1000 
-                                ? (expenseDistributionData.total / 1000).toFixed(1) + 'k' 
-                                : Math.round(expenseDistributionData.total)}`}
+              <Animated.View style={{ flex: 1, opacity: distributionFadeAnim }}>
+                {currentDistributionData.items.length === 0 ? (
+                  <View style={styles.pieEmptyContainer}>
+                    <View style={[styles.pieEmptyRing, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }]}>
+                      {distributionType === 'expense' ? (
+                        <ShoppingBag size={24} color={colors.textMuted} />
+                      ) : (
+                        <TrendingUp size={24} color={colors.textMuted} />
+                      )}
+                    </View>
+                    <Text style={[styles.pieEmptyText, { color: colors.textMuted }]}>
+                      {distributionType === 'expense'
+                        ? 'No expenses recorded this month'
+                        : 'No income recorded this month'}
+                    </Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.pieAddExpenseBtn,
+                        { backgroundColor: distributionType === 'expense' ? colors.primary : '#10b981' }
+                      ]}
+                      onPress={() => navigation.navigate(distributionType === 'expense' ? 'Withdraw' : 'Deposit')}
+                      activeOpacity={0.7}
+                    >
+                      <Plus size={14} color="#ffffff" />
+                      <Text style={[styles.pieAddExpenseBtnText, { color: '#ffffff' }]}>
+                        {distributionType === 'expense' ? 'Record Expense' : 'Record Income'}
                       </Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.pieContentRow}>
+                    {/* DONUT PIE CHART */}
+                    <View style={styles.donutContainer}>
+                      <Svg width={96} height={96} viewBox="0 0 100 100">
+                        {/* Base background circle */}
+                        <Circle
+                          cx="50"
+                          cy="50"
+                          r="36"
+                          stroke={isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#f1f5f9'}
+                          strokeWidth="14"
+                          fill="none"
+                        />
+                        {/* Slices */}
+                        {(() => {
+                          const C = 2 * Math.PI * 36;
+                          let cumulativePct = 0;
+                          return currentDistributionData.items.map((item, idx) => {
+                            const strokeDasharray = `${(item.percentage / 100) * C} ${C}`;
+                            const strokeDashoffset = -cumulativePct * C;
+                            cumulativePct += item.percentage / 100;
+                            return (
+                              <Circle
+                                key={`slice-${idx}`}
+                                cx="50"
+                                cy="50"
+                                r="36"
+                                stroke={item.color}
+                                strokeWidth="14"
+                                strokeDasharray={strokeDasharray}
+                                strokeDashoffset={strokeDashoffset}
+                                fill="none"
+                                strokeLinecap="butt"
+                                transform="rotate(-90 50 50)"
+                              />
+                            );
+                          });
+                        })()}
+                      </Svg>
+                      {/* Donut Center Label */}
+                      <View style={styles.donutCenter}>
+                        <Text style={styles.donutCenterLabelDark}>
+                          {distributionType === 'expense' ? 'Spent' : 'Earned'}
+                        </Text>
+                        <Text style={styles.donutCenterValueDark} numberOfLines={1}>
+                          {isBalanceHidden
+                            ? '₱***'
+                            : `₱${currentDistributionData.total >= 1000000 
+                                ? (currentDistributionData.total / 1000000).toFixed(1) + 'M' 
+                                : currentDistributionData.total >= 1000 
+                                  ? (currentDistributionData.total / 1000).toFixed(1) + 'k' 
+                                  : Math.round(currentDistributionData.total)}`}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* EXPENSE/INCOME LEGEND LIST (Scrollable when > 4 items, pie graph stays fixed) */}
+                    <View style={styles.pieLegendContainer}>
+                      <ScrollView
+                        style={styles.pieLegendScrollView}
+                        contentContainerStyle={[
+                          styles.pieLegendScrollContent,
+                          { justifyContent: currentDistributionData.items.length > 4 ? 'flex-start' : 'center' },
+                        ]}
+                        showsVerticalScrollIndicator={currentDistributionData.items.length > 4}
+                        nestedScrollEnabled={true}
+                        scrollEnabled={currentDistributionData.items.length > 4}
+                        bounces={true}
+                      >
+                        {currentDistributionData.items.map((item, idx) => {
+                          const IconComponent = ICON_MAP[item.icon] || (distributionType === 'expense' ? LucideIcons.Receipt : LucideIcons.TrendingUp);
+                          return (
+                            <View key={`legend-${idx}`} style={styles.pieLegendItem}>
+                              <View style={[styles.pieLegendDot, { backgroundColor: item.color }]} />
+                              <View style={[styles.pieLegendIconWrapper, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#f8fafc', padding: 3, borderRadius: 6 }]}>
+                                <IconComponent size={12} color={colors.text} />
+                              </View>
+                              <Text style={styles.pieLegendNameDark} numberOfLines={1}>
+                                {item.name}
+                              </Text>
+                              <Text style={styles.pieLegendAmountDark}>
+                                {isBalanceHidden ? '***' : `₱${Math.round(item.amount).toLocaleString()}`} ({Math.round(item.percentage)}%)
+                              </Text>
+                            </View>
+                          );
+                        })}
+                      </ScrollView>
                     </View>
                   </View>
-
-                  {/* EXPENSE LEGEND LIST (Scrollable when > 4 items, pie graph stays fixed) */}
-                  <View style={styles.pieLegendContainer}>
-                    <ScrollView
-                      style={styles.pieLegendScrollView}
-                      contentContainerStyle={[
-                        styles.pieLegendScrollContent,
-                        { justifyContent: expenseDistributionData.items.length > 4 ? 'flex-start' : 'center' },
-                      ]}
-                      showsVerticalScrollIndicator={expenseDistributionData.items.length > 4}
-                      nestedScrollEnabled={true}
-                      scrollEnabled={expenseDistributionData.items.length > 4}
-                      bounces={true}
-                    >
-                      {expenseDistributionData.items.map((item, idx) => {
-                        const IconComponent = ICON_MAP[item.icon] || LucideIcons.Receipt;
-                        return (
-                          <View key={`legend-${idx}`} style={styles.pieLegendItem}>
-                            <View style={[styles.pieLegendDot, { backgroundColor: item.color }]} />
-                            <View style={[styles.pieLegendIconWrapper, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#f8fafc', padding: 3, borderRadius: 6 }]}>
-                              <IconComponent size={12} color={colors.text} />
-                            </View>
-                            <Text style={styles.pieLegendNameDark} numberOfLines={1}>
-                              {item.name}
-                            </Text>
-                            <Text style={styles.pieLegendAmountDark}>
-                              {isBalanceHidden ? '***' : `₱${Math.round(item.amount).toLocaleString()}`} ({Math.round(item.percentage)}%)
-                            </Text>
-                          </View>
-                        );
-                      })}
-                    </ScrollView>
-                  </View>
-                </View>
-              )}
+                )}
+              </Animated.View>
             </View>
 
             {/* SLIDE 1: TOTAL MONEY (MAIN - Gradient Green with Leaves) */}
@@ -1078,148 +1202,24 @@ export default function HomeScreen() {
         <WalletQrStack />
 
         {/* MONEY SPLIT */}
-        <View style={styles.sectionHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={styles.sectionTitle}>Money Split</Text>
-            {splits.length > 0 && (
-              <View style={styles.splitCountBadge}>
-                <Text style={styles.splitCountBadgeText}>{splits.length}</Text>
+        {splits.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.sectionTitle}>Money Split</Text>
+                <View style={styles.splitCountBadge}>
+                  <Text style={styles.splitCountBadgeText}>{splits.length}</Text>
+                </View>
               </View>
-            )}
-          </View>
-          <TouchableOpacity onPress={() => navigation.navigate('Split')}>
-            <Text style={styles.seeAllText}>SEE ALL</Text>
-          </TouchableOpacity>
-        </View>
-
-        {splits.length === 0 ? (
-          <TouchableOpacity
-            style={styles.emptySplitCard}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('Split')}
-          >
-            <View style={styles.emptySplitIconBox}>
-              <GitFork size={18} color={colors.primary} />
+              <TouchableOpacity onPress={() => navigation.navigate('Split')}>
+                <Text style={styles.seeAllText}>SEE ALL</Text>
+              </TouchableOpacity>
             </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={styles.emptySplitTitle}>No Active Split Plan</Text>
-              <Text style={styles.emptySplitSub} numberOfLines={1}>
-                Allocate your salary into GCash, GoTyme & savings
-              </Text>
-            </View>
-            <View style={styles.emptySplitBtn}>
-              <Plus size={13} color="#ffffff" style={{ marginRight: 2 }} />
-              <Text style={styles.emptySplitBtnText}>Create</Text>
-            </View>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.splitCardsContainer}>
-            {splits.length === 1 ? (
-              (() => {
-                const plan = splits[0];
-                const sourceWallet = wallets.find(w => w.id === plan.sourceWalletId);
-                const totalAllocated = plan.splits.reduce((sum, sp) => sum + (sp.amount || 0), 0);
-                const remaining = Math.max(0, plan.totalAmount - totalAllocated);
-                const sym = plan.currency === 'USD' ? '$' : '₱';
-                const sliceColors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4'];
 
-                return (
-                  <TouchableOpacity
-                    style={styles.homeSplitCard}
-                    activeOpacity={0.9}
-                    onPress={() => navigation.navigate('Split')}
-                  >
-                    {/* Top Row: Title, Schedule & Total Budget */}
-                    <View style={styles.homeSplitTopRow}>
-                      <View style={{ flex: 1, marginRight: 8 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                          <View style={styles.homeSplitMiniIcon}>
-                            <GitFork size={13} color={colors.primary} />
-                          </View>
-                          <Text style={styles.homeSplitTitle} numberOfLines={1}>{plan.title}</Text>
-                        </View>
-                        <View style={styles.homeSplitScheduleRow}>
-                          <Clock size={10} color={colors.primary} style={{ marginRight: 3 }} />
-                          <Text style={styles.homeSplitScheduleText} numberOfLines={1}>
-                            {formatSplitSchedule(plan)}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={styles.homeSplitAmountText}>
-                          {isBalanceHidden ? `${sym} ******` : `${sym}${plan.totalAmount.toLocaleString()}`}
-                        </Text>
-                        <Text style={styles.homeSplitSourceLabel}>
-                          From: {sourceWallet?.name || 'Source'}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Segmented Progress Bar */}
-                    <View style={styles.homeSplitProgressBar}>
-                      {plan.splits.map((sp, idx) => {
-                        const pct = plan.totalAmount > 0 ? (sp.amount / plan.totalAmount) * 100 : 0;
-                        return (
-                          <View
-                            key={sp.id}
-                            style={{
-                              height: '100%',
-                              width: `${Math.min(100, pct)}%`,
-                              backgroundColor: sliceColors[idx % sliceColors.length],
-                            }}
-                          />
-                        );
-                      })}
-                      {remaining > 0 && (
-                        <View
-                          style={{
-                            height: '100%',
-                            width: `${(remaining / plan.totalAmount) * 100}%`,
-                            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
-                          }}
-                        />
-                      )}
-                    </View>
-
-                    {/* Bottom Row: Destination Chips & Execute Button */}
-                    <View style={styles.homeSplitBottomRow}>
-                      <View style={styles.homeSplitDestPills}>
-                        {plan.splits.slice(0, 3).map((sp, idx) => {
-                          const dw = wallets.find(w => w.id === sp.walletId);
-                          return (
-                            <View key={sp.id} style={styles.homeSplitDestPill}>
-                              <View style={[styles.destPillDot, { backgroundColor: sliceColors[idx % sliceColors.length] }]} />
-                              <Text style={styles.homeSplitDestPillText} numberOfLines={1}>
-                                {dw?.name || 'Account'}
-                              </Text>
-                            </View>
-                          );
-                        })}
-                        {plan.splits.length > 3 && (
-                          <Text style={styles.homeSplitMoreDestText}>+{plan.splits.length - 3} more</Text>
-                        )}
-                      </View>
-
-                      <TouchableOpacity
-                        style={styles.homeSplitExecuteBtn}
-                        activeOpacity={0.8}
-                        onPress={() => handleExecuteSplit(plan)}
-                      >
-                        <Zap size={12} color="#ffffff" style={{ marginRight: 4 }} />
-                        <Text style={styles.homeSplitExecuteBtnText}>Execute</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })()
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.homeSplitScroll}
-              >
-                {splits.map((plan) => {
+            <View style={styles.splitCardsContainer}>
+              {splits.length === 1 ? (
+                (() => {
+                  const plan = splits[0];
                   const sourceWallet = wallets.find(w => w.id === plan.sourceWalletId);
                   const totalAllocated = plan.splits.reduce((sum, sp) => sum + (sp.amount || 0), 0);
                   const remaining = Math.max(0, plan.totalAmount - totalAllocated);
@@ -1228,16 +1228,16 @@ export default function HomeScreen() {
 
                   return (
                     <TouchableOpacity
-                      key={plan.id}
-                      style={styles.homeSplitCardMultiple}
+                      style={styles.homeSplitCard}
                       activeOpacity={0.9}
                       onPress={() => navigation.navigate('Split')}
                     >
+                      {/* Top Row: Title, Schedule & Total Budget */}
                       <View style={styles.homeSplitTopRow}>
-                        <View style={{ flex: 1, marginRight: 6 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                             <View style={styles.homeSplitMiniIcon}>
-                              <GitFork size={12} color={colors.primary} />
+                              <GitFork size={13} color={colors.primary} />
                             </View>
                             <Text style={styles.homeSplitTitle} numberOfLines={1}>{plan.title}</Text>
                           </View>
@@ -1259,6 +1259,7 @@ export default function HomeScreen() {
                         </View>
                       </View>
 
+                      {/* Segmented Progress Bar */}
                       <View style={styles.homeSplitProgressBar}>
                         {plan.splits.map((sp, idx) => {
                           const pct = plan.totalAmount > 0 ? (sp.amount / plan.totalAmount) * 100 : 0;
@@ -1284,44 +1285,140 @@ export default function HomeScreen() {
                         )}
                       </View>
 
+                      {/* Bottom Row: Destination Chips & Execute Button */}
                       <View style={styles.homeSplitBottomRow}>
-                        <Text style={styles.homeSplitDestCountText} numberOfLines={1}>
-                          {plan.splits.length} {plan.splits.length === 1 ? 'Destination' : 'Destinations'}
-                        </Text>
+                        <View style={styles.homeSplitDestPills}>
+                          {plan.splits.slice(0, 3).map((sp, idx) => {
+                            const dw = wallets.find(w => w.id === sp.walletId);
+                            return (
+                              <View key={sp.id} style={styles.homeSplitDestPill}>
+                                <View style={[styles.destPillDot, { backgroundColor: sliceColors[idx % sliceColors.length] }]} />
+                                <Text style={styles.homeSplitDestPillText} numberOfLines={1}>
+                                  {dw?.name || 'Account'}
+                                </Text>
+                              </View>
+                            );
+                          })}
+                          {plan.splits.length > 3 && (
+                            <Text style={styles.homeSplitMoreDestText}>+{plan.splits.length - 3} more</Text>
+                          )}
+                        </View>
+
                         <TouchableOpacity
                           style={styles.homeSplitExecuteBtn}
                           activeOpacity={0.8}
                           onPress={() => handleExecuteSplit(plan)}
                         >
-                          <Zap size={11} color="#ffffff" style={{ marginRight: 3 }} />
+                          <Zap size={12} color="#ffffff" style={{ marginRight: 4 }} />
                           <Text style={styles.homeSplitExecuteBtnText}>Execute</Text>
                         </TouchableOpacity>
                       </View>
                     </TouchableOpacity>
                   );
-                })}
-              </ScrollView>
-            )}
-          </View>
+                })()
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.homeSplitScroll}
+                >
+                  {splits.map((plan) => {
+                    const sourceWallet = wallets.find(w => w.id === plan.sourceWalletId);
+                    const totalAllocated = plan.splits.reduce((sum, sp) => sum + (sp.amount || 0), 0);
+                    const remaining = Math.max(0, plan.totalAmount - totalAllocated);
+                    const sym = plan.currency === 'USD' ? '$' : '₱';
+                    const sliceColors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4'];
+
+                    return (
+                      <TouchableOpacity
+                        key={plan.id}
+                        style={styles.homeSplitCardMultiple}
+                        activeOpacity={0.9}
+                        onPress={() => navigation.navigate('Split')}
+                      >
+                        <View style={styles.homeSplitTopRow}>
+                          <View style={{ flex: 1, marginRight: 6 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                              <View style={styles.homeSplitMiniIcon}>
+                                <GitFork size={12} color={colors.primary} />
+                              </View>
+                              <Text style={styles.homeSplitTitle} numberOfLines={1}>{plan.title}</Text>
+                            </View>
+                            <View style={styles.homeSplitScheduleRow}>
+                              <Clock size={10} color={colors.primary} style={{ marginRight: 3 }} />
+                              <Text style={styles.homeSplitScheduleText} numberOfLines={1}>
+                                {formatSplitSchedule(plan)}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={styles.homeSplitAmountText}>
+                              {isBalanceHidden ? `${sym} ******` : `${sym}${plan.totalAmount.toLocaleString()}`}
+                            </Text>
+                            <Text style={styles.homeSplitSourceLabel}>
+                              From: {sourceWallet?.name || 'Source'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.homeSplitProgressBar}>
+                          {plan.splits.map((sp, idx) => {
+                            const pct = plan.totalAmount > 0 ? (sp.amount / plan.totalAmount) * 100 : 0;
+                            return (
+                              <View
+                                key={sp.id}
+                                style={{
+                                  height: '100%',
+                                  width: `${Math.min(100, pct)}%`,
+                                  backgroundColor: sliceColors[idx % sliceColors.length],
+                                }}
+                              />
+                            );
+                          })}
+                          {remaining > 0 && (
+                            <View
+                              style={{
+                                height: '100%',
+                                width: `${(remaining / plan.totalAmount) * 100}%`,
+                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
+                              }}
+                            />
+                          )}
+                        </View>
+
+                        <View style={styles.homeSplitBottomRow}>
+                          <Text style={styles.homeSplitDestCountText} numberOfLines={1}>
+                            {plan.splits.length} {plan.splits.length === 1 ? 'Destination' : 'Destinations'}
+                          </Text>
+                          <TouchableOpacity
+                            style={styles.homeSplitExecuteBtn}
+                            activeOpacity={0.8}
+                            onPress={() => handleExecuteSplit(plan)}
+                          >
+                            <Zap size={11} color="#ffffff" style={{ marginRight: 3 }} />
+                            <Text style={styles.homeSplitExecuteBtnText}>Execute</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
+            </View>
+          </>
         )}
 
         {/* ACTIVE GOALS */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Active Goals</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Goals')}>
-            <Text style={styles.seeAllText}>SEE ALL</Text>
-          </TouchableOpacity>
-        </View>
-
-        {
-          goals.length === 0 ? (
-            <View style={styles.emptyGoalCard}>
-              <Text style={styles.emptyGoalText}>You have no Goal yet</Text>
-              <TouchableOpacity style={styles.emptyGoalBtn} onPress={() => navigation.navigate('Goals')}>
-                <Text style={styles.emptyGoalBtnText}>Create Goal</Text>
+        {goals.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Active Goals</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Goals')}>
+                <Text style={styles.seeAllText}>SEE ALL</Text>
               </TouchableOpacity>
             </View>
-          ) : (
+
             <View style={styles.carouselContainer}>
               {(() => {
                 const goal = goals[activeGoalIndex];
@@ -1373,8 +1470,8 @@ export default function HomeScreen() {
                 );
               })()}
             </View>
-          )
-        }
+          </>
+        )}
 
         {/* SUBSCRIPTIONS */}
         {subscriptions.length > 0 && (
@@ -2093,6 +2190,19 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontSize: rf(11),
     color: colors.textMuted,
   },
+  distributionSwitchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 4,
+  },
+  distributionSwitchText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(11),
+  },
   carouselPaginationDotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2642,6 +2752,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.medium,
     fontSize: rf(16),
     color: colors.textMuted,
+    textAlign: 'center',
     marginBottom: theme.spacing.lg,
   },
   emptyGoalBtn: {

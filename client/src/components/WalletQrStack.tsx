@@ -107,6 +107,18 @@ export default function WalletQrStack() {
     }
   };
 
+  const resetCardPosition = () => {
+    try {
+      pan.stopAnimation();
+      fadeAnim.stopAnimation();
+      stackAnim.stopAnimation();
+    } catch (_) { }
+    pan.setValue({ x: 0, y: 0 });
+    fadeAnim.setValue(1);
+    stackAnim.setValue(0);
+    isSwipingOut.current = false;
+  };
+
   // Keep currentIndex bounded and reset animation values cleanly without any visual snapback
   useEffect(() => {
     if (qrWallets.length === 0) {
@@ -114,11 +126,7 @@ export default function WalletQrStack() {
     } else if (currentIndex >= qrWallets.length) {
       setCurrentIndex(0);
     }
-    // Seamless reset: the incoming card is already rendered at the top, so values reset smoothly
-    pan.setValue({ x: 0, y: 0 });
-    fadeAnim.setValue(1);
-    stackAnim.setValue(0);
-    isSwipingOut.current = false;
+    resetCardPosition();
   }, [qrWallets.length, currentIndex]);
 
   const activeWallet = qrWallets[currentIndex] || null;
@@ -142,20 +150,20 @@ export default function WalletQrStack() {
       onStartShouldSetPanResponder: () => false,
       onStartShouldSetPanResponderCapture: () => false,
 
-      // Capture horizontal swipes early so parent ScrollView never cancels horizontal drags
+      // Capture horizontal swipes with appropriate threshold so stationary hold/press is never cancelled
       onMoveShouldSetPanResponderCapture: (evt, gestureState) => {
         if (qrWalletsRef.current.length <= 1 || isSwipingOut.current) return false;
         return (
-          Math.abs(gestureState.dx) > 7 &&
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.15
+          Math.abs(gestureState.dx) > 16 &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.25
         );
       },
 
       onMoveShouldSetPanResponder: (evt, gestureState) => {
         if (qrWalletsRef.current.length <= 1 || isSwipingOut.current) return false;
         return (
-          Math.abs(gestureState.dx) > 7 &&
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.15
+          Math.abs(gestureState.dx) > 16 &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.25
         );
       },
 
@@ -205,11 +213,8 @@ export default function WalletQrStack() {
               useNativeDriver: true,
             }),
           ]).start(() => {
-            // GLITCH-FREE HANDOFF:
-            // Top card is fully off-screen with opacity 0.
-            // 2nd card is at stackAnim = 1 (scale 1.0, translateY 0).
-            // Increment index: the useEffect([currentIndex]) will reset values
-            // seamlessly right as React renders the promoted card!
+            // Synchronously reset card values right before state update so the new card is 100% responsive immediately
+            resetCardPosition();
             setCurrentIndex((prev) => (prev + 1) % qrWalletsRef.current.length);
           });
         } else {
@@ -232,7 +237,7 @@ export default function WalletQrStack() {
       },
 
       onPanResponderTerminate: () => {
-        if (isSwipingOut.current) return;
+        isSwipingOut.current = false;
         Animated.parallel([
           Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
@@ -246,7 +251,9 @@ export default function WalletQrStack() {
             tension: 45,
             useNativeDriver: true,
           }),
-        ]).start();
+        ]).start(() => {
+          resetCardPosition();
+        });
       },
     })
   ).current;
@@ -523,6 +530,8 @@ export default function WalletQrStack() {
               <TouchableOpacity
                 style={styles.holdHintPill}
                 onPress={() => handleCardHold(wallet)}
+                onLongPress={() => handleCardHold(wallet)}
+                delayLongPress={250}
                 activeOpacity={0.7}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
@@ -575,7 +584,7 @@ export default function WalletQrStack() {
         {/* 3rd Card in Stack (if 3 or more) */}
         {thirdWallet && (
           <Animated.View
-            key={`third-${thirdWallet.id}`}
+            key="third-card"
             style={[
               styles.cardWrapper,
               styles.stackedCardThird,
@@ -588,6 +597,7 @@ export default function WalletQrStack() {
                 opacity: thirdCardOpacity,
               },
             ]}
+            pointerEvents="none"
           >
             {renderCardContent(thirdWallet, false)}
           </Animated.View>
@@ -596,7 +606,7 @@ export default function WalletQrStack() {
         {/* 2nd Card in Stack (The card directly below the top card) */}
         {nextWallet && (
           <Animated.View
-            key={`next-${nextWallet.id}`}
+            key="next-card"
             style={[
               styles.cardWrapper,
               styles.stackedCardNext,
@@ -612,6 +622,7 @@ export default function WalletQrStack() {
                 opacity: nextCardOpacity,
               },
             ]}
+            pointerEvents="none"
           >
             {renderCardContent(nextWallet, false)}
           </Animated.View>
@@ -619,7 +630,7 @@ export default function WalletQrStack() {
 
         {/* TOP ACTIVE CARD (Glitch-free, responsive gesture and fade) */}
         <Animated.View
-          key={`top-${activeWallet.id}`}
+          key="top-card"
           {...panResponder.panHandlers}
           style={[
             styles.cardWrapper,
@@ -638,9 +649,13 @@ export default function WalletQrStack() {
           ]}
         >
           <Pressable
-            onPress={() => handleCardTap(activeWallet)}
-            onLongPress={() => handleCardHold(activeWallet)}
-            delayLongPress={280}
+            onPress={() => {
+              if (activeWallet) handleCardTap(activeWallet);
+            }}
+            onLongPress={() => {
+              if (activeWallet) handleCardHold(activeWallet);
+            }}
+            delayLongPress={250}
             style={{ width: '100%', height: '100%' }}
           >
             {renderCardContent(activeWallet, true)}
@@ -657,8 +672,8 @@ export default function WalletQrStack() {
               <TouchableOpacity
                 key={idx}
                 onPress={() => {
+                  resetCardPosition();
                   setCurrentIndex(idx);
-                  pan.setValue({ x: 0, y: 0 });
                 }}
                 style={[
                   styles.paginationDot,
@@ -919,12 +934,15 @@ const styles = StyleSheet.create({
   },
   topCard: {
     zIndex: 10,
+    elevation: 10,
   },
   stackedCardNext: {
     zIndex: 8,
+    elevation: 6,
   },
   stackedCardThird: {
     zIndex: 6,
+    elevation: 4,
     opacity: 0.72,
   },
   cardGradient: {

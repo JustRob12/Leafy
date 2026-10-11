@@ -1196,6 +1196,7 @@ const getStyles = (colors: any, isDarkMode: boolean, isLandscape?: boolean) =>
     emptyStateText: {
       fontFamily: theme.fonts.medium,
       fontSize: rf(16),
+      textAlign: 'center',
       marginBottom: 16,
     },
     addWalletBtn: {

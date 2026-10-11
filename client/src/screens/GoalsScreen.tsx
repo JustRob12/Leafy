@@ -79,26 +79,31 @@ export default function GoalsScreen() {
 
         {goals.length === 0 ? (
           <View style={styles.emptyState}>
-            <View style={styles.emptyIconWrapper}>
-              <Target size={32} color={theme.colors.textMuted} />
-            </View>
-            <Text style={styles.emptyTitle}>Set your first Goal</Text>
-            <Text style={styles.emptySubtitle}>Plan for the things you want to achieve or buy by setting up a goal.</Text>
+            <Text style={styles.emptyTitle}>Set Your First Goal</Text>
+            <Text style={styles.emptySubtitle}>
+              Plan for the things you want to achieve or buy by setting up a dedicated savings goal.
+            </Text>
             <TouchableOpacity 
               style={styles.emptyBtn}
               onPress={() => navigation.navigate('AddGoal')}
+              activeOpacity={0.85}
+              delayPressIn={0}
             >
-              <Plus size={20} color="#ffffff" />
+              <Plus size={18} color="#ffffff" strokeWidth={2.5} />
               <Text style={styles.emptyBtnText}>Create Goal</Text>
             </TouchableOpacity>
           </View>
         ) : filteredGoals.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No goals found</Text>
-            <Text style={styles.emptySubtitle}>There are no goals linked to this specific wallet.</Text>
+            <Text style={styles.emptyTitle}>No Goals Found</Text>
+            <Text style={styles.emptySubtitle}>
+              There are no goals linked to this specific wallet.
+            </Text>
             <TouchableOpacity 
               style={styles.emptyBtn}
               onPress={() => setFilterWalletId('all')}
+              activeOpacity={0.85}
+              delayPressIn={0}
             >
               <Text style={styles.emptyBtnText}>Show All Goals</Text>
             </TouchableOpacity>
@@ -217,43 +222,44 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
-  },
-  emptyIconWrapper: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
+    paddingHorizontal: 20,
+    width: '100%',
   },
   emptyTitle: {
-    fontFamily: theme.fonts.semiBold,
-    fontSize: rf(20),
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(21),
     color: colors.text,
+    textAlign: 'center',
+    alignSelf: 'center',
+    letterSpacing: -0.4,
     marginBottom: 8,
+    maxWidth: 320,
   },
   emptySubtitle: {
     fontFamily: theme.fonts.regular,
     fontSize: rf(14),
     color: colors.textMuted,
     textAlign: 'center',
-    paddingHorizontal: 40,
-    marginBottom: 32,
+    alignSelf: 'center',
+    lineHeight: rf(21),
+    maxWidth: 300,
+    marginBottom: 24,
   },
   emptyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 30,
+    paddingHorizontal: 26,
+    paddingVertical: 13,
+    borderRadius: 24,
     gap: 8,
   },
   emptyBtnText: {
-    fontFamily: theme.fonts.semiBold,
-    fontSize: rf(16),
+    fontFamily: theme.fonts.bold,
+    fontSize: rf(15),
     color: '#ffffff',
+    letterSpacing: 0.2,
   },
   shopeeCard: {
     flexDirection: 'row',

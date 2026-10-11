@@ -166,6 +166,7 @@ export default function BottomTabNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarPosition: isLandscape ? 'left' : 'bottom',
+        animation: 'fade',
       }}
     >
       <Tab.Screen

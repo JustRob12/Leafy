@@ -101,8 +101,8 @@ function MainNavigation() {
       <Stack.Navigator 
         screenOptions={{ 
           headerShown: false, 
-          animation: 'slide_from_right',
-          animationDuration: 100,
+          animation: 'fade',
+          animationDuration: 150,
           contentStyle: { backgroundColor: colors.background }
         }}
       >
@@ -133,16 +133,8 @@ function MainNavigation() {
             <Stack.Screen name="RecordMemories" component={RecordMemoriesScreen} />
             <Stack.Screen name="Security" component={SecurityScreen} />
             <Stack.Screen name="StatusCard" component={StatusCardScreen} />
-            <Stack.Screen 
-              name="Withdraw" 
-              component={WithdrawScreen} 
-              options={{ animation: 'fade', animationDuration: 90 }}
-            />
-            <Stack.Screen 
-              name="Deposit" 
-              component={DepositScreen} 
-              options={{ animation: 'fade', animationDuration: 90 }}
-            />
+            <Stack.Screen name="Withdraw" component={WithdrawScreen} />
+            <Stack.Screen name="Deposit" component={DepositScreen} />
             <Stack.Screen name="Recursion" component={RecursionScreen} />
             <Stack.Screen name="AddWallet" component={AddWalletScreen} />
             <Stack.Screen name="WalletDetail" component={WalletDetailScreen} />

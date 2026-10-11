@@ -265,6 +265,7 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize: 20,
     color: colors.text,
+    textAlign: 'center',
     marginBottom: 8,
   },
   emptySubtitle: {

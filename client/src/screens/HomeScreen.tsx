@@ -6,7 +6,7 @@ import { AudioPlayer, createAudioPlayer } from 'expo-audio';
 
 
 
-import { theme } from '../theme';
+import { theme, themeGradients } from '../theme';
 import { Wallet, ArrowDownRight, Target, Plus, ArrowUpRight, Calculator, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, ShoppingCart, ShoppingBag, Plane, RefreshCw, Leaf, Eye, EyeOff, CreditCard, Coins, Sparkles, ArrowRightLeft, TrendingUp, Layers, MapPin, Building, Home, PieChart, GitFork, Zap } from 'lucide-react-native';
 import { useAppContext, getTransactionAmountInPhp, getWalletTotalBalanceInPhp, MoneySplitPlan } from '../context/AppContext';
 import { useNavigation, useScrollToTop } from '@react-navigation/native';
@@ -474,7 +474,16 @@ export default function HomeScreen() {
       case 'maple':
         return <LucideIcons.Wind {...iconProps} />;
       case 'spruce':
-        return <LucideIcons.CloudSnow {...iconProps} />;
+        return <LucideIcons.TreePine {...iconProps} />;
+      case 'violet':
+        return <LucideIcons.Sparkles {...iconProps} />;
+      case 'pale':
+        return <LucideIcons.Feather {...iconProps} />;
+      case 'onyx':
+        return <LucideIcons.Moon {...iconProps} />;
+      case 'wood':
+        return <LucideIcons.Trees {...iconProps} />;
+      case 'emerald':
       default:
         return <Leaf {...iconProps} />;
     }
@@ -606,7 +615,7 @@ export default function HomeScreen() {
     const sorted = Object.values(incomeGroups).sort((a, b) => b.amount - a.amount);
     
     const sliceColors = [
-      '#10b981', // Emerald
+      colors.primary,
       '#38bdf8', // Sky Blue
       '#fbbf24', // Amber
       '#a78bfa', // Lavender
@@ -623,7 +632,7 @@ export default function HomeScreen() {
     }));
 
     return { items, total };
-  }, [transactions, usdToPhpRate]);
+  }, [transactions, usdToPhpRate, colors.primary]);
 
   const currentDistributionData = distributionType === 'expense' ? expenseDistributionData : incomeDistributionData;
 
@@ -771,7 +780,7 @@ export default function HomeScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
                   <PieChart
                     size={18}
-                    color={distributionType === 'expense' ? (isDarkMode ? '#38bdf8' : colors.primary) : '#10b981'}
+                    color={distributionType === 'expense' ? (isDarkMode ? '#38bdf8' : colors.primary) : colors.primary}
                   />
                   <Text style={styles.cardTitleDark} numberOfLines={1}>
                     {distributionType === 'expense' ? 'Expense Distribution' : 'Income Distribution'}
@@ -784,10 +793,10 @@ export default function HomeScreen() {
                     styles.distributionSwitchBtn,
                     {
                       backgroundColor: distributionType === 'expense' 
-                        ? (isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5') 
+                        ? (isDarkMode ? `${colors.primary}26` : `${colors.primary}18`) 
                         : (isDarkMode ? 'rgba(56, 189, 248, 0.15)' : '#f0f9ff'),
                       borderColor: distributionType === 'expense'
-                        ? (isDarkMode ? 'rgba(16, 185, 129, 0.35)' : '#a7f3d0')
+                        ? (isDarkMode ? `${colors.primary}59` : `${colors.primary}40`)
                         : (isDarkMode ? 'rgba(56, 189, 248, 0.35)' : '#bae6fd'),
                     }
                   ]}
@@ -797,13 +806,13 @@ export default function HomeScreen() {
                 >
                   <ArrowRightLeft
                     size={11}
-                    color={distributionType === 'expense' ? '#10b981' : (isDarkMode ? '#38bdf8' : colors.primary)}
+                    color={distributionType === 'expense' ? colors.primary : (isDarkMode ? '#38bdf8' : '#0284c7')}
                   />
                   <Text
                     style={[
                       styles.distributionSwitchText,
                       {
-                        color: distributionType === 'expense' ? '#10b981' : (isDarkMode ? '#38bdf8' : colors.primary),
+                        color: distributionType === 'expense' ? colors.primary : (isDarkMode ? '#38bdf8' : '#0284c7'),
                       }
                     ]}
                   >
@@ -830,7 +839,7 @@ export default function HomeScreen() {
                     <TouchableOpacity
                       style={[
                         styles.pieAddExpenseBtn,
-                        { backgroundColor: distributionType === 'expense' ? colors.primary : '#10b981' }
+                        { backgroundColor: distributionType === 'expense' ? (isDarkMode ? '#38bdf8' : '#0284c7') : colors.primary }
                       ]}
                       onPress={() => navigation.navigate(distributionType === 'expense' ? 'Withdraw' : 'Deposit')}
                       activeOpacity={0.7}
@@ -935,10 +944,18 @@ export default function HomeScreen() {
               </Animated.View>
             </View>
 
-            {/* SLIDE 1: TOTAL MONEY (MAIN - Gradient Green with Leaves) */}
-            <View style={[styles.carouselCardShadowWrapper, { width: CARD_WIDTH, marginRight: CARD_GAP }]}>
+            {/* SLIDE 1: TOTAL MONEY (MAIN - Theme Gradient with Leaves/Decor) */}
+            <View style={[
+              styles.carouselCardShadowWrapper, 
+              { 
+                width: CARD_WIDTH, 
+                marginRight: CARD_GAP,
+                shadowColor: (themeGradients[treeType] || themeGradients.emerald).shadow,
+                backgroundColor: (themeGradients[treeType] || themeGradients.emerald).shadow,
+              }
+            ]}>
               <ExpoLinearGradient
-                colors={['#059669', '#10b981', '#047857']}
+                colors={(themeGradients[treeType] || themeGradients.emerald).gradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.carouselCardGreen}
@@ -1518,7 +1535,7 @@ export default function HomeScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.homeSubTitle, isHighlightDue && styles.homeSubTitleDueSoon]} numberOfLines={1}>{sub.title}</Text>
                       {isCurrentMonthPaid ? (
-                        <Text style={[styles.homeSubDays, { color: '#10b981', fontFamily: theme.fonts.bold }]}>
+                        <Text style={[styles.homeSubDays, { color: colors.success || colors.primary, fontFamily: theme.fonts.bold }]}>
                           ✓ Paid • Next: {formattedDueDate}
                         </Text>
                       ) : isOverdue ? (
@@ -2141,12 +2158,12 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   carouselCardShadowWrapper: {
     height: rf(230),
     borderRadius: 24,
-    shadowColor: '#059669',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: isDarkMode ? 0.45 : 0.3,
     shadowRadius: 14,
     elevation: 6,
-    backgroundColor: '#059669',
+    backgroundColor: colors.primary,
   },
   carouselCardGreen: {
     flex: 1,
@@ -2724,11 +2741,11 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   homeSplitExecuteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#10b981',
+    backgroundColor: colors.primary,
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 10,
-    shadowColor: '#10b981',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,

@@ -9,7 +9,7 @@ import {
   FlatList 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../theme';
+import { theme, themeGradients } from '../theme';
 import { 
   ChevronLeft, 
   Plus, 
@@ -43,7 +43,8 @@ export default function InstallmentScreen() {
     usdToPhpRate,
     wallets,
     isBalanceHidden,
-    toggleBalanceVisibility
+    toggleBalanceVisibility,
+    treeType,
   } = useAppContext();
   
   const navigation = useNavigation<any>();
@@ -132,7 +133,7 @@ export default function InstallmentScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Summary Card Banner */}
         <LinearGradient
-          colors={isDarkMode ? ['#0f172a', '#1e293b'] : ['#059669', '#10b981']}
+          colors={isDarkMode ? ['#0f172a', '#1e293b'] : (themeGradients[treeType] || themeGradients.emerald).gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.summaryBanner}

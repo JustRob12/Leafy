@@ -9,7 +9,7 @@ import {
   Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../theme';
+import { theme, themeGradients } from '../theme';
 import { 
   ChevronLeft, 
   Plus, 
@@ -42,7 +42,8 @@ export default function RentScreen() {
     usdToPhpRate,
     wallets,
     isBalanceHidden,
-    toggleBalanceVisibility
+    toggleBalanceVisibility,
+    treeType,
   } = useAppContext();
   
   const navigation = useNavigation<any>();
@@ -114,7 +115,7 @@ export default function RentScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Summary Card */}
         <LinearGradient
-          colors={isDarkMode ? ['#065f46', '#047857'] : ['#10b981', '#059669']}
+          colors={isDarkMode ? ['#0f172a', '#1e293b'] : (themeGradients[treeType] || themeGradients.emerald).gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.summaryCard}
